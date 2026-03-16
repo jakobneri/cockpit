@@ -34,8 +34,8 @@ app.get('/api/stats', async (req, res) => {
 
     // Filter storage for Root
     const rootDrive = fsSize.find(fs => fs.mount === '/' || (isWindows && fs.mount.startsWith('C:')));
-    // Rough guess for SMB: look for /mnt, smb, or any other drive on Windows
-    const smbDrive = fsSize.find(fs => fs.mount.toLowerCase().includes('mnt') || fs.mount.toLowerCase().includes('smb') || (isWindows && !fs.mount.startsWith('C:')));
+    // Rough guess for SMB: look for /nas-nextcloud-db, /mnt, smb, or any other drive on Windows
+    const smbDrive = fsSize.find(fs => fs.mount === '/nas-nextcloud-db' || fs.mount.toLowerCase().includes('mnt') || fs.mount.toLowerCase().includes('smb') || (isWindows && !fs.mount.startsWith('C:')));
 
     res.json({
       os: osInfo.platform,
@@ -74,20 +74,49 @@ const runServiceCmd = async (service, action) => {
   if (isWindows) {
     // Mock for local testing on Windows
     const isStatus = action === 'status';
-    return { stdout: isStatus ? 'active (running)' : `Mock executed: ${action} ${service}` };
+    return { stdout: isStatus ? 'active' : `Mock executed: ${action} ${service}` };
   }
-  // Try to use systemctl but do not crash if it fails
-  return await execAsync(`sudo systemctl ${action} ${service}`);
+  
+  // Custom logic for Nextcloud (Docker Compose)
+  if (service === 'nextcloud') {
+    if (action === 'status') {
+      return await execAsync('cd /nextcloud && sudo docker-compose ps');
+    } else if (action === 'start') {
+      return await execAsync('cd /nextcloud && sudo docker-compose up -d');
+    } else if (action === 'stop') {
+      return await execAsync('cd /nextcloud && sudo docker-compose stop');
+    } else if (action === 'restart') {
+      return await execAsync('cd /nextcloud && sudo docker-compose restart');
+    }
+  } else {
+    // Standard systemctl logic for Unifi and Pihole
+    if (action === 'status') {
+      return await execAsync(`sudo systemctl is-active ${service}`);
+    } else {
+      return await execAsync(`sudo systemctl ${action} ${service}`);
+    }
+  }
 };
 
 app.get('/api/services/:service', async (req, res) => {
   const { service } = req.params;
   try {
     const { stdout } = await runServiceCmd(service, 'status');
-    const isActive = stdout.includes('active (running)') || stdout.includes('active (exited)');
+    let isActive = false;
+    
+    if (isWindows) {
+      isActive = true;
+    } else if (service === 'nextcloud') {
+      // Docker compose ps usually outputs 'Up' or 'running' for active containers
+      isActive = stdout.includes('Up') || stdout.includes('running');
+    } else {
+      // systemctl is-active strictly outputs 'active' and cleanly errors if not
+      isActive = stdout.trim() === 'active';
+    }
+    
     res.json({ service, status: isActive ? 'running' : 'stopped' });
   } catch (err) {
-    // Consider stopped if command fails (e.g., service not found or not running)
+    // If systemctl is-active throws (returns non-zero), it is stopped
     res.json({ service, status: 'stopped' });
   }
 });
