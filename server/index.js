@@ -85,20 +85,29 @@ const runServiceCmd = async (service, action) => {
   // Custom logic for Nextcloud (Docker Compose)
   if (service === 'nextcloud') {
     if (action === 'status') {
-      return await execAsync('cd /nextcloud && sudo docker-compose ps');
+      return await execAsync('cd /nextcloud && sudo docker compose ps');
     } else if (action === 'start') {
-      return await execAsync('cd /nextcloud && sudo docker-compose up -d');
+      return await execAsync('cd /nextcloud && sudo docker compose up -d');
     } else if (action === 'stop') {
-      return await execAsync('cd /nextcloud && sudo docker-compose stop');
+      return await execAsync('cd /nextcloud && sudo docker compose stop');
     } else if (action === 'restart') {
-      return await execAsync('cd /nextcloud && sudo docker-compose restart');
+      return await execAsync('cd /nextcloud && sudo docker compose restart');
     }
   } else {
     // Standard systemctl logic for Unifi and Pihole
+    // Some Unifi setups use 'unifi' and some use 'unifi.service', we try both if it's unifi
+    let targetService = service;
+    if (service === 'unifi') {
+        try {
+            await execAsync(`systemctl is-active unifi.service`);
+            targetService = 'unifi.service';
+        } catch(e) { targetService = 'unifi'; }
+    }
+    
     if (action === 'status') {
-      return await execAsync(`systemctl is-active ${service}`); // Removed sudo to prevent password prompt block
+      return await execAsync(`systemctl is-active ${targetService}`); // Removed sudo to prevent password prompt block
     } else {
-      return await execAsync(`sudo systemctl ${action} ${service}`);
+      return await execAsync(`sudo systemctl ${action} ${targetService}`);
     }
   }
 };
