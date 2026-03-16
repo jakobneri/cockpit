@@ -78,9 +78,33 @@ async function fetchStats() {
       updateProgress('smb-bar', 0);
     }
 
+    // Processes
+    if (data.processes) {
+      renderProcesses('process-cpu-list', data.processes.cpu, 'cpu');
+      renderProcesses('process-mem-list', data.processes.mem, 'mem');
+    }
+
   } catch (error) {
     console.error('Error fetching stats:', error);
   }
+}
+
+// Render processes helper
+function renderProcesses(listId, data, type) {
+  const listEl = document.getElementById(listId);
+  if (!listEl) return;
+  
+  if (!data || data.length === 0) {
+    listEl.innerHTML = '<li>No data retrieving...</li>';
+    return;
+  }
+  
+  listEl.innerHTML = data.map(p => `
+    <li class="process-item">
+      <span class="process-name" title="${p.name}">${p.name}</span>
+      <span class="process-value">${type === 'cpu' ? p.cpu.toFixed(1) + '%' : p.mem.toFixed(1) + '%'}</span>
+    </li>
+  `).join('');
 }
 
 // Fetch and update service status

@@ -16,7 +16,7 @@
 
     <div class="app-container">
       <header>
-        <h1>Pi Cockpit</h1>
+        <h1>Pi Cockpit <span class="version-tag">v1.2.0 &bull; Mar '26</span></h1>
         <p class="subtitle" id="os-info">Loading System Info...</p>
       </header>
 
@@ -72,6 +72,25 @@
               </div>
               <div class="progress-bar"><div class="progress-fill" id="smb-bar"></div></div>
               <span class="detail" id="smb-detail">Not Mounted / Found</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Processes section -->
+        <section class="card glass processes-card">
+          <h2><span class="icon">🔍</span> Top Processes</h2>
+          <div class="processes-grid">
+            <div class="process-list">
+              <h3>Highest CPU</h3>
+              <ul id="process-cpu-list">
+                <li>Loading...</li>
+              </ul>
+            </div>
+            <div class="process-list">
+              <h3>Highest RAM</h3>
+              <ul id="process-mem-list">
+                <li>Loading...</li>
+              </ul>
             </div>
           </div>
         </section>

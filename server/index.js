@@ -24,12 +24,13 @@ const isWindows = process.platform === 'win32';
 // 1. Stats Endpoint
 app.get('/api/stats', async (req, res) => {
   try {
-    const [cpu, mem, temp, fsSize, osInfo] = await Promise.all([
+    const [cpu, mem, temp, fsSize, osInfo, processes] = await Promise.all([
       si.currentLoad(),
       si.mem(),
       si.cpuTemperature(),
       si.fsSize(),
-      si.osInfo()
+      si.osInfo(),
+      si.processes()
     ]);
 
     // Filter storage for Root
@@ -61,6 +62,10 @@ app.get('/api/stats', async (req, res) => {
           path: smbDrive.mount,
           percent: Math.round(smbDrive.use)
         } : null
+      },
+      processes: {
+        cpu: processes && processes.list ? [...processes.list].sort((a, b) => b.cpu - a.cpu).slice(0, 5).map(p => ({ name: p.name, cpu: p.cpu })) : [],
+        mem: processes && processes.list ? [...processes.list].sort((a, b) => b.mem - a.mem).slice(0, 5).map(p => ({ name: p.name, mem: p.mem })) : []
       }
     });
   } catch (error) {
