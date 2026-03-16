@@ -46,9 +46,9 @@ app.get('/api/stats', async (req, res) => {
       },
       memory: {
         total: mem.total,
-        used: mem.used,
-        free: mem.free,
-        percent: Math.round((mem.used / mem.total) * 100) || 0
+        used: mem.active,
+        free: mem.available,
+        percent: Math.round((mem.active / mem.total) * 100) || 0
       },
       storage: {
         root: rootDrive ? {
@@ -64,8 +64,8 @@ app.get('/api/stats', async (req, res) => {
         } : null
       },
       processes: {
-        cpu: processes && processes.list ? [...processes.list].sort((a, b) => b.cpu - a.cpu).slice(0, 5).map(p => ({ name: p.name, cpu: p.cpu })) : [],
-        mem: processes && processes.list ? [...processes.list].sort((a, b) => b.mem - a.mem).slice(0, 5).map(p => ({ name: p.name, mem: p.mem })) : []
+        cpu: processes && processes.list ? [...processes.list].sort((a, b) => b.cpu - a.cpu).slice(0, 5).map(p => ({ pid: p.pid, user: p.user || 'N/A', name: p.name, cpu: p.cpu.toFixed(1) })) : [],
+        mem: processes && processes.list ? [...processes.list].sort((a, b) => b.mem - a.mem).slice(0, 5).map(p => ({ pid: p.pid, user: p.user || 'N/A', name: p.name, mem: p.mem.toFixed(1) })) : []
       }
     });
   } catch (error) {
@@ -96,7 +96,7 @@ const runServiceCmd = async (service, action) => {
   } else {
     // Standard systemctl logic for Unifi and Pihole
     if (action === 'status') {
-      return await execAsync(`sudo systemctl is-active ${service}`);
+      return await execAsync(`systemctl is-active ${service}`); // Removed sudo to prevent password prompt block
     } else {
       return await execAsync(`sudo systemctl ${action} ${service}`);
     }

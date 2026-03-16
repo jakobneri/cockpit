@@ -95,15 +95,17 @@ function renderProcesses(listId, data, type) {
   if (!listEl) return;
   
   if (!data || data.length === 0) {
-    listEl.innerHTML = '<li>No data retrieving...</li>';
+    listEl.innerHTML = '<tr><td colspan="4">No data retrieving...</td></tr>';
     return;
   }
   
   listEl.innerHTML = data.map(p => `
-    <li class="process-item">
-      <span class="process-name" title="${p.name}">${p.name}</span>
-      <span class="process-value">${type === 'cpu' ? p.cpu.toFixed(1) + '%' : p.mem.toFixed(1) + '%'}</span>
-    </li>
+    <tr class="process-item">
+      <td class="col-pid">${p.pid}</td>
+      <td class="col-user">${p.user}</td>
+      <td class="col-name" title="${p.name}">${p.name}</td>
+      <td class="col-val">${type === 'cpu' ? p.cpu + '%' : p.mem + '%'}</td>
+    </tr>
   `).join('');
 }
 

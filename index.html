@@ -82,15 +82,35 @@
           <div class="processes-grid">
             <div class="process-list">
               <h3>Highest CPU</h3>
-              <ul id="process-cpu-list">
-                <li>Loading...</li>
-              </ul>
+              <table class="technical-table">
+                <thead>
+                  <tr>
+                    <th>PID</th>
+                    <th>User</th>
+                    <th>Command</th>
+                    <th class="val-col">CPU%</th>
+                  </tr>
+                </thead>
+                <tbody id="process-cpu-list">
+                  <tr><td colspan="4">Loading...</td></tr>
+                </tbody>
+              </table>
             </div>
             <div class="process-list">
               <h3>Highest RAM</h3>
-              <ul id="process-mem-list">
-                <li>Loading...</li>
-              </ul>
+              <table class="technical-table">
+                <thead>
+                  <tr>
+                    <th>PID</th>
+                    <th>User</th>
+                    <th>Command</th>
+                    <th class="val-col">MEM%</th>
+                  </tr>
+                </thead>
+                <tbody id="process-mem-list">
+                  <tr><td colspan="4">Loading...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
