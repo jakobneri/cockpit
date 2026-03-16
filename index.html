@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pi Cockpit</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="background-effects">
+      <div class="glow glow-1"></div>
+      <div class="glow glow-2"></div>
+      <div class="glow glow-3"></div>
+    </div>
+
+    <div class="app-container">
+      <header>
+        <h1>Pi Cockpit</h1>
+        <p class="subtitle" id="os-info">Loading System Info...</p>
+      </header>
+
+      <main class="dashboard">
+        <!-- System Metrics section -->
+        <section class="card glass">
+          <h2><span class="icon">⚡</span> System</h2>
+          <div class="metrics-grid">
+            <div class="metric">
+              <span class="label">CPU Usage</span>
+              <div class="value-container">
+                <span class="value" id="cpu-load">--</span><span class="unit">%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="cpu-bar"></div></div>
+            </div>
+            
+            <div class="metric">
+              <span class="label">Memory</span>
+              <div class="value-container">
+                <span class="value" id="ram-usage">--</span><span class="unit">%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="ram-bar"></div></div>
+              <span class="detail" id="ram-detail">-- / -- GB</span>
+            </div>
+
+            <div class="metric">
+              <span class="label">Temperature</span>
+              <div class="value-container">
+                <span class="value" id="cpu-temp">--</span><span class="unit">°C</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill temp-bar" id="temp-bar"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Storage section -->
+        <section class="card glass">
+          <h2><span class="icon">💾</span> Storage</h2>
+          <div class="storage-list">
+            <div class="storage-item">
+              <div class="storage-header">
+                <span class="storage-name">Root Partition (/)</span>
+                <span class="storage-percent" id="root-percent">--%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="root-bar"></div></div>
+              <span class="detail" id="root-detail">-- / -- GB</span>
+            </div>
+
+            <div class="storage-item">
+              <div class="storage-header">
+                <span class="storage-name" id="smb-name">SMB Drive</span>
+                <span class="storage-percent" id="smb-percent">--%</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" id="smb-bar"></div></div>
+              <span class="detail" id="smb-detail">Not Mounted / Found</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Services section -->
+        <section class="card glass services-card">
+          <h2><span class="icon">⚙️</span> Services</h2>
+          <div class="services-list">
+            
+            <!-- Nextcloud -->
+            <div class="service-item" data-service="nextcloud">
+              <div class="service-info">
+                <h3>Nextcloud</h3>
+                <span class="status-badge" id="nextcloud-status">Checking...</span>
+              </div>
+              <div class="service-actions">
+                <button class="btn btn-start" onclick="manageService('nextcloud', 'start')">Start</button>
+                <button class="btn btn-restart" onclick="manageService('nextcloud', 'restart')">Restart</button>
+                <button class="btn btn-stop" onclick="manageService('nextcloud', 'stop')">Stop</button>
+              </div>
+            </div>
+
+            <!-- Unifi -->
+            <div class="service-item" data-service="unifi">
+              <div class="service-info">
+                <h3>Unifi OS</h3>
+                <span class="status-badge" id="unifi-status">Checking...</span>
+              </div>
+              <div class="service-actions">
+                <button class="btn btn-start" onclick="manageService('unifi', 'start')">Start</button>
+                <button class="btn btn-restart" onclick="manageService('unifi', 'restart')">Restart</button>
+                <button class="btn btn-stop" onclick="manageService('unifi', 'stop')">Stop</button>
+              </div>
+            </div>
+
+            <!-- Pihole -->
+            <div class="service-item" data-service="pihole-FTL">
+              <div class="service-info">
+                <h3>Pi-hole</h3>
+                <span class="status-badge" id="pihole-FTL-status">Checking...</span>
+              </div>
+              <div class="service-actions">
+                <button class="btn btn-start" onclick="manageService('pihole-FTL', 'start')">Start</button>
+                <button class="btn btn-restart" onclick="manageService('pihole-FTL', 'restart')">Restart</button>
+                <button class="btn btn-stop" onclick="manageService('pihole-FTL', 'stop')">Stop</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
