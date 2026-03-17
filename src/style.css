@@ -114,7 +114,7 @@ h1 {
 
 .dashboard {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: 1fr 2fr;
   gap: 1.5rem;
 }
 
@@ -150,8 +150,8 @@ h2 {
 
 /* Metrics Grid (CPU/RAM/Temp) */
 .metrics-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
 }
 
@@ -194,7 +194,14 @@ h2 {
   margin-top: 0.25rem;
 }
 
-/* Progress Bars */
+/* Progress Bars & Charts */
+.chart-container {
+  position: relative;
+  height: 60px;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
 .progress-bar {
   width: 100%;
   height: 8px;
@@ -254,8 +261,16 @@ h2 {
   -webkit-text-fill-color: initial;
 }
 
-.processes-card {
+.system-card {
   grid-column: 1 / -1;
+}
+
+.storage-card {
+  grid-column: 1 / 2;
+}
+
+.processes-card {
+  grid-column: 2 / -1;
 }
 
 .processes-grid {
@@ -441,8 +456,11 @@ h2 {
   background: rgba(239, 68, 68, 0.25);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;
+  }
+  .storage-card, .processes-card {
+    grid-column: 1 / -1;
   }
 }

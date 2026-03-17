@@ -137,17 +137,39 @@ app.get('/api/services/:service', async (req, res) => {
     if (isWindows) {
       isActive = true;
     } else if (service === 'nextcloud') {
-      // Docker compose ps outputs 'Up' or 'running', systemctl outputs 'active'
       isActive = stdout.includes('Up') || stdout.includes('running') || stdout.trim() === 'active';
     } else {
-      // systemctl is-active strictly outputs 'active' and cleanly errors if not
       isActive = stdout.trim() === 'active';
+    }
+    
+    // Fallback: If systemctl check says it's not active, do a physical process check
+    if (!isActive && !isWindows) {
+      const procs = await si.processes();
+      if (service === 'unifi') {
+        isActive = procs.list.some(p => p.name.includes('unifi') || (p.user === 'uosserver' && p.name.includes('java')));
+      } else if (service === 'nextcloud') {
+        isActive = procs.list.some(p => p.name.includes('apache2') || p.name.includes('mariadbd'));
+      } else if (service === 'pihole-FTL') {
+        isActive = procs.list.some(p => p.name.includes('pihole-FTL'));
+      }
     }
     
     res.json({ service, status: isActive ? 'running' : 'stopped' });
   } catch (err) {
-    // If systemctl is-active throws (returns non-zero), it is stopped
-    res.json({ service, status: 'stopped' });
+    // If command throws, fall back to process check
+    let isActive = false;
+    try {
+      const procs = await si.processes();
+      if (service === 'unifi') {
+        isActive = procs.list.some(p => p.name.includes('unifi') || (p.user === 'uosserver' && p.name.includes('java')));
+      } else if (service === 'nextcloud') {
+        isActive = procs.list.some(p => p.name.includes('apache2') || p.name.includes('mariadbd'));
+      } else if (service === 'pihole-FTL') {
+        isActive = procs.list.some(p => p.name.includes('pihole-FTL'));
+      }
+    } catch (e) { console.error('Fallback proc check failed:', e); }
+
+    res.json({ service, status: isActive ? 'running' : 'stopped' });
   }
 });
 

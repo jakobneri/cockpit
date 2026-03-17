@@ -11,31 +11,71 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-// Get color class based on percentage
-function getColorClass(percent, type = 'usage') {
-  if (type === 'temp') {
-    if (percent < 60) return '';
-    if (percent < 80) return 'warning';
-    return 'danger';
-  } else {
-    if (percent < 70) return '';
-    if (percent < 90) return 'warning';
-    return 'danger';
-  }
-}
-
 // Update DOM element
 function updateElement(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
 
-// Update Progress bar
-function updateProgress(id, percent, type = 'usage') {
+// Chart.js Setup
+const maxDataPoints = 12; // 1 minute at 5s intervals
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  scales: {
+    x: { display: false },
+    y: { min: 0, max: 100, display: false }
+  },
+  plugins: { legend: { display: false }, tooltip: { enabled: false } },
+  animation: { duration: 400 },
+  elements: {
+    line: { tension: 0.4, borderWidth: 2 },
+    point: { radius: 0 }
+  },
+  layout: { padding: 0 }
+};
+
+const createChart = (ctxId, color) => {
+  const ctx = document.getElementById(ctxId).getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 80);
+  gradient.addColorStop(0, color + '80'); 
+  gradient.addColorStop(1, color + '00'); 
+  
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array(maxDataPoints).fill(''),
+      datasets: [{
+        data: Array(maxDataPoints).fill(0),
+        borderColor: color,
+        backgroundColor: gradient,
+        fill: true
+      }]
+    },
+    options: chartOptions
+  });
+};
+
+let cpuChart, ramChart, tempChart;
+
+function updateChart(chart, newValue) {
+  if (!chart) return;
+  const data = chart.data.datasets[0].data;
+  data.push(newValue);
+  data.shift();
+  chart.update();
+}
+
+// Update Progress bar (used only for storage UI now)
+function updateProgress(id, percent) {
   const el = document.getElementById(id);
   if (el) {
     el.style.width = `${percent}%`;
-    el.className = `progress-fill ${getColorClass(percent, type)}`;
+    let colorClass = '';
+    if (percent >= 90) colorClass = 'danger';
+    else if (percent >= 70) colorClass = 'warning';
+    
+    el.className = `progress-fill ${colorClass}`;
   }
 }
 
@@ -51,13 +91,14 @@ async function fetchStats() {
 
     // CPU
     updateElement('cpu-load', data.cpu.load);
-    updateProgress('cpu-bar', data.cpu.load);
+    updateChart(cpuChart, data.cpu.load);
+    
     updateElement('cpu-temp', data.cpu.temp);
-    updateProgress('temp-bar', data.cpu.temp, 'temp'); // treating absolute temp as roughly % mapping up to 100 for color
+    updateChart(tempChart, data.cpu.temp); // Temp visually mapped 0-100 on graph
 
     // RAM
     updateElement('ram-usage', data.memory.percent);
-    updateProgress('ram-bar', data.memory.percent);
+    updateChart(ramChart, data.memory.percent);
     updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
 
     // Storage: Root
@@ -166,7 +207,13 @@ window.manageService = async (service, action) => {
 };
 
 // Initialization
-fetchStats();
-fetchServicesStatus();
-setInterval(fetchStats, REFRESH_INTERVAL_STATS);
-setInterval(fetchServicesStatus, REFRESH_INTERVAL_SERVICES);
+document.addEventListener('DOMContentLoaded', () => {
+  cpuChart = createChart('cpuChart', '#3b82f6'); // blue
+  ramChart = createChart('ramChart', '#8b5cf6'); // purple
+  tempChart = createChart('tempChart', '#ef4444'); // red
+  
+  fetchStats();
+  fetchServicesStatus();
+  setInterval(fetchStats, REFRESH_INTERVAL_STATS);
+  setInterval(fetchServicesStatus, REFRESH_INTERVAL_SERVICES);
+});

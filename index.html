@@ -6,6 +6,7 @@
     <title>Pi Cockpit</title>
     <link rel="stylesheet" href="/src/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
     <div class="background-effects">
@@ -16,13 +17,13 @@
 
     <div class="app-container">
       <header>
-        <h1>Pi Cockpit <span class="version-tag">v1.2.2</span></h1>
+        <h1>Pi Cockpit <span class="version-tag">v1.3.0</span></h1>
         <p class="subtitle" id="os-info">Loading System Info...</p>
       </header>
 
       <main class="dashboard">
         <!-- System Metrics section -->
-        <section class="card glass">
+        <section class="card glass system-card">
           <h2><span class="icon">⚡</span> System</h2>
           <div class="metrics-grid">
             <div class="metric">
@@ -30,7 +31,7 @@
               <div class="value-container">
                 <span class="value" id="cpu-load">--</span><span class="unit">%</span>
               </div>
-              <div class="progress-bar"><div class="progress-fill" id="cpu-bar"></div></div>
+              <div class="chart-container"><canvas id="cpuChart"></canvas></div>
             </div>
             
             <div class="metric">
@@ -38,7 +39,7 @@
               <div class="value-container">
                 <span class="value" id="ram-usage">--</span><span class="unit">%</span>
               </div>
-              <div class="progress-bar"><div class="progress-fill" id="ram-bar"></div></div>
+              <div class="chart-container"><canvas id="ramChart"></canvas></div>
               <span class="detail" id="ram-detail">-- / -- GB</span>
             </div>
 
@@ -47,13 +48,13 @@
               <div class="value-container">
                 <span class="value" id="cpu-temp">--</span><span class="unit">°C</span>
               </div>
-              <div class="progress-bar"><div class="progress-fill temp-bar" id="temp-bar"></div></div>
+              <div class="chart-container"><canvas id="tempChart"></canvas></div>
             </div>
           </div>
         </section>
 
         <!-- Storage section -->
-        <section class="card glass">
+        <section class="card glass storage-card">
           <h2><span class="icon">💾</span> Storage</h2>
           <div class="storage-list">
             <div class="storage-item">
