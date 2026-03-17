@@ -21,7 +21,7 @@ git clone https://github.com/jakobneri/cockpit.git
 cd cockpit
 npm install
 npm run build
-pm2 start npm --name "cockpit-hub" -- run hub
+pm2 start ecosystem.config.cjs --only cockpit-hub
 ```
 
 ### 2. The Agents (Machine Probes)
@@ -30,8 +30,8 @@ Run this on **every** machine you want to monitor (including the Hub Pi itself).
 ```bash
 # On the remote Pi
 cd ~/cockpit/agent
-# Point it to your Hub Pi's IP
-HUB_URL=http://192.168.1.100:3000 pm2 start agent.js --name "cockpit-agent"
+# Point to your Hub Pi's IP in ecosystem.config.cjs then:
+pm2 start ecosystem.config.cjs --only cockpit-agent
 ```
 
 ---
@@ -57,8 +57,8 @@ If you are already running an older version, follow these steps to migrate:
 1. **Stop old processes**: `pm2 stop all`
 2. **Pull latest code**: `cd ~/cockpit && git pull`
 3. **Re-install & Build**: `npm install && npm run build`
-4. **Setup Hub**: `pm2 start npm --name "cockpit-hub" -- run hub`
-5. **Setup Local Agent**: `HUB_URL=http://localhost:3000 pm2 start agent/agent.js --name "cockpit-agent"`
+4. **Setup Hub**: `pm2 start ecosystem.config.cjs --only cockpit-hub`
+5. **Setup Local Agent**: `pm2 start ecosystem.config.cjs --only cockpit-agent`
 6. **Cleanup & Save**: `pm2 delete pi-cockpit && pm2 save`
 
 ---
