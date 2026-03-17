@@ -220,8 +220,8 @@ h1 {
 }
 
 .big-metric .chart-container {
-  flex-grow: 1;
-  height: 150px;
+  height: 160px;
+  width: 100%;
 }
 
 .net-metric {
