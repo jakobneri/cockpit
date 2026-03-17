@@ -176,6 +176,6 @@ setInterval(() => runAutoUpdate(), 1 * 60 * 1000);
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Pi Cockpit v2.1.3 HUB running on http://localhost:${PORT}`);
+  console.log(`\n🚀 nerifeige.de hub v2.1.4 running on http://localhost:${PORT}`);
   log.info(`Ready to receive reports at /api/report\n`);
 });

@@ -160,10 +160,10 @@ async function fetchFleet() {
     const res = await fetch('/api/fleet');
     const data = await res.json();
     
-    // Update Hub Hostname in Header if not in details view
+    // Update Hub branding in Header if not in details view
     if (currentView === 'overview') {
-      document.getElementById('header-hostname').textContent = `${data.hubHostname || 'Fleet'} Hub`;
-      document.title = `${data.hubHostname || 'Fleet'} Cockpit`;
+      document.getElementById('header-hostname').textContent = 'nerifeige.de hub';
+      document.title = 'nerifeige.de Cockpit';
     }
 
     renderFleet(data.servers);
