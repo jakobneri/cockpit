@@ -183,6 +183,57 @@ h1 {
   gap: 0.75rem;
 }
 
+.back-btn {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+  width: fit-content;
+}
+
+.back-btn:hover {
+  background: var(--glass-border);
+  transform: translateX(-4px);
+}
+
+.metrics-big-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.big-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 200px;
+}
+
+.big-metric .chart-container {
+  flex-grow: 1;
+  height: 150px;
+}
+
+.net-metric {
+  grid-column: 1 / -1;
+}
+
+.storage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
 .mini-metric {
   display: flex;
   justify-content: space-between;

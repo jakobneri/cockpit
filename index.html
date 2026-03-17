@@ -31,58 +31,45 @@
         </div>
       </div>
 
-      <main class="dashboard view" id="view-details" style="display: none;">
-        <!-- System Metrics section -->
-        <section class="card glass system-card">
-          <h2><span class="icon">⚡</span> System</h2>
-          <div class="metrics-grid">
-            <div class="metric">
-              <span class="label">CPU Usage</span>
-              <div class="value-container">
+      <main id="view-details" class="view" style="display: none;">
+        <button class="back-btn" onclick="showOverview()">
+          <span>←</span> Back to Fleet
+        </button>
+
+        <!-- Big Box Stats -->
+        <section class="card glass">
+          <div class="metrics-big-box">
+            <!-- CPU -->
+            <div class="big-metric">
+              <div class="metric-header">
+                <span class="label">CPU Usage</span>
                 <span class="value" id="cpu-load">--</span><span class="unit">%</span>
               </div>
               <div class="chart-container"><canvas id="cpuChart"></canvas></div>
             </div>
-            
-            <div class="metric">
-              <span class="label">Memory</span>
-              <div class="value-container">
+
+            <!-- RAM -->
+            <div class="big-metric">
+              <div class="metric-header">
+                <span class="label">Memory</span>
                 <span class="value" id="ram-usage">--</span><span class="unit">%</span>
               </div>
               <div class="chart-container"><canvas id="ramChart"></canvas></div>
               <span class="detail" id="ram-detail">-- / -- GB</span>
             </div>
 
-            <div class="metric">
-              <span class="label">Temperature</span>
-              <div class="value-container">
-                <span class="value" id="cpu-temp">--</span><span class="unit">°C</span>
+            <!-- Network Combined -->
+            <div class="big-metric net-metric">
+              <div class="metric-header">
+                <span class="label">Network Activity (Tx: <span id="net-tx">0</span> / Rx: <span id="net-rx">0</span> KB/s)</span>
               </div>
-              <div class="chart-container"><canvas id="tempChart"></canvas></div>
-            </div>
-
-            <div class="metric">
-              <span class="label">Network Tx (Upload)</span>
-              <div class="value-container">
-                <span class="value" id="net-tx">--</span><span class="unit">KB/s</span>
-              </div>
-              <div class="chart-container"><canvas id="txChart"></canvas></div>
-            </div>
-            
-            <div class="metric">
-              <span class="label">Network Rx (Download)</span>
-              <div class="value-container">
-                <span class="value" id="net-rx">--</span><span class="unit">KB/s</span>
-              </div>
-              <div class="chart-container"><canvas id="rxChart"></canvas></div>
+              <div class="chart-container"><canvas id="netChart"></canvas></div>
             </div>
           </div>
-        </section>
 
-        <!-- Storage section -->
-        <section class="card glass storage-card">
-          <h2><span class="icon">💾</span> Storage</h2>
-          <div class="storage-list">
+          <!-- Storage Section Simplified -->
+          <h3><span class="icon">💾</span> Storage</h3>
+          <div class="storage-grid">
             <div class="storage-item">
               <div class="storage-header">
                 <span class="storage-name">Root Partition (/)</span>
@@ -98,96 +85,10 @@
                 <span class="storage-percent" id="smb-percent">--%</span>
               </div>
               <div class="progress-bar"><div class="progress-fill" id="smb-bar"></div></div>
-              <span class="detail" id="smb-detail">Not Mounted / Found</span>
+              <span class="detail" id="smb-detail">Not Mounted</span>
             </div>
           </div>
         </section>
-
-        <!-- Processes section -->
-        <section class="card glass processes-card">
-          <h2><span class="icon">🔍</span> Top Processes</h2>
-          <div class="processes-grid">
-            <div class="process-list">
-              <h3>Highest CPU</h3>
-              <table class="technical-table">
-                <thead>
-                  <tr>
-                    <th>PID</th>
-                    <th>User</th>
-                    <th>Command</th>
-                    <th class="val-col">CPU%</th>
-                  </tr>
-                </thead>
-                <tbody id="process-cpu-list">
-                  <tr><td colspan="4">Loading...</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="process-list">
-              <h3>Highest RAM</h3>
-              <table class="technical-table">
-                <thead>
-                  <tr>
-                    <th>PID</th>
-                    <th>User</th>
-                    <th>Command</th>
-                    <th class="val-col">MEM%</th>
-                  </tr>
-                </thead>
-                <tbody id="process-mem-list">
-                  <tr><td colspan="4">Loading...</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- Services section -->
-      <section class="card glass services-card">
-        <h2><span class="icon">⚙️</span> Services</h2>
-        <div class="services-grid">
-          
-          <div class="service-card" data-service="nextcloud">
-            <div class="service-header">
-              <h3>Nextcloud</h3>
-              <span class="status-badge checking">CHECKING</span>
-            </div>
-            <div class="service-actions">
-              <button class="btn btn-action start" onclick="serviceAction('nextcloud', 'start')">Start</button>
-              <button class="btn btn-action restart" onclick="serviceAction('nextcloud', 'restart')">Restart</button>
-              <button class="btn btn-action stop" onclick="serviceAction('nextcloud', 'stop')">Stop</button>
-              <button class="btn btn-action logs" onclick="openLogs('nextcloud')">Logs</button>
-            </div>
-          </div>
-
-          <div class="service-card" data-service="unifi">
-            <div class="service-header">
-              <h3>Unifi OS</h3>
-              <span class="status-badge checking">CHECKING</span>
-            </div>
-            <div class="service-actions">
-              <button class="btn btn-action start" onclick="serviceAction('unifi', 'start')">Start</button>
-              <button class="btn btn-action restart" onclick="serviceAction('unifi', 'restart')">Restart</button>
-              <button class="btn btn-action stop" onclick="serviceAction('unifi', 'stop')">Stop</button>
-              <button class="btn btn-action logs" onclick="openLogs('unifi')">Logs</button>
-            </div>
-          </div>
-
-          <div class="service-card" data-service="pihole-FTL">
-            <div class="service-header">
-              <h3>Pi-hole</h3>
-              <span class="status-badge checking">CHECKING</span>
-            </div>
-            <div class="service-actions">
-              <button class="btn btn-action start" onclick="serviceAction('pihole-FTL', 'start')">Start</button>
-              <button class="btn btn-action restart" onclick="serviceAction('pihole-FTL', 'restart')">Restart</button>
-              <button class="btn btn-action stop" onclick="serviceAction('pihole-FTL', 'stop')">Stop</button>
-              <button class="btn btn-action logs" onclick="openLogs('pihole-FTL')">Logs</button>
-            </div>
-          </div>
-
-        </div>
-      </section>
       </main>
     </div>
 
@@ -204,7 +105,7 @@
       </div>
     </div>
       <footer>
-        <p>Pi Cockpit <span class="version-tag">v2.0.6</span></p>
+        <p>Pi Cockpit <span class="version-tag">v2.1.0</span></p>
       </footer>
 
     </div>

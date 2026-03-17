@@ -72,22 +72,19 @@ const netChartOptions = {
   }
 };
 
-let cpuChart, ramChart, tempChart, txChart, rxChart;
+let cpuChart, ramChart, netChart;
 
 function createCharts() {
-  // Clear any existing instances
   if (cpuChart) cpuChart.destroy();
   if (ramChart) ramChart.destroy();
-  if (tempChart) tempChart.destroy();
-  if (txChart) txChart.destroy();
-  if (rxChart) rxChart.destroy();
+  if (netChart) netChart.destroy();
 
   const createLine = (id, color, opts) => {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 120);
-    gradient.addColorStop(0, color + '60'); 
+    gradient.addColorStop(0, color + '40'); 
     gradient.addColorStop(1, color + '00'); 
     
     return new Chart(ctx, {
@@ -108,9 +105,37 @@ function createCharts() {
 
   cpuChart = createLine('cpuChart', '#3b82f6');
   ramChart = createLine('ramChart', '#8b5cf6');
-  tempChart = createLine('tempChart', '#ef4444');
-  txChart = createLine('txChart', '#10b981', netChartOptions);
-  rxChart = createLine('rxChart', '#f59e0b', netChartOptions);
+
+  // Network Multi-line Chart
+  const netCanvas = document.getElementById('netChart');
+  if (netCanvas) {
+    const ctx = netCanvas.getContext('2d');
+    netChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(maxDataPoints).fill(''),
+        datasets: [
+          {
+            label: 'Tx',
+            data: Array(maxDataPoints).fill(null),
+            borderColor: '#10b981', // emerald
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            borderWidth: 2
+          },
+          {
+            label: 'Rx',
+            data: Array(maxDataPoints).fill(null),
+            borderColor: '#f59e0b', // amber
+            backgroundColor: 'transparent',
+            tension: 0.4,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: netChartOptions
+    });
+  }
 }
 
 function updateChart(chart, newValue) {
@@ -207,20 +232,25 @@ async function fetchNodeStats() {
     // Metrics
     updateElement('cpu-load', data.cpu.load);
     updateChart(cpuChart, data.cpu.load);
-    updateElement('cpu-temp', data.cpu.temp);
-    updateChart(tempChart, data.cpu.temp);
 
     updateElement('ram-usage', data.memory.percent);
     updateChart(ramChart, data.memory.percent);
     updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
 
-    if (data.network) {
+    if (data.network && netChart) {
       const txKB = (data.network.tx_sec / 1024).toFixed(1);
       const rxKB = (data.network.rx_sec / 1024).toFixed(1);
       updateElement('net-tx', txKB);
-      updateChart(txChart, parseFloat(txKB));
       updateElement('net-rx', rxKB);
-      updateChart(rxChart, parseFloat(rxKB));
+      
+      // Update dual dataset chart
+      const txData = netChart.data.datasets[0].data;
+      const rxData = netChart.data.datasets[1].data;
+      txData.push(parseFloat(txKB));
+      rxData.push(parseFloat(rxKB));
+      txData.shift();
+      rxData.shift();
+      netChart.update();
     }
 
     // Storage
@@ -238,26 +268,6 @@ async function fetchNodeStats() {
     } else {
       updateElement('smb-detail', 'Not Mounted');
       updateProgress('smb-bar', 0);
-    }
-
-    // Processes
-    if (data.processes) {
-      renderProcesses('process-cpu-list', data.processes.cpu, 'cpu');
-      renderProcesses('process-mem-list', data.processes.mem, 'mem');
-    }
-
-    // Services
-    if (data.services) {
-      Object.entries(data.services).forEach(([service, status]) => {
-        const card = document.querySelector(`.service-card[data-service="${service}"]`);
-        if (card) {
-          const badge = card.querySelector('.status-badge');
-          if (badge) {
-            badge.textContent = status.toUpperCase();
-            badge.className = `status-badge ${status}`;
-          }
-        }
-      });
     }
 
   } catch (error) {
@@ -301,37 +311,6 @@ function updateProgress(id, percent) {
     el.className = `progress-fill ${percent >= 90 ? 'danger' : (percent >= 70 ? 'warning' : '')}`;
   }
 }
-
-function renderProcesses(listId, data, type) {
-  const listEl = document.getElementById(listId);
-  if (!listEl) return;
-  listEl.innerHTML = data.map(p => `
-    <tr class="process-item">
-      <td class="col-pid">${p.pid}</td>
-      <td class="col-user">${p.user}</td>
-      <td class="col-name" title="${p.name}">${p.name}</td>
-      <td class="col-val" style="padding-right: 1rem;">
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-          <span>${type === 'cpu' ? p.cpu : p.mem}%</span>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-window.serviceAction = async (service, action) => {
-  if (!selectedHostname) return;
-  try {
-    const res = await fetch(`/api/services/${selectedHostname}/${service}/${action}`, { method: 'POST' });
-    if (res.ok) fetchNodeStats();
-  } catch (err) { alert(err.message); }
-};
-
-window.openLogs = async (service) => {
-  // Log implementation simplified for v2 (queued via agent)
-  alert('Log request queued. In v2.0, logs will be visible in the next dashboard refresh.');
-  const res = await fetch(`/api/services/${selectedHostname}/${service}/logs`);
-};
 
 // Heartbeat to Hub to suppress noisy logs when watching
 async function sendActiveHeartbeat() {
