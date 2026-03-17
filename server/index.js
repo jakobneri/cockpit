@@ -141,17 +141,19 @@ const isWindows = process.platform === 'win32';
 const runAutoUpdate = async (force = false) => {
   if (isWindows) return;
   try {
-    const start = Date.now();
-    log.update('Checking for Hub updates...');
+    process.stdout.write(`[${new Date().toLocaleTimeString()}] 🔄 Checking for Hub updates... `);
     
     await execAsync('git fetch origin main');
     const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     const count = parseInt(behindCount.trim());
 
     if (count === 0 && !force) {
-      log.info('Hub is up to date.');
+      console.log('✅ Up to date.');
       return;
     }
+
+    console.log(`🚀 Update found: ${count} commits.`);
+    const start = Date.now();
 
     log.update(`Found ${count} new commits. Pulling...`);
     const { stdout: pullOut } = await execAsync('git pull origin main');
@@ -170,10 +172,10 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
-setInterval(() => runAutoUpdate(), 5 * 60 * 1000);
+setInterval(() => runAutoUpdate(), 1 * 60 * 1000);
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Pi Cockpit v2.1.1 HUB running on http://localhost:${PORT}`);
+  console.log(`\n🚀 Pi Cockpit v2.1.3 HUB running on http://localhost:${PORT}`);
   log.info(`Ready to receive reports at /api/report\n`);
 });

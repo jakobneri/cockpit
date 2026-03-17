@@ -191,44 +191,45 @@ async function report() {
   }
 }
 
-const AGENT_VERSION = '2.1.2';
+const AGENT_VERSION = '2.1.3';
 
 async function runAutoUpdate() {
   if (os.platform() === 'win32') return;
   try {
     const isGit = fs.existsSync('.git') || fs.existsSync('../.git');
-    log.update(`Checking for Agent updates... (Mode: ${isGit ? 'Git' : 'Standalone'})`);
+    process.stdout.write(`[${new Date().toLocaleTimeString()}] 🔄 Checking for Agent updates... `);
     
     if (isGit) {
       await execAsync('git fetch origin main');
       const { stdout } = await execAsync('git rev-list HEAD..origin/main --count');
       const count = parseInt(stdout.trim());
       if (count > 0) {
-        log.update(`Found ${count} new commits. Pulling...`);
+        console.log(`🚀 Found ${count} commits.`);
+        log.update(`Pulling...`);
         await execAsync('git pull origin main');
-        log.success('Update complete. Restarting Agent...');
+        log.success('Restarting Agent...');
         process.exit(0);
       } else {
-        log.info('Agent is up to date.');
+        console.log('✅ Up to date.');
       }
     } else {
       const res = await fetch('https://raw.githubusercontent.com/jakobneri/cockpit/main/agent/agent.js');
-      if (!res.ok) return;
+      if (!res.ok) { console.log('❌ Failed.'); return; }
       const text = await res.text();
       const match = text.match(/const AGENT_VERSION = '(.+?)'/);
       if (match && match[1] !== AGENT_VERSION) {
-        log.update(`New version ${match[1]} found. Updating standalone...`);
+        console.log(`🚀 New version ${match[1]} found.`);
         fs.writeFileSync('agent.js', text);
-        log.success('Update complete. Restarting Agent...');
+        log.success('Restarting Agent...');
         process.exit(0);
       } else {
-        log.info('Agent is up to date.');
+        console.log('✅ Up to date.');
       }
     }
-  } catch (err) { log.error(`Auto-update failed: ${err.message}`); }
+  } catch (err) { console.log('❌ Error.'); }
 }
 
-setInterval(runAutoUpdate, 5 * 60 * 1000);
+setInterval(runAutoUpdate, 1 * 60 * 1000); 
 runAutoUpdate();
 
 setInterval(report, POLL_INTERVAL);
