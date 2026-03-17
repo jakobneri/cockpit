@@ -62,6 +62,7 @@ function markActive() {
   if (currentInterval !== FAST_INTERVAL) {
     currentInterval = FAST_INTERVAL;
     restartPolling();
+    console.log('⚡ Client connected — switching to fast polling (5s)');
   }
 }
 
