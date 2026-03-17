@@ -210,5 +210,37 @@ async function report() {
   }
 }
 
+const AGENT_VERSION = '2.0.3';
+
+async function runAutoUpdate() {
+  if (os.platform() === 'win32') return;
+  try {
+    const isGit = fs.existsSync('.git') || fs.existsSync('../.git');
+    if (isGit) {
+      await execAsync('git fetch');
+      const { stdout } = await execAsync('git status -uno');
+      if (stdout.includes('Your branch is behind')) {
+        console.log('🔄 [AGENT UPDATE] Git update found. Pulling...');
+        await execAsync('git pull');
+        process.exit(0);
+      }
+    } else {
+      // Standalone (wget) update
+      // We check the version from the raw github file
+      const res = await fetch('https://raw.githubusercontent.com/jakobneri/cockpit/main/agent/agent.js');
+      const text = await res.text();
+      const match = text.match(/const AGENT_VERSION = '(.+?)'/);
+      if (match && match[1] !== AGENT_VERSION) {
+        console.log(`🔄 [AGENT UPDATE] New version ${match[1]} found. Downloading...`);
+        // Self-overwrite agent.js
+        fs.writeFileSync('agent.js', text);
+        process.exit(0);
+      }
+    }
+  } catch (err) { console.error('❌ [AGENT UPDATE] Failed:', err.message); }
+}
+
+setInterval(runAutoUpdate, 10 * 60 * 1000); // Check every 10 mins
+
 setInterval(report, POLL_INTERVAL);
 report(); // First run

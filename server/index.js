@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
-import os from 'os';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { fileURLToPath } from 'url';
+
+const execAsync = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,6 +98,26 @@ app.get('/api/services/:hostname/:service/logs', (req, res) => {
     message: 'Log request queued. Result will appear in next heartbeat.' 
   });
 });
+
+const isWindows = process.platform === 'win32';
+const runAutoUpdate = async (force = false) => {
+  if (isWindows) return;
+  try {
+    if (!force) {
+      await execAsync('git fetch');
+      const { stdout: status } = await execAsync('git status -uno');
+      if (!status.includes('Your branch is behind')) return;
+    }
+    console.log('🔄 [HUB UPDATE] New version detected. Updating...');
+    await execAsync('git pull');
+    await execAsync('npm install --include=dev');
+    await execAsync('npx vite build');
+    console.log('✅ [HUB UPDATE] Complete. Restarting...');
+    setTimeout(() => process.exit(0), 1000);
+  } catch (error) { console.error('❌ [HUB UPDATE] Failed:', error.message); }
+};
+
+setInterval(() => runAutoUpdate(), 5 * 60 * 1000); // Check every 5 mins
 
 app.listen(PORT, () => {
   console.log(`\n🚀 Pi Cockpit v2.0 HUB running on http://localhost:${PORT}`);
