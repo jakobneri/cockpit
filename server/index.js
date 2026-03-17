@@ -60,7 +60,7 @@ function markActive() {
   if (currentInterval !== FAST_INTERVAL) {
     currentInterval = FAST_INTERVAL;
     restartPolling();
-    console.log('⚡ Client connected — switching to fast polling (5s)');
+    // Silencing log when active as requested
   }
 }
 
@@ -81,6 +81,7 @@ async function refreshFastStats() {
 
     cachedStats = {
       os: isWindows ? 'win32' : 'linux',
+      hostname: os.hostname(),
       uptime: os.uptime(),
       network: {
         tx_sec: net && net[0] ? net[0].tx_sec : 0,
@@ -221,13 +222,12 @@ async function pollCycle() {
     await refreshServices();
   }
 
-  // Status report every 12 cycles (~1min fast, ~6min slow)
-  if (pollCount % 12 === 0) {
-    const mode = currentInterval === FAST_INTERVAL ? '⚡ FAST (5s)' : '💤 IDLE (30s)';
+  // Status report
+  if (!active && pollCount % 2 === 0) {
     const cpu = cachedStats?.cpu?.load ?? '?';
     const mem = cachedStats?.memory?.percent ?? '?';
     const temp = cachedStats?.cpu?.temp ?? '?';
-    console.log(`📊 Poll #${pollCount} | ${mode} | CPU: ${cpu}% | RAM: ${mem}% | Temp: ${temp}°C`);
+    console.log(`📊 Idle Poll #${pollCount} | CPU: ${cpu}% | RAM: ${mem}% | Temp: ${temp}°C`);
   }
 }
 

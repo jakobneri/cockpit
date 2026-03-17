@@ -129,6 +129,7 @@ async function fetchStats() {
     }
 
     // OS info / Uptime
+    document.title = `${data.hostname || 'Pi'} Cockpit`;
     updateElement('os-info', `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`);
 
     // CPU
