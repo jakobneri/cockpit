@@ -279,7 +279,13 @@ h2 {
   border-spacing: 0 0.5rem;
   text-align: left;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
+
+.technical-table th:nth-child(1) { width: 18%; }
+.technical-table th:nth-child(2) { width: 22%; }
+.technical-table th:nth-child(3) { width: 40%; }
+.technical-table th:nth-child(4) { width: 20%; }
 
 .technical-table th {
   padding: 0 1rem;

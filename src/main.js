@@ -99,14 +99,28 @@ function renderProcesses(listId, data, type) {
     return;
   }
   
-  listEl.innerHTML = data.map(p => `
+  listEl.innerHTML = data.map(p => {
+    const val = type === 'cpu' ? p.cpu : p.mem;
+    const isCpu = type === 'cpu';
+    const percent = Math.min(val, 100); // cap at 100% for bar display
+    const barColor = isCpu ? 'var(--accent-blue)' : 'var(--accent-purple)';
+    
+    return `
     <tr class="process-item">
       <td class="col-pid">${p.pid}</td>
       <td class="col-user">${p.user}</td>
       <td class="col-name" title="${p.name}">${p.name}</td>
-      <td class="col-val">${type === 'cpu' ? p.cpu + '%' : p.mem + '%'}</td>
+      <td class="col-val" style="padding-right: 1rem;">
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <span>${val}%</span>
+          <div class="progress-bar" style="height: 4px; background: var(--glass-border); max-width: 60px;">
+            <div class="progress-fill" style="width: ${percent}%; background-color: ${barColor};"></div>
+          </div>
+        </div>
+      </td>
     </tr>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // Fetch and update service status

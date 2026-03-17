@@ -36,7 +36,7 @@ app.get('/api/stats', async (req, res) => {
     // Filter storage for Root
     const rootDrive = fsSize.find(fs => fs.mount === '/' || (isWindows && fs.mount.startsWith('C:')));
     // Rough guess for SMB: look for /nas-nextcloud-db, /mnt, smb, or any other drive on Windows
-    const smbDrive = fsSize.find(fs => fs.mount === '/nas-nextcloud-db' || fs.mount.toLowerCase().includes('mnt') || fs.mount.toLowerCase().includes('smb') || (isWindows && !fs.mount.startsWith('C:')));
+    const smbDrive = fsSize.find(fs => fs.type === 'cifs' || fs.type === 'nfs' || fs.type === 'smbfs' || fs.mount === '/nas-nextcloud-db' || fs.mount.toLowerCase().includes('mnt') || fs.mount.toLowerCase().includes('smb') || (isWindows && !fs.mount.startsWith('C:')));
 
     res.json({
       os: osInfo.platform,
@@ -82,26 +82,42 @@ const runServiceCmd = async (service, action) => {
     return { stdout: isStatus ? 'active' : `Mock executed: ${action} ${service}` };
   }
   
-  // Custom logic for Nextcloud (Docker Compose)
+  // Custom logic for Nextcloud (Docker Compose or Native Apache)
   if (service === 'nextcloud') {
     if (action === 'status') {
-      return await execAsync('cd /nextcloud && sudo docker compose ps');
+      try {
+        const result = await execAsync('cd /nextcloud && sudo docker compose ps');
+        return result;
+      } catch (e) {
+        return await execAsync('systemctl is-active apache2');
+      }
     } else if (action === 'start') {
-      return await execAsync('cd /nextcloud && sudo docker compose up -d');
+      try {
+        return await execAsync('cd /nextcloud && sudo docker compose up -d');
+      } catch (e) {
+        return await execAsync('sudo systemctl start apache2');
+      }
     } else if (action === 'stop') {
-      return await execAsync('cd /nextcloud && sudo docker compose stop');
+      try {
+        return await execAsync('cd /nextcloud && sudo docker compose stop');
+      } catch (e) {
+        return await execAsync('sudo systemctl stop apache2');
+      }
     } else if (action === 'restart') {
-      return await execAsync('cd /nextcloud && sudo docker compose restart');
+      try {
+        return await execAsync('cd /nextcloud && sudo docker compose restart');
+      } catch (e) {
+        return await execAsync('sudo systemctl restart apache2');
+      }
     }
   } else {
     // Standard systemctl logic for Unifi and Pihole
-    // Some Unifi setups use 'unifi' and some use 'unifi.service', we try both if it's unifi
     let targetService = service;
     if (service === 'unifi') {
         try {
-            await execAsync(`systemctl is-active unifi.service`);
-            targetService = 'unifi.service';
-        } catch(e) { targetService = 'unifi'; }
+            await execAsync(`systemctl is-active unifi-core.service`);
+            targetService = 'unifi-core.service';
+        } catch(e) { targetService = 'unifi-core'; }
     }
     
     if (action === 'status') {
