@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 
 const execAsync = promisify(exec);
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -23,8 +23,32 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // Central repository for monitoring data from all agents
 // ============================================================
 
-const servers = {};        // Map of hostname -> latest reported stats
+const DATA_DIR = path.join(__dirname, '../data');
+const DATA_FILE = path.join(DATA_DIR, 'servers.json');
+
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+
+const loadServers = () => {
+  try {
+    if (fs.existsSync(DATA_FILE)) return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+  } catch (e) { console.error('⚠️ Could not load servers.json'); }
+  return {};
+};
+
+const saveServers = () => {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(servers, null, 2));
+  } catch (e) { console.error('⚠️ Could not save servers.json'); }
+};
+
+const servers = loadServers();  // Map of hostname -> latest reported stats
 const commandQueues = {};  // Map of hostname -> array of pending commands
+let activeClients = 0;     // Number of browsers watching the dashboard
+let activeTimeout = null;
+let reportCounters = {};   // hostname -> count (for periodic logging)
+
+// Periodic flush to disk
+setInterval(saveServers, 30000);
 
 // API: Agent Report (POSTed by agents every few seconds)
 app.post('/api/report', (req, res) => {
@@ -43,10 +67,31 @@ app.post('/api/report', (req, res) => {
   commandQueues[hostname] = []; // Clear queue after sending
 
   const bytesReceived = Buffer.byteLength(JSON.stringify(req.body));
-  const bytesSent = Buffer.byteLength(JSON.stringify({ success: true, commands }));
-  console.log(`📥 [REPORT] Received ${bytesReceived} bytes from ${hostname}. Replied with ${bytesSent} bytes.`);
+  
+  // Adaptive Logging:
+  // If browsers are watching, we stay quiet (log every 10th report)
+  // If no one is watching, we log every 2nd report
+  if (!reportCounters[hostname]) reportCounters[hostname] = 0;
+  reportCounters[hostname]++;
+
+  const threshold = activeClients > 0 ? 10 : 2;
+  if (reportCounters[hostname] % threshold === 0) {
+    const s = stats || {};
+    const cpu = s.cpu ? `${s.cpu.load}%` : '--';
+    const ram = s.memory ? `${s.memory.percent}%` : '--';
+    const temp = s.cpu ? `${s.cpu.temp}°C` : '--';
+    console.log(`📡 [${hostname}] CPU:${cpu} | RAM:${ram} | Temp:${temp} (${bytesReceived}B)`);
+  }
 
   res.json({ success: true, commands });
+});
+
+// API: Heartbeat from Browser
+app.post('/api/active', (req, res) => {
+  activeClients = 1; // Mark as active
+  if (activeTimeout) clearTimeout(activeTimeout);
+  activeTimeout = setTimeout(() => { activeClients = 0; }, 15000); // Quiet after 15s inactivity
+  res.json({ success: true });
 });
 
 // API: Get Fleet Overview (for the Dashboard)
@@ -85,16 +130,11 @@ app.get('/api/services/:hostname/:service/logs', (req, res) => {
   const { hostname, service } = req.params;
   
   if (!commandQueues[hostname]) commandQueues[hostname] = [];
-  
-  // For logs, since we want a "Live" feel, we might need a different approach 
-  // but for V2 MVP we will just queue a log request
   commandQueues[hostname].push({
     type: 'REQUEST_LOGS',
     service
   });
 
-  // Since logs are asynchronous in poll-and-response, 
-  // we'll tell the UI to check back in a second for 'lastLogs' in the next report
   res.json({ 
     success: true, 
     message: 'Log request queued. Result will appear in next heartbeat.' 

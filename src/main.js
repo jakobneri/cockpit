@@ -196,7 +196,7 @@ async function fetchNodeStats() {
     }
 
     // Header 
-    document.getElementById('header-hostname').innerHTML = `← <span style="cursor: pointer;" onclick="showOverview()">${selectedHostname}</span>`;
+    document.getElementById('header-hostname').innerHTML = `<span style="cursor: pointer;" onclick="showOverview()">${selectedHostname}</span>`;
     document.title = `${selectedHostname} | Cockpit`;
     const osInfo = document.getElementById('os-info');
     if (osInfo) {
@@ -333,5 +333,15 @@ window.openLogs = async (service) => {
   const res = await fetch(`/api/services/${selectedHostname}/${service}/logs`);
 };
 
+// Heartbeat to Hub to suppress noisy logs when watching
+async function sendActiveHeartbeat() {
+  try { await fetch('/api/active', { method: 'POST' }); }
+  catch (e) {}
+}
+
 // Start
-document.addEventListener('DOMContentLoaded', showOverview);
+document.addEventListener('DOMContentLoaded', () => {
+  showOverview();
+  setInterval(sendActiveHeartbeat, 10000); 
+  sendActiveHeartbeat();
+});
