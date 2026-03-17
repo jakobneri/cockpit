@@ -93,26 +93,26 @@ const runServiceCmd = async (service, action) => {
   if (service === 'nextcloud') {
     if (action === 'status') {
       try {
-        const result = await execAsync('cd /nextcloud && sudo docker compose ps');
+        const result = await execAsync('cd /home/archimedes/nextcloud && sudo docker compose ps');
         return result;
       } catch (e) {
         return await execAsync('systemctl is-active apache2');
       }
     } else if (action === 'start') {
       try {
-        return await execAsync('cd /nextcloud && sudo docker compose up -d');
+        return await execAsync('cd /home/archimedes/nextcloud && sudo docker compose up -d');
       } catch (e) {
         return await execAsync('sudo systemctl start apache2');
       }
     } else if (action === 'stop') {
       try {
-        return await execAsync('cd /nextcloud && sudo docker compose stop');
+        return await execAsync('cd /home/archimedes/nextcloud && sudo docker compose stop');
       } catch (e) {
         return await execAsync('sudo systemctl stop apache2');
       }
     } else if (action === 'restart') {
       try {
-        return await execAsync('cd /nextcloud && sudo docker compose restart');
+        return await execAsync('cd /home/archimedes/nextcloud && sudo docker compose restart');
       } catch (e) {
         return await execAsync('sudo systemctl restart apache2');
       }
@@ -188,9 +188,10 @@ app.get('/api/services/:service/logs', async (req, res) => {
     if (service === 'unifi') {
       cmd = 'journalctl -u unifi-core.service -n 50 --no-pager';
     } else if (service === 'nextcloud') {
-      cmd = 'docker compose logs --tail 50 nextcloud 2>/dev/null || journalctl -u apache2.service -n 50 --no-pager';
+      cmd = 'cd /home/archimedes/nextcloud && sudo docker compose logs --tail 50 2>/dev/null || journalctl -u apache2.service -n 50 --no-pager';
     } else if (service === 'pihole-FTL') {
-      cmd = 'journalctl -u pihole-FTL.service -n 50 --no-pager';
+      // Try the pihole log file first, fall back to journalctl
+      cmd = 'tail -n 50 /var/log/pihole/pihole-FTL.log 2>/dev/null || journalctl -u pihole-FTL -n 50 --no-pager';
     } else {
       return res.status(400).json({ error: 'Invalid service for logs' });
     }

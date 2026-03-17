@@ -200,11 +200,11 @@ h2 {
   grid-column: 2 / -1;
 }
 
-/* Metrics Grid (CPU / RAM / Temp / Net Tx / Net Rx) */
+/* Metrics Grid (CPU / RAM / Temp on row 1, Net Tx / Net Rx on row 2) */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  gap: 1.5rem 2rem;
 }
 
 .metric {
@@ -249,7 +249,7 @@ h2 {
 /* Charts */
 .chart-container {
   position: relative;
-  height: 80px;
+  height: 120px;
   width: 100%;
   margin-top: 0.5rem;
 }
@@ -407,9 +407,13 @@ h2 {
 }
 
 /* Services */
+.services-card {
+  grid-column: 1 / -1;
+}
+
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
 }
 

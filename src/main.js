@@ -37,15 +37,20 @@ const chartOptions = {
   maintainAspectRatio: false,
   scales: {
     x: { display: false },
-    y: { min: 0, max: 100, display: false }
+    y: {
+      min: 0, max: 100, display: true,
+      ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3, callback: v => v + '%' },
+      grid: { color: 'rgba(255,255,255,0.03)' },
+      border: { display: false }
+    }
   },
   plugins: { legend: { display: false }, tooltip: { enabled: false } },
   animation: { duration: 400 },
   elements: {
-    line: { tension: 0.4, borderWidth: 2 },
-    point: { radius: 0 }
+    line: { tension: 0.4, borderWidth: 2.5 },
+    point: { radius: 0, hoverRadius: 3 }
   },
-  layout: { padding: 0 }
+  layout: { padding: { left: 0, right: 4, top: 4, bottom: 0 } }
 };
 
 // Network charts need a dynamic y-axis since values are typically < 5 MB/s
@@ -53,14 +58,19 @@ const netChartOptions = {
   ...chartOptions,
   scales: {
     x: { display: false },
-    y: { min: 0, display: false, beginAtZero: true }
+    y: {
+      min: 0, display: true, beginAtZero: true,
+      ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3, callback: v => v.toFixed(1) },
+      grid: { color: 'rgba(255,255,255,0.03)' },
+      border: { display: false }
+    }
   }
 };
 
 const createChart = (ctxId, color, opts) => {
   const ctx = document.getElementById(ctxId).getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 80);
-  gradient.addColorStop(0, color + '80'); 
+  const gradient = ctx.createLinearGradient(0, 0, 0, 120);
+  gradient.addColorStop(0, color + '60'); 
   gradient.addColorStop(1, color + '00'); 
   
   return new Chart(ctx, {
