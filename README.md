@@ -62,18 +62,9 @@ To keep the dashboard running in the background persistently (even after reboots
    ```
 
 ## Future Feature Recommendations
-Based on a recent inspection of the v1.3.0 dashboard, here are several recommended features for future updates that would improve utility and visualization:
+Based on a recent inspection of the dashboard, here are recommended features for future updates that would improve utility and visualization:
 
-1. **Live Service Logging Integration**:
-   - Add a button inside each service card (Nextcloud, Unifi OS, Pi-hole) that opens a modal window displaying a live `tail` feed of their respective `pm2 logs` or `journalctl -u` outputs.
-
-2. **System Uptime & Health Heartbeat**:
-   - A dedicated UI element displaying system uptime, and a visual "heartbeat" indicator (like a pulsing green dot) indicating the WebSocket/polling backend connection is active and healthy.
-
-3. **Network Bandwidth Monitoring**:
-   - Introduce a new pair of real-time `Chart.js` graphs under the System section plotting the live Upload/Download bandwidth (Tx/Rx) across the primary network interface.
-
-4. **Thermal Guard Alerts**:
+1. **Thermal Guard Alerts**:
    - Implement dynamic style shifting that turns the Temperature chart from red to a flashing bright crimson if the Pi passes a critical thermal threshold (e.g. `> 75°C`), alongside browser notification alerts.
 
 ## Development

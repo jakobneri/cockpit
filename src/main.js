@@ -11,6 +11,19 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
+// Format uptime
+function formatUptime(seconds) {
+  if (!seconds) return '--';
+  const d = Math.floor(seconds / (3600*24));
+  const h = Math.floor(seconds % (3600*24) / 3600);
+  const m = Math.floor(seconds % 3600 / 60);
+  let str = [];
+  if (d > 0) str.push(`${d}d`);
+  if (h > 0) str.push(`${h}h`);
+  str.push(`${m}m`);
+  return str.join(' ');
+}
+
 // Update DOM element
 function updateElement(id, value) {
   const el = document.getElementById(id);
@@ -79,6 +92,8 @@ function updateProgress(id, percent) {
   }
 }
 
+let txChart, rxChart; // Network charts
+
 // Fetch and update stats
 async function fetchStats() {
   try {
@@ -86,8 +101,15 @@ async function fetchStats() {
     if (!res.ok) throw new Error('Network response was not ok');
     const data = await res.json();
 
-    // OS info
-    updateElement('os-info', `Running ${data.os || 'Linux'} | Dashboard Active`);
+    // Heartbeat Pulse
+    const heartbeat = document.getElementById('heartbeat-dot');
+    if (heartbeat) {
+      heartbeat.className = 'heartbeat active';
+      setTimeout(() => heartbeat.className = 'heartbeat', 500);
+    }
+
+    // OS info / Uptime
+    updateElement('os-info', `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`);
 
     // CPU
     updateElement('cpu-load', data.cpu.load);
@@ -100,6 +122,16 @@ async function fetchStats() {
     updateElement('ram-usage', data.memory.percent);
     updateChart(ramChart, data.memory.percent);
     updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
+
+    // Network
+    if (data.network) {
+      const txMB = (data.network.tx_sec / 1e6).toFixed(1);
+      const rxMB = (data.network.rx_sec / 1e6).toFixed(1);
+      updateElement('net-tx', txMB);
+      updateChart(txChart, txMB);
+      updateElement('net-rx', rxMB);
+      updateChart(rxChart, rxMB);
+    }
 
     // Storage: Root
     if (data.storage.root) {
@@ -127,6 +159,8 @@ async function fetchStats() {
 
   } catch (error) {
     console.error('Error fetching stats:', error);
+    const heartbeat = document.getElementById('heartbeat-dot');
+    if (heartbeat) heartbeat.className = 'heartbeat error';
   }
 }
 
@@ -185,8 +219,8 @@ async function fetchServicesStatus() {
 }
 
 // Manage Service action
-window.manageService = async (service, action) => {
-  const badge = document.getElementById(`${service}-status`);
+window.serviceAction = async (service, action) => {
+  const badge = document.querySelector(`.service-card[data-service="${service}"] .status-badge`);
   if (badge) {
     badge.textContent = `${action.toUpperCase()}ING...`;
     badge.className = `status-badge`;
@@ -195,7 +229,6 @@ window.manageService = async (service, action) => {
   try {
     const res = await fetch(`/api/services/${service}/${action}`, { method: 'POST' });
     if (res.ok) {
-      // Immediately refresh stats to reflect new status
       setTimeout(fetchServicesStatus, 1500); 
     } else {
       alert(`Failed to ${action} ${service}. Check console for details.`);
@@ -206,11 +239,46 @@ window.manageService = async (service, action) => {
   }
 };
 
+// Logs Modal functions
+window.openLogs = async (service) => {
+  const modal = document.getElementById('logsModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalLogsText');
+  
+  modal.style.display = 'flex';
+  modalTitle.textContent = `${service.toUpperCase()} Logs`;
+  modalText.textContent = 'Fetching logs from server...';
+
+  try {
+    const res = await fetch(`/api/services/${service}/logs`);
+    const data = await res.json();
+    modalText.textContent = data.logs || 'No logs available.';
+    // scroll to bottom
+    modalText.scrollTop = modalText.scrollHeight;
+  } catch (err) {
+    modalText.textContent = `Error fetching logs: ${err.message}`;
+  }
+};
+
+window.closeLogs = () => {
+  document.getElementById('logsModal').style.display = 'none';
+};
+
+// Close modal when clicking outside
+window.onclick = (event) => {
+  const modal = document.getElementById('logsModal');
+  if (event.target == modal) {
+    modal.style.display = 'none';
+  }
+};
+
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
   cpuChart = createChart('cpuChart', '#3b82f6'); // blue
   ramChart = createChart('ramChart', '#8b5cf6'); // purple
   tempChart = createChart('tempChart', '#ef4444'); // red
+  txChart = createChart('txChart', '#10b981'); // emerald
+  rxChart = createChart('rxChart', '#f59e0b'); // amber
   
   fetchStats();
   fetchServicesStatus();

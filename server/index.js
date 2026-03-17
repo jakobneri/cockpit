@@ -4,6 +4,7 @@ import cors from 'cors';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,13 +25,14 @@ const isWindows = process.platform === 'win32';
 // 1. Stats Endpoint
 app.get('/api/stats', async (req, res) => {
   try {
-    const [cpu, mem, temp, fsSize, osInfo, processes] = await Promise.all([
+    const [cpu, mem, temp, fsSize, osInfo, processes, net] = await Promise.all([
       si.currentLoad(),
       si.mem(),
       si.cpuTemperature(),
       si.fsSize(),
       si.osInfo(),
-      si.processes()
+      si.processes(),
+      si.networkStats()
     ]);
 
     // Filter storage for Root
@@ -40,6 +42,11 @@ app.get('/api/stats', async (req, res) => {
 
     res.json({
       os: osInfo.platform,
+      uptime: os.uptime(),
+      network: {
+        tx_sec: net && net[0] ? net[0].tx_sec : 0,
+        rx_sec: net && net[0] ? net[0].rx_sec : 0
+      },
       cpu: {
         load: Math.round(cpu.currentLoad || 0),
         temp: temp.main ? Math.round(temp.main) : (isWindows ? 45 : 0) // Windows temp fallback
@@ -170,6 +177,32 @@ app.get('/api/services/:service', async (req, res) => {
     } catch (e) { console.error('Fallback proc check failed:', e); }
 
     res.json({ service, status: isActive ? 'running' : 'stopped' });
+  }
+});
+
+// Fetch Logs for a specific service
+app.get('/api/services/:service/logs', async (req, res) => {
+  const { service } = req.params;
+  try {
+    let cmd = '';
+    if (service === 'unifi') {
+      cmd = 'journalctl -u unifi-core.service -n 50 --no-pager';
+    } else if (service === 'nextcloud') {
+      cmd = 'docker compose logs --tail 50 nextcloud 2>/dev/null || journalctl -u apache2.service -n 50 --no-pager';
+    } else if (service === 'pihole-FTL') {
+      cmd = 'journalctl -u pihole-FTL.service -n 50 --no-pager';
+    } else {
+      return res.status(400).json({ error: 'Invalid service for logs' });
+    }
+
+    if (isWindows) {
+      return res.json({ logs: '[Simulated Logs on Windows]\nStarting service...\nService running OK.' });
+    }
+
+    const { stdout, stderr } = await execAsync(`sudo ${cmd}`);
+    res.json({ logs: stdout || stderr || 'No logs found.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch logs', logs: err.message });
   }
 });
 
