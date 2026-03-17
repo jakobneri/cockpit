@@ -48,7 +48,16 @@ const chartOptions = {
   layout: { padding: 0 }
 };
 
-const createChart = (ctxId, color) => {
+// Network charts need a dynamic y-axis since values are typically < 5 MB/s
+const netChartOptions = {
+  ...chartOptions,
+  scales: {
+    x: { display: false },
+    y: { min: 0, display: false, beginAtZero: true }
+  }
+};
+
+const createChart = (ctxId, color, opts) => {
   const ctx = document.getElementById(ctxId).getContext('2d');
   const gradient = ctx.createLinearGradient(0, 0, 0, 80);
   gradient.addColorStop(0, color + '80'); 
@@ -59,13 +68,14 @@ const createChart = (ctxId, color) => {
     data: {
       labels: Array(maxDataPoints).fill(''),
       datasets: [{
-        data: Array(maxDataPoints).fill(0),
+        data: Array(maxDataPoints).fill(null),
         borderColor: color,
         backgroundColor: gradient,
-        fill: true
+        fill: true,
+        spanGaps: false
       }]
     },
-    options: chartOptions
+    options: opts || chartOptions
   });
 };
 
@@ -206,10 +216,13 @@ async function fetchServicesStatus() {
       const res = await fetch(`/api/services/${service}`);
       if (res.ok) {
         const data = await res.json();
-        const badge = document.getElementById(`${service}-status`);
-        if (badge) {
-          badge.textContent = data.status;
-          badge.className = `status-badge ${data.status}`;
+        const card = document.querySelector(`.service-card[data-service="${service}"]`);
+        if (card) {
+          const badge = card.querySelector('.status-badge');
+          if (badge) {
+            badge.textContent = data.status.toUpperCase();
+            badge.className = `status-badge ${data.status}`;
+          }
         }
       }
     } catch (error) {
@@ -274,11 +287,11 @@ window.onclick = (event) => {
 
 // Initialization
 document.addEventListener('DOMContentLoaded', () => {
-  cpuChart = createChart('cpuChart', '#3b82f6'); // blue
-  ramChart = createChart('ramChart', '#8b5cf6'); // purple
-  tempChart = createChart('tempChart', '#ef4444'); // red
-  txChart = createChart('txChart', '#10b981'); // emerald
-  rxChart = createChart('rxChart', '#f59e0b'); // amber
+  cpuChart = createChart('cpuChart', '#3b82f6');       // blue
+  ramChart = createChart('ramChart', '#8b5cf6');       // purple
+  tempChart = createChart('tempChart', '#ef4444');     // red
+  txChart = createChart('txChart', '#10b981', netChartOptions);  // emerald, auto y-axis
+  rxChart = createChart('rxChart', '#f59e0b', netChartOptions);  // amber, auto y-axis
   
   fetchStats();
   fetchServicesStatus();

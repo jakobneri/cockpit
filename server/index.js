@@ -199,10 +199,11 @@ app.get('/api/services/:service/logs', async (req, res) => {
       return res.json({ logs: '[Simulated Logs on Windows]\nStarting service...\nService running OK.' });
     }
 
-    const { stdout, stderr } = await execAsync(`sudo ${cmd}`);
+    const { stdout, stderr } = await execAsync(cmd);
     res.json({ logs: stdout || stderr || 'No logs found.' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch logs', logs: err.message });
+    // Return the error message as logs content so the modal shows something useful
+    res.json({ logs: `Could not fetch logs:\n${err.message}\n\nTip: Make sure the node process has permission to read journalctl.\nYou can grant access with: sudo usermod -aG systemd-journal $(whoami)` });
   }
 });
 
