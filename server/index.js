@@ -198,7 +198,11 @@ async function refreshServices() {
 }
 
 // ── Main poll cycle ──
+let pollCount = 0;
+
 async function pollCycle() {
+  pollCount++;
+
   // Check if we should switch to slow mode
   if (!isClientActive() && currentInterval === FAST_INTERVAL) {
     currentInterval = SLOW_INTERVAL;
@@ -209,11 +213,21 @@ async function pollCycle() {
   // Always refresh fast stats
   await refreshFastStats();
 
-  // Only refresh expensive data when a client is active (or on slow cycle)
-  if (isClientActive()) {
+  // Only refresh expensive data when a client is active
+  const active = isClientActive();
+  if (active) {
     await refreshProcesses();
     await refreshStorage();
     await refreshServices();
+  }
+
+  // Status report every 12 cycles (~1min fast, ~6min slow)
+  if (pollCount % 12 === 0) {
+    const mode = currentInterval === FAST_INTERVAL ? '⚡ FAST (5s)' : '💤 IDLE (30s)';
+    const cpu = cachedStats?.cpu?.load ?? '?';
+    const mem = cachedStats?.memory?.percent ?? '?';
+    const temp = cachedStats?.cpu?.temp ?? '?';
+    console.log(`📊 Poll #${pollCount} | ${mode} | CPU: ${cpu}% | RAM: ${mem}% | Temp: ${temp}°C`);
   }
 }
 
