@@ -23,8 +23,7 @@
   "homepage": "https://github.com/jakobneri/cockpit#readme",
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "systeminformation": "^5.31.4"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "vite": "^5.0.0"
