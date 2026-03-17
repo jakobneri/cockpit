@@ -50,4 +50,16 @@ To allow the Agent to control services without a password, add this to your sudo
 `echo '$USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl' | sudo tee /etc/sudoers.d/cockpit-services`
 
 ---
+
+## 🔄 Updating from v1.x to v2.0
+If you are already running an older version, follow these steps to migrate:
+
+1. **Stop old processes**: `pm2 stop all`
+2. **Pull latest code**: `cd ~/cockpit && git pull`
+3. **Re-install & Build**: `npm install && npm run build`
+4. **Setup Hub**: `pm2 start npm --name "cockpit-hub" -- run hub`
+5. **Setup Local Agent**: `HUB_URL=http://localhost:3000 pm2 start agent/agent.js --name "cockpit-agent"`
+6. **Cleanup & Save**: `pm2 delete pi-cockpit && pm2 save`
+
+---
 Made with ❤️ by Jakob Neri
