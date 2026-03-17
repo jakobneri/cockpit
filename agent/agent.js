@@ -210,29 +210,29 @@ async function report() {
   }
 }
 
-const AGENT_VERSION = '2.0.5';
+const AGENT_VERSION = '2.0.6';
 
 async function runAutoUpdate() {
   if (os.platform() === 'win32') return;
   try {
     const isGit = fs.existsSync('.git') || fs.existsSync('../.git');
     if (isGit) {
-      await execAsync('git fetch');
-      const { stdout } = await execAsync('git status -uno');
-      if (stdout.includes('Your branch is behind')) {
-        console.log('🔄 [AGENT UPDATE] Git update found. Pulling...');
-        await execAsync('git pull');
+      await execAsync('git fetch origin main');
+      const { stdout } = await execAsync('git rev-list HEAD..origin/main --count');
+      const count = parseInt(stdout.trim());
+      if (count > 0) {
+        console.log(`🔄 [AGENT UPDATE] Found ${count} new commits. Pulling...`);
+        await execAsync('git pull origin main');
         process.exit(0);
       }
     } else {
       // Standalone (wget) update
-      // We check the version from the raw github file
       const res = await fetch('https://raw.githubusercontent.com/jakobneri/cockpit/main/agent/agent.js');
+      if (!res.ok) return;
       const text = await res.text();
       const match = text.match(/const AGENT_VERSION = '(.+?)'/);
       if (match && match[1] !== AGENT_VERSION) {
-        console.log(`🔄 [AGENT UPDATE] New version ${match[1]} found. Downloading...`);
-        // Self-overwrite agent.js
+        console.log(`🔄 [AGENT UPDATE] New version ${match[1]} found. Updating standalone...`);
         fs.writeFileSync('agent.js', text);
         process.exit(0);
       }
@@ -240,7 +240,8 @@ async function runAutoUpdate() {
   } catch (err) { console.error('❌ [AGENT UPDATE] Failed:', err.message); }
 }
 
-setInterval(runAutoUpdate, 10 * 60 * 1000); // Check every 10 mins
+setInterval(runAutoUpdate, 5 * 60 * 1000); // Check every 5 mins
+runAutoUpdate(); // Immediate check on boot
 
 setInterval(report, POLL_INTERVAL);
 report(); // First run

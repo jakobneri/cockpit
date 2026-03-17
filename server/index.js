@@ -145,21 +145,27 @@ const isWindows = process.platform === 'win32';
 const runAutoUpdate = async (force = false) => {
   if (isWindows) return;
   try {
-    if (!force) {
-      await execAsync('git fetch');
-      const { stdout: status } = await execAsync('git status -uno');
-      if (!status.includes('Your branch is behind')) return;
-    }
-    console.log('🔄 [HUB UPDATE] New version detected. Updating...');
-    await execAsync('git pull');
+    const start = Date.now();
+    await execAsync('git fetch origin main');
+    const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
+    
+    const count = parseInt(behindCount.trim());
+    if (count === 0 && !force) return;
+
+    console.log(`🔄 [HUB UPDATE] Found ${count} new commits. Starting update...`);
+    await execAsync('git pull origin main');
     await execAsync('npm install --include=dev');
     await execAsync('npx vite build');
-    console.log('✅ [HUB UPDATE] Complete. Restarting...');
+    
+    console.log(`✅ [HUB UPDATE] Finished in ${((Date.now() - start) / 1000).toFixed(1)}s. Restarting...`);
     setTimeout(() => process.exit(0), 1000);
-  } catch (error) { console.error('❌ [HUB UPDATE] Failed:', error.message); }
+  } catch (error) { 
+    console.error('❌ [HUB UPDATE] Update failed:', error.message);
+  }
 };
 
-setInterval(() => runAutoUpdate(), 5 * 60 * 1000); // Check every 5 mins
+setInterval(() => runAutoUpdate(), 2 * 60 * 1000); // Check every 2 mins instead of 5
+runAutoUpdate(); // Check immediately on boot just in case it was missed during sleep/restart
 
 app.listen(PORT, () => {
   console.log(`\n🚀 Pi Cockpit v2.0 HUB running on http://localhost:${PORT}`);
