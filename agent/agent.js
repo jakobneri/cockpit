@@ -103,18 +103,33 @@ async function getStorage() {
 
 async function getProcesses() {
   try {
-    const { stdout } = await execAsync('ps aux --sort=-%cpu | head -6');
-    const cpu = stdout.split('\n').slice(1).filter(l => l.trim()).map(l => {
+    // Switching to 'top' in batch mode for instantaneous CPU usage
+    // 'top -bn1' is more accurate for "current" load than 'ps aux'
+    const { stdout } = await execAsync('top -bn1 -o %CPU | head -n 12');
+    const lines = stdout.split('\n');
+    
+    // Find where the process list starts (usually after a blank line or headers)
+    const headerIndex = lines.findIndex(l => l.includes('PID') && l.includes('COMMAND'));
+    if (headerIndex === -1) return { cpu: [], mem: [] };
+
+    const processLines = lines.slice(headerIndex + 1).filter(l => l.trim().length > 0).slice(0, 5);
+    const cpuProcs = processLines.map(l => {
       const p = l.trim().split(/\s+/);
-      return { pid: p[1], user: p[0], name: p[10].split('/').pop(), cpu: p[2] };
+      // top format varies, but usually: PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
+      return { pid: p[0], user: p[1], cpu: p[8], mem: p[9], name: p[11] };
     });
+
+    // For RAM, ps aux is still fine and fast
     const { stdout: mOut } = await execAsync('ps aux --sort=-%mem | head -6');
     const mem = mOut.split('\n').slice(1).filter(l => l.trim()).map(l => {
       const p = l.trim().split(/\s+/);
       return { pid: p[1], user: p[0], name: p[10].split('/').pop(), mem: p[3] };
     });
-    return { cpu, mem };
-  } catch { return { cpu: [], mem: [] }; }
+
+    return { cpu: cpuProcs, mem };
+  } catch (err) {
+    return { cpu: [], mem: [] };
+  }
 }
 
 async function getServices() {
@@ -170,17 +185,25 @@ async function report() {
       timestamp: Date.now()
     };
 
+    const jsonPayload = JSON.stringify(payload);
+    const bytesSent = Buffer.byteLength(jsonPayload);
+
     const response = await fetch(`${HUB_URL}/api/report`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: jsonPayload
     });
 
     if (response.ok) {
       const data = await response.json();
+      const bytesReceived = Buffer.byteLength(JSON.stringify(data));
+      console.log(`📤 [REPORT] Sent ${bytesSent} bytes. Received ${bytesReceived} bytes. Status: ${response.status}`);
+      
       if (data.commands && data.commands.length > 0) {
         for (const cmd of data.commands) await handleCommand(cmd);
       }
+    } else {
+      console.error(`❌ [REPORT] Failed with status: ${response.status}`);
     }
   } catch (err) {
     console.error(`⚠️ Hub unreachable: ${err.message}`);

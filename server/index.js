@@ -38,6 +38,10 @@ app.post('/api/report', (req, res) => {
   const commands = commandQueues[hostname] || [];
   commandQueues[hostname] = []; // Clear queue after sending
 
+  const bytesReceived = Buffer.byteLength(JSON.stringify(req.body));
+  const bytesSent = Buffer.byteLength(JSON.stringify({ success: true, commands }));
+  console.log(`📥 [REPORT] Received ${bytesReceived} bytes from ${hostname}. Replied with ${bytesSent} bytes.`);
+
   res.json({ success: true, commands });
 });
 
