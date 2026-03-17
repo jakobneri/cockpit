@@ -36,10 +36,10 @@ let currentInterval = SLOW_INTERVAL;
 let pollCount = 0;
 
 // Cached data
-let cachedStats = null;
-let cachedProcesses = null;
-let cachedStorage = null;
-let cachedServices = {};
+let cachedStats = {};          
+let cachedProcesses = { cpu: [], mem: [] };
+let cachedStorage = { root: null, smb: null };
+let cachedServices = {};         
 
 // Refresh tracking
 let lastProcessRefresh = 0;
@@ -274,7 +274,7 @@ async function pollCycle() {
     const cpu = cachedStats?.cpu?.load ?? '?';
     const mem = cachedStats?.memory?.percent ?? '?';
     const temp = cachedStats?.cpu?.temp ?? '?';
-    console.log(`📊 Idle Poll #${pollCount} | CPU: ${cpu}% | RAM: ${mem}% | Temp: ${temp}°C`);
+    console.log(`📡 [IDLE] Poll #${pollCount} | CPU: ${cpu}% | RAM: ${mem}% | Temp: ${temp}°C`);
   }
 }
 
@@ -344,11 +344,31 @@ const runAutoUpdate = async (force = false) => {
       const { stdout: status } = await execAsync('git status -uno');
       if (!status.includes('Your branch is behind')) return;
     }
-    await execAsync('git pull');
-    await execAsync('npm install --include=dev');
-    await execAsync('npx vite build');
-    setTimeout(() => process.exit(0), 1000);
-  } catch (error) { console.error('Auto-update error:', error); }
+    console.log('🔄 [UPDATE] New version detected. Starting update...');
+    
+    console.log('📥 [UPDATE] Pulling latest changes...');
+    const { stdout: pullOut } = await execAsync('git pull');
+    console.log(pullOut);
+
+    console.log('📦 [UPDATE] Installing dependencies...');
+    const { stdout: instOut } = await execAsync('npm install --include=dev');
+    console.log(instOut);
+
+    console.log('🏗️ [UPDATE] Building frontend assets...');
+    const { stdout: buildOut } = await execAsync('npx vite build');
+    console.log(buildOut);
+
+    console.log('🚀 [UPDATE] Build successful. Restarting in 1s...');
+    setTimeout(() => {
+      console.log('👋 Goodbye! (PM2 will restart me)');
+      process.exit(0);
+    }, 1000);
+  } catch (error) { 
+    console.error('❌ [UPDATE] FAILED:');
+    console.error(error.message);
+    if (error.stdout) console.error('STDOUT:', error.stdout);
+    if (error.stderr) console.error('STDERR:', error.stderr);
+  }
 };
 
 setInterval(() => runAutoUpdate(), 60 * 1000);
