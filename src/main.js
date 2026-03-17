@@ -198,7 +198,11 @@ async function fetchNodeStats() {
     // Header 
     document.getElementById('header-hostname').innerHTML = `← <span style="cursor: pointer;" onclick="showOverview()">${selectedHostname}</span>`;
     document.title = `${selectedHostname} | Cockpit`;
-    updateElement('os-info', `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`);
+    const osInfo = document.getElementById('os-info');
+    if (osInfo) {
+      osInfo.style.display = 'block';
+      osInfo.textContent = `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+    }
 
     // Metrics
     updateElement('cpu-load', data.cpu.load);
@@ -280,6 +284,9 @@ window.showOverview = () => {
   currentView = 'overview';
   document.getElementById('view-overview').style.display = 'block';
   document.getElementById('view-details').style.display = 'none';
+  
+  const osInfo = document.getElementById('os-info');
+  if (osInfo) osInfo.style.display = 'none';
   
   if (statsTimer) clearInterval(statsTimer);
   fetchFleet();
