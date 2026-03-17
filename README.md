@@ -61,12 +61,6 @@ To keep the dashboard running in the background persistently (even after reboots
    npm start
    ```
 
-## Future Feature Recommendations
-Based on a recent inspection of the dashboard, here are recommended features for future updates that would improve utility and visualization:
-
-1. **Thermal Guard Alerts**:
-   - Implement dynamic style shifting that turns the Temperature chart from red to a flashing bright crimson if the Pi passes a critical thermal threshold (e.g. `> 75°C`), alongside browser notification alerts.
-
 ## Development
 - All frontend visual changes are strictly located in `/src` (JS/CSS) and `index.html`.
 - The backend dashboard polling API, command executor, and update webhook are located in `/server/index.js`.
