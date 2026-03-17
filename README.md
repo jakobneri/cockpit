@@ -16,17 +16,47 @@ A modern, low-resource web dashboard for monitoring your Raspberry Pi operations
    npm install
    ```
 
-2. Start the development server (runs Vite):
+2. Start the development server (runs Vite for frontend testing):
    ```bash
    npm run dev
    ```
 
-3. Build for production (compiles Vite to `/dist`):
+3. Build for production (compiles frontend to `/dist`):
    ```bash
    npm run build
    ```
 
-4. Start the production backend server (serves `/dist` and runs endpoints on port 3000):
+### Running with PM2 (Recommended for Raspberry Pi)
+To keep the dashboard running in the background persistently (even after reboots), use `pm2`.
+
+1. Install PM2 globally:
+   ```bash
+   sudo npm install -g pm2
+   ```
+
+2. Start the backend server with PM2:
+   ```bash
+   pm2 start server/index.js --name "pi-cockpit"
+   ```
+
+3. Save the PM2 process list to start on boot:
+   ```bash
+   pm2 save
+   pm2 startup
+   ```
+
+4. View Dashboard Logs:
+   ```bash
+   pm2 logs pi-cockpit
+   ```
+
+5. View Dashboard Status / Info:
+   ```bash
+   pm2 status
+   pm2 show pi-cockpit
+   ```
+
+### Running without PM2 (for testing)
    ```bash
    npm start
    ```
