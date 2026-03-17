@@ -157,13 +157,15 @@ const runAutoUpdate = async (force = false) => {
 
     log.update(`Found ${count} new commits. Pulling...`);
     const { stdout: pullOut } = await execAsync('git pull origin main');
-    log.info(`Pull result: ${pullOut.split('\n')[0]}`);
+    console.log(pullOut.trim());
 
     log.update('Installing dependencies (npm install)...');
-    await execAsync('npm install --include=dev');
+    const { stdout: npmOut } = await execAsync('npm install --include=dev');
+    console.log(npmOut.trim());
     
     log.update('Building frontend (vite build)...');
-    await execAsync('npx vite build');
+    const { stdout: viteOut } = await execAsync('npx vite build');
+    console.log(viteOut.trim());
     
     log.success(`Update complete in ${((Date.now() - start) / 1000).toFixed(1)}s. Restarting Hub...`);
     setTimeout(() => process.exit(0), 1000);
@@ -176,6 +178,6 @@ setInterval(() => runAutoUpdate(), 1 * 60 * 1000);
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 nerifeige.de hub v2.1.5 running on http://192.168.188.22:${PORT}`);
+  console.log(`\n🚀 nerifeige.de hub v2.1.6 running on http://localhost:${PORT}`);
   log.info(`Ready to receive reports at /api/report\n`);
 });
