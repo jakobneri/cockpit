@@ -345,9 +345,9 @@ const runAutoUpdate = async (force = false) => {
     console.log('Updates found! Pulling new code...');
     await execAsync('git pull');
     console.log('Installing dependencies...');
-    await execAsync('npm install');
+    await execAsync('npm install --include=dev');
     console.log('Building project...');
-    await execAsync('npm run build');
+    await execAsync('npx vite build');
     console.log('Update complete. Process exiting to trigger a restart...');
     setTimeout(() => process.exit(0), 1000);
   } catch (error) {
