@@ -25,12 +25,20 @@ pm2 start ecosystem.config.cjs --only cockpit-hub
 ```
 
 ### 2. The Agents (Machine Probes)
-Run this on **every** machine you want to monitor (including the Hub Pi itself).
+Run this on **every** machine you want to monitor.
 
+#### A. Full Installation (Recommended for Hub machine)
 ```bash
-# On the remote Pi
-cd ~/cockpit/agent
-# Point to your Hub Pi's IP in ecosystem.config.cjs then:
+pm2 start ecosystem.config.cjs --only cockpit-agent
+```
+
+#### B. Client-Only Installation (Wget way)
+*Perfect for remote servers where you don't want the full source code.*
+```bash
+mkdir cockpit-agent && cd cockpit-agent
+wget https://raw.githubusercontent.com/jakobneri/cockpit/main/agent/agent.js
+wget https://raw.githubusercontent.com/jakobneri/cockpit/main/ecosystem.config.cjs
+# Edit ecosystem.config.cjs to set your Hub IP, then:
 pm2 start ecosystem.config.cjs --only cockpit-agent
 ```
 
