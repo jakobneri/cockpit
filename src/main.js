@@ -145,12 +145,12 @@ async function fetchStats() {
 
     // Network
     if (data.network) {
-      const txMB = (data.network.tx_sec / 1e6).toFixed(1);
-      const rxMB = (data.network.rx_sec / 1e6).toFixed(1);
-      updateElement('net-tx', txMB);
-      updateChart(txChart, txMB);
-      updateElement('net-rx', rxMB);
-      updateChart(rxChart, rxMB);
+      const txKB = (data.network.tx_sec / 1024).toFixed(1);
+      const rxKB = (data.network.rx_sec / 1024).toFixed(1);
+      updateElement('net-tx', txKB);
+      updateChart(txChart, parseFloat(txKB));
+      updateElement('net-rx', rxKB);
+      updateChart(rxChart, parseFloat(rxKB));
     }
 
     // Storage: Root

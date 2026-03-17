@@ -34,9 +34,9 @@ To keep the dashboard running in the background persistently (even after reboots
    sudo npm install -g pm2
    ```
 
-2. Start the backend server with PM2:
+2. Start the backend server with PM2 (includes timestamped logs):
    ```bash
-   pm2 start server/index.js --name "pi-cockpit"
+   pm2 start ecosystem.config.cjs
    ```
 
 3. Save the PM2 process list to start on boot:

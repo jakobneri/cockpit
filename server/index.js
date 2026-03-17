@@ -186,12 +186,12 @@ app.get('/api/services/:service/logs', async (req, res) => {
   try {
     let cmd = '';
     if (service === 'unifi') {
-      cmd = 'journalctl -u unifi-core.service -n 50 --no-pager';
+      cmd = 'sudo -n journalctl -u unifi-core.service -n 50 --no-pager 2>/dev/null || journalctl -u unifi-core.service -n 50 --no-pager';
     } else if (service === 'nextcloud') {
-      cmd = 'cd /home/archimedes/nextcloud && sudo docker compose logs --tail 50 2>/dev/null || journalctl -u apache2.service -n 50 --no-pager';
+      cmd = 'cd /home/archimedes/nextcloud && sudo docker compose logs --tail 50 2>/dev/null || sudo -n journalctl -u apache2.service -n 50 --no-pager';
     } else if (service === 'pihole-FTL') {
-      // Try the pihole log file first, fall back to journalctl
-      cmd = 'tail -n 50 /var/log/pihole/pihole-FTL.log 2>/dev/null || journalctl -u pihole-FTL -n 50 --no-pager';
+      // Try multiple pihole log locations, then journalctl with sudo
+      cmd = 'tail -n 50 /var/log/pihole.log 2>/dev/null || tail -n 50 /var/log/pihole/pihole-FTL.log 2>/dev/null || tail -n 50 /var/log/pihole/FTL.log 2>/dev/null || sudo -n journalctl -u pihole-FTL -n 50 --no-pager 2>/dev/null || pihole -t 2>/dev/null | head -50';
     } else {
       return res.status(400).json({ error: 'Invalid service for logs' });
     }
