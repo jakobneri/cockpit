@@ -191,7 +191,7 @@ async function report() {
   }
 }
 
-const AGENT_VERSION = '2.1.1';
+const AGENT_VERSION = '2.1.2';
 
 async function runAutoUpdate() {
   if (os.platform() === 'win32') return;

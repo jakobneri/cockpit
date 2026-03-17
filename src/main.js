@@ -37,7 +37,7 @@ function updateElement(id, value) {
 }
 
 // Chart.js Setup
-const maxDataPoints = 12;
+const maxDataPoints = 30; // ~2.5 minutes of history @ 5s interval
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
@@ -79,13 +79,18 @@ function createCharts() {
   if (ramChart) ramChart.destroy();
   if (netChart) netChart.destroy();
 
+  const createGradient = (ctx, color) => {
+    const grd = ctx.createLinearGradient(0, 0, 0, 150);
+    grd.addColorStop(0, color + '70'); // Stronger fill at the top
+    grd.addColorStop(0.3, color + '20'); // Quick fade
+    grd.addColorStop(1, color + '00'); // Complete transparency
+    return grd;
+  };
+
   const createLine = (id, color, opts) => {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 120);
-    gradient.addColorStop(0, color + '40'); 
-    gradient.addColorStop(1, color + '00'); 
     
     return new Chart(ctx, {
       type: 'line',
@@ -94,9 +99,9 @@ function createCharts() {
         datasets: [{
           data: Array(maxDataPoints).fill(null),
           borderColor: color,
-          backgroundColor: gradient,
+          backgroundColor: createGradient(ctx, color),
           fill: true,
-          spanGaps: false
+          spanGaps: true
         }]
       },
       options: opts || chartOptions
@@ -104,7 +109,7 @@ function createCharts() {
   };
 
   cpuChart = createLine('cpuChart', '#3b82f6');
-  ramChart = createLine('ramChart', '#8b5cf6');
+  ramChart = createLine('ramChart', '#818cf8');
 
   // Network Multi-line Chart
   const netCanvas = document.getElementById('netChart');
@@ -118,16 +123,18 @@ function createCharts() {
           {
             label: 'Tx',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#10b981', // emerald
-            backgroundColor: 'transparent',
+            borderColor: '#10b981',
+            backgroundColor: createGradient(ctx, '#10b981'),
+            fill: true,
             tension: 0.4,
             borderWidth: 2
           },
           {
             label: 'Rx',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#f59e0b', // amber
-            backgroundColor: 'transparent',
+            borderColor: '#f59e0b',
+            backgroundColor: createGradient(ctx, '#f59e0b'),
+            fill: true,
             tension: 0.4,
             borderWidth: 2
           }
@@ -227,6 +234,22 @@ async function fetchNodeStats() {
     if (osInfo) {
       osInfo.style.display = 'block';
       osInfo.textContent = `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+    }
+
+    // Populate initial history if charts are fresh
+    if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
+      const hist = data.history.slice(-maxDataPoints);
+      const padding = maxDataPoints - hist.length;
+      
+      cpuChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.cpu)];
+      ramChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.ram)];
+      if (netChart) {
+        netChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.tx / 1024).toFixed(1)))];
+        netChart.data.datasets[1].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.rx / 1024).toFixed(1)))];
+      }
+      cpuChart.update('none');
+      ramChart.update('none');
+      netChart?.update('none');
     }
 
     // Metrics

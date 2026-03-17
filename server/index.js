@@ -62,11 +62,30 @@ app.post('/api/report', (req, res) => {
   const { hostname, stats, services, timestamp } = req.body;
   if (!hostname) return res.status(400).json({ error: 'Missing hostname' });
 
-  servers[hostname] = {
+  // Update server data and maintain history
+  if (!servers[hostname]) servers[hostname] = {};
+  if (!servers[hostname].history) servers[hostname].history = [];
+
+  const newEntry = {
     ...stats,
     services: services || {},
     lastReport: timestamp || Date.now()
   };
+
+  servers[hostname] = { ...servers[hostname], ...newEntry };
+  
+  // Store history (last 60 reports ~5 minutes)
+  servers[hostname].history.push({
+    cpu: stats.cpu?.load || 0,
+    ram: stats.memory?.percent || 0,
+    tx: stats.network?.tx_sec || 0,
+    rx: stats.network?.rx_sec || 0,
+    time: timestamp || Date.now()
+  });
+
+  if (servers[hostname].history.length > 60) {
+    servers[hostname].history.shift();
+  }
 
   const commands = commandQueues[hostname] || [];
   commandQueues[hostname] = [];
