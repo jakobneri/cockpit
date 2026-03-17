@@ -1,13 +1,15 @@
 {
   "name": "cockpit",
-  "version": "1.4.4",
-  "description": "",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Multi-node Raspberry Pi Monitoring Dashboard",
+  "main": "server/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "vite",
     "build": "vite build",
-    "start": "node server/index.js"
+    "hub": "node server/index.js",
+    "agent": "node agent/agent.js",
+    "start": "npm run hub"
   },
   "repository": {
     "type": "git",

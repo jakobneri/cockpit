@@ -150,6 +150,55 @@ h1 {
   font-size: 1.1rem;
 }
 
+/* Multi-node Overview */
+.nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.node-card {
+  cursor: pointer;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.node-hostname {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.node-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mini-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.mini-metric .label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.mini-metric .val {
+  font-weight: 600;
+}
+
 /* Dashboard Grid */
 .dashboard {
   display: grid;
@@ -584,6 +633,18 @@ h2 {
 }
 
 /* Responsive */
+footer {
+  text-align: center;
+  margin-top: 4rem;
+  padding-bottom: 2rem;
+  opacity: 0.6;
+}
+
+footer .version-tag {
+  vertical-align: middle;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;
@@ -593,6 +654,9 @@ h2 {
   }
   .metrics-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .nodes-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -18,14 +18,20 @@
 
     <div class="app-container">
       <header>
-        <h1>Pi Cockpit <span class="version-tag">v1.4.4</span></h1>
+        <h1 id="header-hostname">Pi Cockpit</h1>
         <div class="status-container">
           <div class="heartbeat" id="heartbeat-dot"></div>
           <p class="subtitle" id="os-info">Loading System Info...</p>
         </div>
       </header>
 
-      <main class="dashboard">
+      <div id="view-overview" class="view">
+        <div class="nodes-grid" id="nodes-container">
+          <!-- Multi-node cards will appear here -->
+        </div>
+      </div>
+
+      <main class="dashboard view" id="view-details" style="display: none;">
         <!-- System Metrics section -->
         <section class="card glass system-card">
           <h2><span class="icon">⚡</span> System</h2>
@@ -196,6 +202,11 @@
           <pre id="modalLogsText">Loading logs...</pre>
         </div>
       </div>
+    </div>
+      <footer>
+        <p>Pi Cockpit <span class="version-tag">v2.0.0</span></p>
+      </footer>
+
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

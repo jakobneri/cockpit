@@ -1,67 +1,53 @@
-# Pi Cockpit Dashboard
+# 🚀 Pi Cockpit v2.0.0
 
-A modern, low-resource web dashboard for monitoring your Raspberry Pi operations. Built with Node.js, Express, and Vanilla JS/CSS (Vite).
+A highly performant, distributed, and beautiful monitoring dashboard for your Raspberry Pi server farm or homelab.
 
-## Features
-- **System Metrics**: Real-time line charts tracking CPU, RAM, and Temperature.
-- **Storage Monitoring**: View disk usage across local root partitions and automatic SMB/NFS network drive detection.
-- **Top Processes**: Keep an eye on the highest CPU and Memory consuming processes at all times.
-- **Services Management**: Start, Stop, and Restart essential services like Unifi OS, Nextcloud, and Pi-hole directly from the dashboard.
-- **Auto-Updates**: Built-in 60-second polling to auto-deploy new code pushed to the `main` branch.
+## 🌟 Features
+- **Centralized Hub**: Monitor multiple servers from a single dashboard.
+- **Zero-Dependency Agent**: Standalone "Lite" agent that reads directly from `/proc` and `/sys`.
+- **Responsive UI**: Stunning Glassmorphism design that works on phones, tablets, and desktops.
+- **Adaptive Interaction**: Real-time graphs and metrics only when you're watching.
+- **Service Control**: Start/Stop/Restart services (Nextcloud, Unifi, Pi-hole) across your fleet.
 
-## Installation & Running Locally
+---
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+## 🛠️ Installation & Setup
 
-2. Start the development server (runs Vite for frontend testing):
-   ```bash
-   npm run dev
-   ```
+### 1. The Hub (Central Dashboard)
+Install this on your main Raspberry Pi (the one connected to your screen or public web).
 
-3. Build for production (compiles frontend to `/dist`):
-   ```bash
-   npm run build
-   ```
+```bash
+git clone https://github.com/jakobneri/cockpit.git
+cd cockpit
+npm install
+npm run build
+pm2 start npm --name "cockpit-hub" -- run hub
+```
 
-### Running with PM2 (Recommended for Raspberry Pi)
-To keep the dashboard running in the background persistently (even after reboots), use `pm2`.
+### 2. The Agents (Machine Probes)
+Run this on **every** machine you want to monitor (including the Hub Pi itself).
 
-1. Install PM2 globally:
-   ```bash
-   sudo npm install -g pm2
-   ```
+```bash
+# On the remote Pi
+cd ~/cockpit/agent
+# Point it to your Hub Pi's IP
+HUB_URL=http://192.168.1.100:3000 pm2 start agent.js --name "cockpit-agent"
+```
 
-2. Start the backend server with PM2 (includes timestamped logs):
-   ```bash
-   pm2 start ecosystem.config.cjs
-   ```
+---
 
-3. Save the PM2 process list to start on boot:
-   ```bash
-   pm2 save
-   pm2 startup
-   ```
+## 📡 Architecture (How it works)
+V2.0 uses a **Push-based Hub & Spoke** model:
+1. **Agents** gather metrics locally every 5s using ultra-fast `/proc` reads.
+2. **Agents** `POST` their data to the **Hub**.
+3. **Hub** saves the data in memory and serves the Dashboard UI.
+4. **Dashboard** lets you click into any server for detailed live graphs and controls.
 
-4. View Dashboard Logs:
-   ```bash
-   pm2 logs pi-cockpit
-   ```
+---
 
-5. View Dashboard Status / Info:
-   ```bash
-   pm2 status
-   pm2 show pi-cockpit
-   ```
+## ⚙️ Service Control
+To allow the Agent to control services without a password, add this to your sudoers:
+`echo '$USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl' | sudo tee /etc/sudoers.d/cockpit-services`
 
-### Running without PM2 (for testing)
-   ```bash
-   npm start
-   ```
-
-## Development
-- All frontend visual changes are strictly located in `/src` (JS/CSS) and `index.html`.
-- The backend dashboard polling API, command executor, and update webhook are located in `/server/index.js`.
-- Make sure to **bump the version number** in `index.html` (and optionally `package.json`) whenever you push visual or functional updates.
+---
+Made with ❤️ by Jakob Neri
