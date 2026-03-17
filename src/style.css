@@ -197,7 +197,7 @@ h2 {
 /* Progress Bars & Charts */
 .chart-container {
   position: relative;
-  height: 60px;
+  height: 90px;
   width: 100%;
   margin-top: 0.5rem;
 }
@@ -232,12 +232,22 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .storage-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.storage-header span:first-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80%;
+  padding-right: 0.5rem;
 }
 
 .storage-name {
@@ -297,18 +307,32 @@ h2 {
   table-layout: fixed;
 }
 
-.technical-table th:nth-child(1) { width: 18%; }
-.technical-table th:nth-child(2) { width: 22%; }
-.technical-table th:nth-child(3) { width: 40%; }
-.technical-table th:nth-child(4) { width: 20%; }
+.technical-table th,
+.technical-table td {
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
 
 .technical-table th {
+  color: var(--text-secondary); /* Assuming var(--text-muted) is var(--text-secondary) or similar */
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.technical-table th:nth-child(1), .technical-table td:nth-child(1) { width: 12%; } /* PID */
+.technical-table th:nth-child(2), .technical-table td:nth-child(2) { width: 33%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;} /* User */
+.technical-table th:nth-child(3), .technical-table td:nth-child(3) { width: 33%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; } /* Command */
+.technical-table th:nth-child(4), .technical-table td:nth-child(4) { width: 22%; text-align: right; } /* Value */
+
+.technical-table td.pid {
   padding: 0 1rem;
   color: var(--text-secondary);
   font-weight: 500;
   text-transform: uppercase;
   font-size: 0.75rem;
-  letter-spacing: 1px;
 }
 
 .technical-table .val-col {
