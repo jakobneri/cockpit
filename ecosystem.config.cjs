@@ -15,7 +15,7 @@ module.exports = {
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
       env: {
         NODE_ENV: 'production',
-        HUB_URL: 'http://localhost:3000'
+        HUB_URL: 'http://192.168.188.22:3000'
       }
     }
   ]
