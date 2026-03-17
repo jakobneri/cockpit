@@ -137,8 +137,8 @@ app.get('/api/services/:service', async (req, res) => {
     if (isWindows) {
       isActive = true;
     } else if (service === 'nextcloud') {
-      // Docker compose ps usually outputs 'Up' or 'running' for active containers
-      isActive = stdout.includes('Up') || stdout.includes('running');
+      // Docker compose ps outputs 'Up' or 'running', systemctl outputs 'active'
+      isActive = stdout.includes('Up') || stdout.includes('running') || stdout.trim() === 'active';
     } else {
       // systemctl is-active strictly outputs 'active' and cleanly errors if not
       isActive = stdout.trim() === 'active';
