@@ -43,16 +43,17 @@
             <div class="big-metric">
               <div class="metric-header">
                 <span class="label">CPU Usage</span>
-                <span class="value" id="cpu-load">--</span><span class="unit">%</span>
+                <div><span class="value" id="cpu-load">--</span><span class="unit">%</span></div>
               </div>
               <div class="chart-container"><canvas id="cpuChart"></canvas></div>
+              <span class="detail">System Load</span> 
             </div>
 
             <!-- RAM -->
             <div class="big-metric">
               <div class="metric-header">
                 <span class="label">Memory</span>
-                <span class="value" id="ram-usage">--</span><span class="unit">%</span>
+                <div><span class="value" id="ram-usage">--</span><span class="unit">%</span></div>
               </div>
               <div class="chart-container"><canvas id="ramChart"></canvas></div>
               <span class="detail" id="ram-detail">-- / -- GB</span>
@@ -64,6 +65,7 @@
                 <span class="label">Network Activity (Tx: <span id="net-tx">0</span> / Rx: <span id="net-rx">0</span> KB/s)</span>
               </div>
               <div class="chart-container"><canvas id="netChart"></canvas></div>
+              <span class="detail">Realtime Traffic</span>
             </div>
           </div>
 
@@ -93,7 +95,7 @@
     </div>
 
     <!-- Logs Modal -->
-    <div id="logsModal" class="modal">
+    <div id="logs-modal" class="modal">
       <div class="modal-content glass">
         <div class="modal-header">
           <h2 id="modalTitle">Service Logs</h2>
@@ -105,7 +107,7 @@
       </div>
     </div>
       <footer>
-        <p>nerifeige.de hub <span class="version-tag">v2.1.6</span></p>
+        <p>nerifeige.de hub <span class="version-tag">v2.1.7</span></p>
       </footer>
 
     </div>

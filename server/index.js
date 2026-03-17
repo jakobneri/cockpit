@@ -178,6 +178,6 @@ setInterval(() => runAutoUpdate(), 1 * 60 * 1000);
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 nerifeige.de hub v2.1.6 running on http://localhost:${PORT}`);
+  console.log(`\n🚀 nerifeige.de hub v2.1.7 running on http://localhost:${PORT}`);
   log.info(`Ready to receive reports at /api/report\n`);
 });
