@@ -164,9 +164,16 @@ async function fetchFleet() {
     if (currentView === 'overview') {
       document.getElementById('header-hostname').textContent = 'nerifeige.de hub';
       document.title = 'nerifeige.de Cockpit';
+      
+      const osInfo = document.getElementById('os-info');
+      if (osInfo && data.hubSystem) {
+        osInfo.style.display = 'block';
+        const model = data.hubSystem.model || 'Hub System';
+        osInfo.textContent = `${model} | Running ${data.hubSystem.os || 'Linux'} | Uptime: ${formatUptime(data.hubSystem.uptime)}`;
+      }
     }
 
-    renderFleet(data.servers);
+    renderFleet(data.servers || {});
   } catch (err) {
     console.error('Error fetching fleet:', err);
   }
@@ -185,9 +192,12 @@ function renderFleet(servers) {
     const isOnline = (Date.now() - data.lastReport) < 15000;
     return `
       <div class="card glass node-card" onclick="openDetails('${hostname}')">
-        <div class="node-header">
-          <span class="node-hostname">${hostname}</span>
-          <div class="heartbeat ${isOnline ? 'active' : 'error'}"></div>
+        <div class="node-header" style="align-items: flex-start;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span class="node-hostname">${hostname}</span>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Linux Node'}</span>
+          </div>
+          <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
         </div>
         <div class="node-metrics">
           <div class="mini-metric">
@@ -233,7 +243,8 @@ async function fetchNodeStats() {
     const osInfo = document.getElementById('os-info');
     if (osInfo) {
       osInfo.style.display = 'block';
-      osInfo.textContent = `Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+      const model = data.model || 'Unknown System';
+      osInfo.textContent = `${model} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
     }
 
     // Populate initial history if charts are fresh
@@ -318,8 +329,7 @@ window.showOverview = () => {
   document.getElementById('view-overview').style.display = 'block';
   document.getElementById('view-details').style.display = 'none';
   
-  const osInfo = document.getElementById('os-info');
-  if (osInfo) osInfo.style.display = 'none';
+  // os-info is handled inside fetchFleet for overview
   
   if (statsTimer) clearInterval(statsTimer);
   fetchFleet();

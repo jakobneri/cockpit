@@ -114,7 +114,22 @@ app.post('/api/active', (req, res) => {
 });
 
 app.get('/api/fleet', (req, res) => {
-  res.json({ hubHostname: os.hostname(), servers });
+  const isPi = process.platform === 'linux' && fs.existsSync('/proc/device-tree/model');
+  let model = os.platform() === 'win32' ? 'Windows Hub' : 'Linux Hub';
+  if (isPi) {
+    try { model = fs.readFileSync('/proc/device-tree/model', 'utf8').replace(/\u0000/g, '') || 'Raspberry Pi Hub'; }
+    catch { model = 'Raspberry Pi Hub'; }
+  }
+  
+  res.json({ 
+    hubHostname: os.hostname(), 
+    hubSystem: {
+      model,
+      os: os.platform(),
+      uptime: os.uptime()
+    },
+    servers 
+  });
 });
 
 app.get('/api/stats/:hostname', (req, res) => {
