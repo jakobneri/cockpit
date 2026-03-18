@@ -1,4 +1,4 @@
-# 🚀 Pi Cockpit v2.0.0
+# 🚀 Pi Cockpit v2.1.4
 
 A highly performant, distributed, and beautiful monitoring dashboard for your Raspberry Pi server farm or homelab.
 
