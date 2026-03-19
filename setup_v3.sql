@@ -79,6 +79,7 @@ AND table_name LIKE 'metrics_%';
 -- 5. Permissions
 GRANT ALL ON TABLE clients TO cockpit_user;
 GRANT ALL ON FUNCTION report_client_metrics(jsonb) TO cockpit_user;
+GRANT ALL ON FUNCTION report_client_metrics(text, jsonb, jsonb, timestamptz) TO cockpit_user;
 GRANT ALL ON fleet_tables TO cockpit_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cockpit_user;
 
