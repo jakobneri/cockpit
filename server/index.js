@@ -160,6 +160,20 @@ app.get('/api/stats/:hostname', async (req, res) => {
     const histRes = await fetch(`${DB_URL}/${tableName}?limit=200&order=recorded_at.desc`);
     const historyData = await histRes.json();
     
+    // Fetch client metadata
+    let model = 'Unknown System';
+    let osPlatform = 'Linux';
+    try {
+      const metaRes = await fetch(`${DB_URL}/clients?hostname=eq.${hostname}&select=system_info`);
+      if (metaRes.ok) {
+        const [meta] = await metaRes.json();
+        if (meta?.system_info) {
+          model = meta.system_info.model || model;
+          osPlatform = meta.system_info.platform || osPlatform;
+        }
+      }
+    } catch (e) {}
+
     const history = historyData.reverse().map(h => ({
       cpu: h.data?.cpu?.load || 0,
       ram: h.data?.memory?.percent || 0,
@@ -170,6 +184,8 @@ app.get('/api/stats/:hostname', async (req, res) => {
 
     res.json({ 
       hostname, 
+      model,
+      os: osPlatform,
       ...latest.data, 
       history,
       lastReport: new Date(latest.recorded_at).getTime()
