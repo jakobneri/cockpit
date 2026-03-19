@@ -63,7 +63,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION report_client_metrics(
     hostname TEXT,
     stats JSONB,
-    system_info JSONB,
+    system_info JSONB DEFAULT '{}'::jsonb,
     reported_at TIMESTAMPTZ DEFAULT NOW()
 ) RETURNS jsonb AS $$
 BEGIN

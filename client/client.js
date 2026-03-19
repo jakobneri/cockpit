@@ -51,7 +51,7 @@ if (system.isLinux) {
   system.model = 'Windows PC';
 }
 
-log.info(`Cockpit Client v3.3.0 starting on ${HOSTNAME}`);
+log.info(`Cockpit Client v3.3.20 starting on ${HOSTNAME}`);
 log.info(`System: ${system.model} (${system.platform})`);
 log.info(`PostgREST endpoint: ${DB_URL}`);
 
@@ -146,14 +146,15 @@ async function getNetwork() {
       return { tx_sec, rx_sec };
     } else if (system.isWindows) {
       try {
-        const { stdout } = await execAsync('powershell "Get-NetAdapterStatistics | Select-Object ReceivedBytes, SentBytes | ConvertTo-Json"');
-        const stats = JSON.parse(stdout);
-        const data = Array.isArray(stats) ? stats : [stats];
-        let totalRx = 0, totalTx = 0;
-        data.forEach(s => {
-          totalRx += s.ReceivedBytes || 0;
-          totalTx += s.SentBytes || 0;
-        });
+        const { stdout } = await execAsync('netstat -e');
+        const lines = stdout.split('\n');
+        const bytesLine = lines.find(l => l.includes('Bytes'));
+        if (!bytesLine) return { tx_sec: 0, rx_sec: 0 };
+        
+        const parts = bytesLine.trim().split(/\s+/);
+        const totalRx = parseInt(parts[1]);
+        const totalTx = parseInt(parts[2]);
+
         const now = Date.now();
         const diffSec = (now - lastNetBytes.time) / 1000;
         const rx_sec = diffSec > 0 ? (totalRx - lastNetBytes.rx) / diffSec : 0;
@@ -188,7 +189,7 @@ async function getStorage() {
       };
     } else if (system.isWindows) {
       try {
-        const { stdout } = await execAsync('powershell "Get-Volume | Where-Object {$_.DriveLetter -ne $null} | Select-Object DriveLetter, Size, SizeRemaining, FileSystem | ConvertTo-Json"');
+        const { stdout } = await execAsync('powershell -NoProfile -Command "Get-Volume | Where-Object {$_.DriveLetter -ne $null} | Select-Object DriveLetter, Size, SizeRemaining, FileSystem | ConvertTo-Json"');
         const volumes = JSON.parse(stdout);
         const data = Array.isArray(volumes) ? volumes : [volumes];
         const parsed = data.map(v => ({
@@ -207,53 +208,7 @@ async function getStorage() {
   } catch { return { root: null, smb: null }; }
 }
 
-async function getProcesses() {
-  if (system.isWindows) {
-    try {
-      const { stdout } = await execAsync('powershell "Get-Process | Sort-Object CPU -Descending | Select-Object -First 5 Name, Id, CPU, WorkingSet | ConvertTo-Json"');
-      const procs = JSON.parse(stdout);
-      const data = Array.isArray(procs) ? procs : [procs];
-      const cpuProcs = data.map(p => ({
-        pid: p.Id,
-        user: 'N/A',
-        cpu: (p.CPU || 0).toFixed(1),
-        mem: (p.WorkingSet / 1024 / 1024).toFixed(1),
-        name: p.Name
-      }));
-      const { stdout: mOut } = await execAsync('powershell "Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 5 Name, Id, CPU, WorkingSet | ConvertTo-Json"');
-      const mData = JSON.parse(mOut);
-      const memProcs = (Array.isArray(mData) ? mData : [mData]).map(p => ({
-        pid: p.Id,
-        user: 'N/A',
-        name: p.Name,
-        mem: (p.WorkingSet / 1024 / 1024).toFixed(1)
-      }));
-      return { cpu: cpuProcs, mem: memProcs };
-    } catch (err) {
-      return { cpu: [], mem: [] };
-    }
-  }
-  if (!system.isLinux) return { cpu: [], mem: [] };
-  try {
-    const { stdout } = await execAsync('top -bn1 -o %CPU | head -n 12');
-    const lines = stdout.split('\n');
-    const headerIndex = lines.findIndex(l => l.includes('PID') && l.includes('COMMAND'));
-    if (headerIndex === -1) return { cpu: [], mem: [] };
-    const processLines = lines.slice(headerIndex + 1).filter(l => l.trim().length > 0).slice(0, 5);
-    const cpuProcs = processLines.map(l => {
-      const p = l.trim().split(/\s+/);
-      return { pid: p[0], user: p[1], cpu: p[8], mem: p[9], name: p[11] };
-    });
-    const { stdout: mOut } = await execAsync('ps aux --sort=-%mem | head -6');
-    const mem = mOut.split('\n').slice(1).filter(l => l.trim()).map(l => {
-      const p = l.trim().split(/\s+/);
-      return { pid: p[1], user: p[0], name: p[10].split('/').pop(), mem: p[3] };
-    });
-    return { cpu: cpuProcs, mem };
-  } catch (err) {
-    return { cpu: [], mem: [] };
-  }
-}
+// Removed getProcesses() to save RAM and CPU (was unused in v3.3.x)
 
 let reportCount = 0;
 async function report() {
@@ -269,10 +224,11 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       stats,
-      reported_at: new Date().toISOString()
+      reported_at: new Date().toISOString(),
+      system_info: {} // Always include for database compatibility
     };
 
-    // Only send heavy system info & static metadata on first report or every 120 reports (~10 mins)
+    // Only send full heavy system info & static metadata on first report or every 120 reports (~10 mins)
     if (reportCount % 120 === 0) {
       payload.system_info = system;
       payload.stats.os = system.platform;
@@ -305,7 +261,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.3.11';
+const CLIENT_VERSION = '3.3.20';
 
 setInterval(report, POLL_INTERVAL);
 report();
