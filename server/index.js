@@ -43,7 +43,7 @@ const authMiddleware = (req, res, next) => {
     return next();
   }
   
-  log.warn(`Blocked unauthorized access attempt from ${clientIp}`);
+  log.warn(`Blocked unauthorized access attempt from IP: [${clientIp}]`);
   res.status(401).send('<h1>401 Unauthorized</h1><p>Please provide a valid token.</p>');
 };
 
@@ -189,7 +189,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n🚀 cockpit hub v3.3.12 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
+    console.log(`\n🚀 cockpit hub v3.3.13 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
