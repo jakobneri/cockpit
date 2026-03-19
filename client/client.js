@@ -283,7 +283,10 @@ async function report() {
     // V3: Report to PostgREST RPC function
     const response = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'params=single-object'
+      },
       body: jsonPayload
     });
 
@@ -299,7 +302,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.2.9';
+const CLIENT_VERSION = '3.3.2';
 
 setInterval(report, POLL_INTERVAL);
 report();

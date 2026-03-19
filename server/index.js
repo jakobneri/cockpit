@@ -109,14 +109,14 @@ app.get('/api/stats/:hostname', async (req, res) => {
     const tableName = 'metrics_' + hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
     
     // Fetch latest entry from the specific metrics table
-    const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=timestamp.desc`);
+    const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=recorded_at.desc`);
     if (!response.ok) return res.status(404).json({ error: 'Node data not found' });
     
     const [latest] = await response.json();
     if (!latest) return res.status(404).json({ error: 'No stats yet' });
 
     // Fetch history (last 60)
-    const histRes = await fetch(`${DB_URL}/${tableName}?limit=60&order=timestamp.desc`);
+    const histRes = await fetch(`${DB_URL}/${tableName}?limit=60&order=recorded_at.desc`);
     const historyData = await histRes.json();
     
     const history = historyData.reverse().map(h => ({
@@ -124,14 +124,14 @@ app.get('/api/stats/:hostname', async (req, res) => {
       ram: h.data?.memory?.percent || 0,
       tx: h.data?.network?.tx_sec || 0,
       rx: h.data?.network?.rx_sec || 0,
-      time: new Date(h.timestamp).getTime()
+      time: new Date(h.recorded_at).getTime()
     }));
 
     res.json({ 
       hostname, 
       ...latest.data, 
       history,
-      lastReport: new Date(latest.timestamp).getTime()
+      lastReport: new Date(latest.recorded_at).getTime()
     });
   } catch (err) {
     log.error(`Stats fetch failed: ${err.message}`);
@@ -172,7 +172,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.3.0 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.3.2 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);

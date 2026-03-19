@@ -9,57 +9,60 @@ CREATE TABLE IF NOT EXISTS clients (
     system_info JSONB
 );
 
--- 2. Drop ALL old overloads of the function (cleanup from previous versions)
+-- 2. Drop ALL old overloads of the function
 DROP FUNCTION IF EXISTS report_client_metrics(jsonb);
 DROP FUNCTION IF EXISTS report_client_metrics(text, jsonb, jsonb, timestamptz);
 DROP FUNCTION IF EXISTS report_client_metrics(text, jsonb, jsonb);
 
--- 3. Create the RPC function for reporting metrics
-CREATE OR REPLACE FUNCTION report_client_metrics(
-    hostname TEXT,
-    stats JSONB,
-    system_info JSONB,
-    reported_at TIMESTAMPTZ DEFAULT NOW()
-)
+-- 3. Create the RPC function (single JSONB parameter)
+-- PostgREST will pass the entire request body as one object via Prefer: params=single-object
+CREATE OR REPLACE FUNCTION report_client_metrics(payload JSONB)
 RETURNS jsonb AS $$
 DECLARE
+    v_hostname TEXT;
     v_table_name TEXT;
+    v_stats JSONB;
+    v_system_info JSONB;
 BEGIN
+    v_hostname := payload->>'hostname';
+    v_stats := payload->'stats';
+    v_system_info := payload->'system_info';
+
     -- Sanitize hostname to use as table name
-    v_table_name := 'metrics_' || regexp_replace(lower(hostname), '[^a-z0-9]', '_', 'g');
-    
+    v_table_name := 'metrics_' || regexp_replace(lower(v_hostname), '[^a-z0-9]', '_', 'g');
+
     -- Create the client-specific table if it doesn't exist
     EXECUTE format('CREATE TABLE IF NOT EXISTS %I (
         id SERIAL PRIMARY KEY,
-        timestamp TIMESTAMPTZ DEFAULT NOW(),
+        recorded_at TIMESTAMPTZ DEFAULT NOW(),
         data JSONB
     )', v_table_name);
-    
+
     -- Insert the new metrics
-    EXECUTE format('INSERT INTO %I (data, timestamp) VALUES (%L, %L)', v_table_name, stats, reported_at);
-    
+    EXECUTE format('INSERT INTO %I (data) VALUES (%L)', v_table_name, v_stats);
+
     -- Update the clients registry
-    INSERT INTO clients (hostname, last_seen, system_info) 
-    VALUES (hostname, NOW(), system_info)
-    ON CONFLICT (hostname) DO UPDATE 
+    INSERT INTO clients (hostname, last_seen, system_info)
+    VALUES (v_hostname, NOW(), v_system_info)
+    ON CONFLICT (hostname) DO UPDATE
     SET last_seen = NOW(), system_info = EXCLUDED.system_info;
-    
+
     RETURN jsonb_build_object('success', true, 'table', v_table_name);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Create a view to list all metrics tables (useful for the Hub)
+-- 4. Create a view to list all metrics tables
 CREATE OR REPLACE VIEW fleet_tables AS
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
 AND table_name LIKE 'metrics_%';
 
--- 4. Set up permissions for the PostgREST role
+-- 5. Permissions
 GRANT ALL ON TABLE clients TO cockpit_user;
 GRANT ALL ON FUNCTION report_client_metrics(jsonb) TO cockpit_user;
 GRANT ALL ON fleet_tables TO cockpit_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cockpit_user;
 
--- 5. Force PostgREST to reload the schema cache
+-- 6. Force PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';
