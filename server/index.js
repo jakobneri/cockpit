@@ -62,6 +62,7 @@ const DB_URL = process.env.DB_URL || 'http://localhost:3000';
 
 app.get('/api/fleet', async (req, res) => {
   try {
+    // Fetch hub info first so we can return it even if DB fails
     const hubHostname = os.hostname();
     const isPi = process.platform === 'linux' && fs.existsSync('/proc/device-tree/model');
     let hubModel = os.platform() === 'win32' ? 'Windows Hub' : 'Linux Hub';
@@ -70,35 +71,40 @@ app.get('/api/fleet', async (req, res) => {
       catch { hubModel = 'Raspberry Pi Hub'; }
     }
 
-    // Fetch clients from PostgREST
-    const response = await fetch(`${DB_URL}/clients?select=*&order=last_seen.desc`);
-    if (!response.ok) throw new Error(`DB fetch failed: ${response.status}`);
-    const clients = await response.json();
+    const hubSystem = {
+      model: hubModel,
+      os: os.platform(),
+      uptime: os.uptime()
+    };
 
-    // Transform into the format expected by the frontend
-    const serverMap = {};
-    clients.forEach(c => {
-      serverMap[c.hostname] = {
-        lastReport: new Date(c.last_seen).getTime(),
-        model: c.system_info?.model || 'Unknown',
-        os: c.system_info?.platform || 'Unknown',
-        ...c.system_info,
-        ...c.latest_metrics // Real-time CPU/RAM stats
-      };
-    });
+    let serverMap = {};
+    try {
+      // Explicitly select columns to avoid "column does not exist" breaking the whole list
+      const response = await fetch(`${DB_URL}/clients?select=hostname,last_seen,system_info,latest_metrics&order=last_seen.desc`);
+      if (response.ok) {
+        const clients = await response.json();
+        clients.forEach(c => {
+          serverMap[c.hostname] = {
+            lastReport: new Date(c.last_seen).getTime(),
+            model: c.system_info?.model || 'Unknown',
+            os: c.system_info?.platform || 'Unknown',
+            ...c.system_info,
+            ...(c.latest_metrics || {}) 
+          };
+        });
+      }
+    } catch (dbErr) {
+      log.warn(`DB partial failure in fleet: ${dbErr.message}`);
+    }
 
     res.json({ 
       hubHostname, 
-      hubSystem: {
-        model: hubModel,
-        os: os.platform(),
-        uptime: os.uptime()
-      },
+      hubSystem,
       servers: serverMap 
     });
   } catch (err) {
-    log.error(`Fleet fetch failed: ${err.message}`);
-    res.status(500).json({ error: 'Database unreachable' });
+    log.error(`Top-level fleet fetch failed: ${err.message}`);
+    res.status(500).json({ error: 'Hub internal error' });
   }
 });
 
@@ -182,7 +188,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n🚀 cockpit hub v3.3.10 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
+    console.log(`\n🚀 cockpit hub v3.3.11 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
