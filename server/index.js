@@ -11,8 +11,8 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// GLOBAL LOGGING UTILITY (V3.3.6)
-const log = {
+// GLOBAL LOGGING UTILITY (V3.3.7)
+globalThis.log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
   warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
@@ -20,6 +20,8 @@ const log = {
   report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📡 ${msg}`),
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
+
+const log = globalThis.log;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -172,7 +174,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.3.6 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.3.7 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);
