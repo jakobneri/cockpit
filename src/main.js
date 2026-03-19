@@ -336,15 +336,20 @@ function renderHistoryTable(history) {
   // Clone history and reverse it to show newest first for the table
   const tableData = [...history].reverse();
   
-  tbody.innerHTML = tableData.map(h => `
-    <tr>
-      <td style="color: var(--text-secondary); font-family: monospace;">${new Date(h.time).toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-      <td style="font-weight: 600;">${h.cpu}%</td>
-      <td style="color: var(--accent-purple); font-weight: 600;">${h.ram}%</td>
-      <td style="color: var(--accent-orange);">${(h.rx / 1024).toFixed(1)} KB/s</td>
-      <td style="color: var(--accent-green);">${(h.tx / 1024).toFixed(1)} KB/s</td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = tableData.map(h => {
+    const date = h.time ? new Date(h.time) : null;
+    const timeStr = (date && !isNaN(date)) ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '---';
+    
+    return `
+      <tr>
+        <td style="color: var(--text-secondary); font-family: monospace;">${timeStr}</td>
+        <td style="font-weight: 600;">${h.cpu}%</td>
+        <td style="color: var(--accent-purple); font-weight: 600;">${h.ram}%</td>
+        <td style="color: var(--accent-orange);">${(h.rx / 1024).toFixed(1)} KB/s</td>
+        <td style="color: var(--accent-green);">${(h.tx / 1024).toFixed(1)} KB/s</td>
+      </tr>
+    `;
+  }).join('');
 }
 
 window.openDetails = (hostname) => {

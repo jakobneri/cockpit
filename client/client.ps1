@@ -45,10 +45,18 @@ while ($true) {
     $stPct = [Math]::Round(($stUsed / $stTotal) * 100)
 
     # Construct JSON
+    # Gather System Info
+    $model = (Get-CimInstance Win32_ComputerSystem).Model
+    if (!$model) { $model = "Windows PC" }
+
     $payload = @{
         hostname = $HOSTNAME
         reported_at = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-        system_info = @{}
+        system_info = @{
+            model = $model
+            platform = "windows"
+            version = "4.0.1"
+        }
         stats = @{
             cpu = @{ load = [int]$cpu; temp = 0 }
             memory = @{ total = $totalMem; used = $usedMem; percent = $memPct }

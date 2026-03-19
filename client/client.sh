@@ -9,7 +9,15 @@ INTERVAL=5
 
 log() { echo "[$(date +'%H:%M:%S')] $1"; }
 
-log "Starting Cockpit Bash Client on $HOSTNAME"
+# Auto-detect System Info
+MODEL="Linux Node"
+if [ -f /proc/device-tree/model ]; then
+    MODEL=$(cat /proc/device-tree/model | tr -d '\0')
+elif [ -f /sys/class/dmi/id/product_name ]; then
+    MODEL=$(cat /sys/class/dmi/id/product_name)
+fi
+
+log "Starting Cockpit Bash Client on $HOSTNAME ($MODEL)"
 log "DB URL: $DB_URL"
 
 # Initialize network counters
@@ -61,7 +69,11 @@ while true; do
 {
   "hostname": "$HOSTNAME",
   "reported_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "system_info": {},
+  "system_info": {
+    "model": "$MODEL",
+    "platform": "linux",
+    "version": "4.0.1"
+  },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },
     "memory": { "total": $mem_total, "used": $mem_used, "percent": $mem_pct },
