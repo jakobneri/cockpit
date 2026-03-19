@@ -51,7 +51,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. Create a view to list all metrics tables
+-- 4. Compatibility Adapter for V3.3.0 Clients (Shotgun Fix)
+-- This allows OLD code to work with the NEW database logic.
+CREATE OR REPLACE FUNCTION report_client_metrics(
+    hostname TEXT,
+    stats JSONB,
+    system_info JSONB,
+    reported_at TIMESTAMPTZ DEFAULT NOW()
+) RETURNS jsonb AS $$
+BEGIN
+    RETURN report_client_metrics(jsonb_build_object(
+        'hostname', hostname,
+        'stats', stats,
+        'system_info', system_info,
+        'reported_at', reported_at
+    ));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. Create a view to list all metrics tables
 CREATE OR REPLACE VIEW fleet_tables AS
 SELECT table_name
 FROM information_schema.tables
