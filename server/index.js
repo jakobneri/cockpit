@@ -22,6 +22,7 @@ const log = {
 };
 
 const app = express();
+app.set('trust proxy', true); // Support X-Forwarded-For headers
 const PORT = process.env.PORT || 3000;
 const HUB_PASSWORD = process.env.HUB_PASSWORD || 'test123';
 const PROXY_IP = '192.168.178.187';
@@ -188,7 +189,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n🚀 cockpit hub v3.3.11 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
+    console.log(`\n🚀 cockpit hub v3.3.12 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
