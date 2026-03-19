@@ -255,8 +255,7 @@ async function getProcesses() {
   }
 }
 
-// ── Main Loop ──
-
+let reportCount = 0;
 async function report() {
   try {
     const stats = {
@@ -264,18 +263,22 @@ async function report() {
       memory: getMemory(),
       network: await getNetwork(),
       storage: await getStorage(),
-      processes: await getProcesses(),
-      uptime: os.uptime(),
-      os: system.platform,
-      model: system.model
+      uptime: os.uptime()
     };
 
     const payload = {
       hostname: HOSTNAME,
       stats,
-      system_info: system,
       reported_at: new Date().toISOString()
     };
+
+    // Only send heavy system info & static metadata on first report or every 120 reports (~10 mins)
+    if (reportCount % 120 === 0) {
+      payload.system_info = system;
+      payload.stats.os = system.platform;
+      payload.stats.model = system.model;
+    }
+    reportCount++;
 
     const jsonPayload = JSON.stringify(payload);
     const bytesSent = Buffer.byteLength(jsonPayload);
@@ -302,7 +305,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.3.10';
+const CLIENT_VERSION = '3.3.11';
 
 setInterval(report, POLL_INTERVAL);
 report();

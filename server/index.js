@@ -189,7 +189,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n🚀 cockpit hub v3.3.16 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
+    console.log(`\n🚀 cockpit hub v3.3.17 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
