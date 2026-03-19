@@ -737,6 +737,70 @@ footer .version-tag {
   font-size: 0.8rem;
 }
 
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  padding: 4px;
+  gap: 4px;
+  border-radius: 12px;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 6px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* History Table */
+.history-table-container {
+  max-height: 500px;
+  overflow-y: auto;
+  margin-top: 1rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.history-table {
+  border-spacing: 0;
+  margin-top: 0;
+}
+
+.history-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #1e293b;
+}
+
+.history-table th {
+  padding: 1rem;
+  background: #1e293b;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-table td {
+  padding: 0.75rem 1rem;
+}
+
+.history-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
 @media (max-width: 900px) {
   .dashboard {
     grid-template-columns: 1fr;

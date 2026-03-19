@@ -121,8 +121,8 @@ app.get('/api/stats/:hostname', async (req, res) => {
     const [latest] = await response.json();
     if (!latest) return res.status(404).json({ error: 'No stats yet' });
 
-    // Fetch history (last 60)
-    const histRes = await fetch(`${DB_URL}/${tableName}?limit=60&order=recorded_at.desc`);
+    // Fetch history (last 200)
+    const histRes = await fetch(`${DB_URL}/${tableName}?limit=200&order=recorded_at.desc`);
     const historyData = await histRes.json();
     
     const history = historyData.reverse().map(h => ({

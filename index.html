@@ -32,12 +32,19 @@
       </div>
 
       <main id="view-details" class="view" style="display: none;">
-        <button class="back-btn" onclick="showOverview()">
-          <span>←</span> Back to Fleet
-        </button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <button class="back-btn" onclick="showOverview()" style="margin-bottom: 0;">
+            <span>←</span> Back to Fleet
+          </button>
+          
+          <div class="view-toggle glass">
+            <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">📈 Charts</button>
+            <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">📄 Raw Data</button>
+          </div>
+        </div>
 
-        <!-- Big Box Stats -->
-        <section class="card glass">
+        <!-- Big Box Stats (Charts) -->
+        <section id="details-charts" class="card glass">
           <div class="metrics-big-box">
             <!-- CPU -->
             <div class="big-metric">
@@ -80,6 +87,27 @@
               <div class="progress-bar"><div class="progress-fill" id="root-bar"></div></div>
               <span class="detail" id="root-detail">-- / -- GB</span>
             </div>
+          </div>
+        </section>
+
+        <!-- Raw History Table (Hidden by default) -->
+        <section id="details-raw" class="card glass" style="display: none;">
+          <h3><span class="icon">📜</span> Raw History (Last 200 Logs)</h3>
+          <div class="history-table-container">
+            <table class="technical-table history-table">
+              <thead>
+                <tr>
+                  <th style="width: 180px;">Timestamp</th>
+                  <th>CPU %</th>
+                  <th>RAM %</th>
+                  <th>Down (Rx)</th>
+                  <th>Up (Tx)</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <!-- Rows will appear here -->
+              </tbody>
+            </table>
           </div>
         </section>
       </main>

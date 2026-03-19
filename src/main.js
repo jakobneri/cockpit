@@ -4,6 +4,7 @@ const REFRESH_INTERVAL_STATS = 5000;
 
 // State
 let currentView = 'overview'; // 'overview' or 'details'
+let detailViewMode = 'chart'; // 'chart' or 'table'
 let selectedHostname = null;
 let statsTimer = null;
 let fleetTimer = null;
@@ -263,6 +264,11 @@ async function fetchNodeStats() {
       netChart?.update('none');
     }
 
+    // Update History Table if in table mode
+    if (data.history && detailViewMode === 'table') {
+      renderHistoryTable(data.history);
+    }
+
     // Metrics
     updateElement('cpu-load', data.cpu.load);
     updateChart(cpuChart, data.cpu.load);
@@ -302,11 +308,53 @@ async function fetchNodeStats() {
 }
 
 // Navigation
+window.setDetailMode = (mode) => {
+  detailViewMode = mode;
+  const chartSect = document.getElementById('details-charts');
+  const rawSect = document.getElementById('details-raw');
+  const btnChart = document.getElementById('btn-chart-view');
+  const btnRaw = document.getElementById('btn-raw-view');
+
+  if (mode === 'chart') {
+    chartSect.style.display = 'block';
+    rawSect.style.display = 'none';
+    btnChart.classList.add('active');
+    btnRaw.classList.remove('active');
+  } else {
+    chartSect.style.display = 'none';
+    rawSect.style.display = 'block';
+    btnChart.classList.remove('active');
+    btnRaw.classList.add('active');
+    fetchNodeStats(); // Trigger immediate refresh for table
+  }
+};
+
+function renderHistoryTable(history) {
+  const tbody = document.getElementById('history-table-body');
+  if (!tbody) return;
+  
+  // Clone history and reverse it to show newest first for the table
+  const tableData = [...history].reverse();
+  
+  tbody.innerHTML = tableData.map(h => `
+    <tr>
+      <td style="color: var(--text-secondary); font-family: monospace;">${new Date(h.time).toLocaleString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
+      <td style="font-weight: 600;">${h.cpu}%</td>
+      <td style="color: var(--accent-purple); font-weight: 600;">${h.ram}%</td>
+      <td style="color: var(--accent-orange);">${(h.rx / 1024).toFixed(1)} KB/s</td>
+      <td style="color: var(--accent-green);">${(h.tx / 1024).toFixed(1)} KB/s</td>
+    </tr>
+  `).join('');
+}
+
 window.openDetails = (hostname) => {
   selectedHostname = hostname;
   currentView = 'details';
   document.getElementById('view-overview').style.display = 'none';
   document.getElementById('view-details').style.display = 'grid';
+  
+  // Reset to chart view when opening new node
+  setDetailMode('chart');
   
   createCharts(); // Re-init charts for this node
   fetchNodeStats();
