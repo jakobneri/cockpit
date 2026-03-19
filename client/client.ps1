@@ -20,13 +20,14 @@ $lastTime = Get-Date
 while ($true) {
     # 1. CPU Load
     $cpu = Get-CimInstance Win32_Processor | Measure-Object -Property LoadPercentage -Average | Select-Object -ExpandProperty Average
+    $cpu = [Math]::Round($cpu, 1)
     
     # 2. Memory
-    $os = Get-CimInstance Win32_OperatingSystem
-    $totalMem = [int64]$os.TotalVisibleMemorySize * 1024
-    $freeMem = [int64]$os.FreePhysicalMemory * 1024
+    $osInfo = Get-CimInstance Win32_OperatingSystem
+    $totalMem = [int64]$osInfo.TotalVisibleMemorySize * 1024
+    $freeMem = [int64]$osInfo.FreePhysicalMemory * 1024
     $usedMem = $totalMem - $freeMem
-    $memPct = [Math]::Round(($usedMem / $totalMem) * 100)
+    $memPct = [Math]::Round(($usedMem / $totalMem) * 100, 1)
 
     # 3. Network
     $netStats = netstat -e | Select-String "Bytes"
@@ -34,15 +35,15 @@ while ($true) {
     $tx2 = [int64]($netStats -split '\s+')[2]
     $now = Get-Date
     $diff = ($now - $lastTime).TotalSeconds
-    $rxSec = if ($diff -gt 0) { [Math]::Round(($rx2 - $rx1) / $diff) } else { 0 }
-    $txSec = if ($diff -gt 0) { [Math]::Round(($tx2 - $tx1) / $diff) } else { 0 }
+    $rxSec = if ($diff -gt 0) { [Math]::Round(($rx2 - $rx1) / $diff / 1024, 1) } else { 0 }
+    $txSec = if ($diff -gt 0) { [Math]::Round(($tx2 - $tx1) / $diff / 1024, 1) } else { 0 }
     $rx1 = $rx2; $tx1 = $tx2; $lastTime = $now
 
     # 4. Storage (Root C:)
     $vol = Get-Volume -DriveLetter C | Select-Object Size, SizeRemaining
     $stTotal = $vol.Size
     $stUsed = $vol.Size - $vol.SizeRemaining
-    $stPct = [Math]::Round(($stUsed / $stTotal) * 100)
+    $stPct = [Math]::Round(($stUsed / $stTotal) * 100, 1)
 
     # Construct JSON
     # Gather System Info
@@ -55,10 +56,10 @@ while ($true) {
         system_info = @{
             model = $model
             platform = "windows"
-            version = "4.0.2"
+            version = "4.0.3"
         }
         stats = @{
-            cpu = @{ load = [int]$cpu; temp = 0 }
+            cpu = @{ load = $cpu; temp = 0 }
             memory = @{ total = $totalMem; used = $usedMem; percent = $memPct }
             network = @{ rx_sec = $rxSec; tx_sec = $txSec }
             storage = @{ root = @{ total = $stTotal; used = $stUsed; percent = $stPct } }

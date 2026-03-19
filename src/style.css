@@ -775,6 +775,29 @@ footer .version-tag {
   background: rgba(0, 0, 0, 0.2);
 }
 
+/* Custom Scrollbar */
+.history-table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.history-table-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 12px 12px 0;
+}
+
+.history-table-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.history-table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
 .history-table {
   border-spacing: 0;
   margin-top: 0;

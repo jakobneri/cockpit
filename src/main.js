@@ -51,11 +51,28 @@ const chartOptions = {
       border: { display: false }
     }
   },
-  plugins: { legend: { display: false }, tooltip: { enabled: true } },
+  plugins: { 
+    legend: { display: false }, 
+    tooltip: { 
+      enabled: true,
+      mode: 'index',
+      intersect: false,
+      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+      titleColor: '#94a3b8',
+      bodyColor: '#fff',
+      borderColor: 'rgba(255,255,255,0.1)',
+      borderWidth: 1,
+      padding: 10,
+      displayColors: true,
+      callbacks: {
+        label: (ctx) => ` ${ctx.dataset.label || 'Value'}: ${ctx.parsed.y}${ctx.dataset.label?.includes('Network') ? ' KB/s' : '%'}`
+      }
+    } 
+  },
   animation: { duration: 400 },
   elements: {
     line: { tension: 0.4, borderWidth: 2.5 },
-    point: { radius: 0, hoverRadius: 3 }
+    point: { radius: 0, hoverRadius: 4 }
   },
   layout: { padding: { left: 0, right: 4, top: 4, bottom: 0 } }
 };
@@ -146,12 +163,15 @@ function createCharts() {
   }
 }
 
-function updateChart(chart, newValue) {
+function updateChart(chart, newValue, label = '') {
   if (!chart) return;
   const data = chart.data.datasets[0].data;
+  const labels = chart.data.labels;
   data.push(newValue);
   data.shift();
-  chart.update();
+  labels.push(label);
+  labels.shift();
+  chart.update('none');
 }
 
 /** ── Fleet Overview Logic ── **/
@@ -250,12 +270,16 @@ async function fetchNodeStats() {
 
     // Populate initial history if charts are fresh
     if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
-      const hist = data.history.slice(-maxDataPoints);
-      const padding = maxDataPoints - hist.length;
+      const labels = [...Array(padding).fill(''), ...hist.map(h => new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))];
       
+      cpuChart.data.labels = labels;
       cpuChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.cpu)];
+      
+      ramChart.data.labels = labels;
       ramChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.ram)];
+      
       if (netChart) {
+        netChart.data.labels = labels;
         netChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.rx / 1024).toFixed(1)))];
         netChart.data.datasets[1].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.tx / 1024).toFixed(1)))];
       }
@@ -269,12 +293,14 @@ async function fetchNodeStats() {
       renderHistoryTable(data.history);
     }
 
+    const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
     // Metrics
     updateElement('cpu-load', data.cpu.load);
-    updateChart(cpuChart, data.cpu.load);
+    updateChart(cpuChart, data.cpu.load, timeLabel);
 
     updateElement('ram-usage', data.memory.percent);
-    updateChart(ramChart, data.memory.percent);
+    updateChart(ramChart, data.memory.percent, timeLabel);
     updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
 
     if (data.network && netChart) {
@@ -286,11 +312,17 @@ async function fetchNodeStats() {
       // Update dual dataset chart (Rx is set 0, Tx is set 1)
       const rxData = netChart.data.datasets[0].data;
       const txData = netChart.data.datasets[1].data;
+      const netLabels = netChart.data.labels;
+      
       rxData.push(parseFloat(rxKB));
       txData.push(parseFloat(txKB));
+      netLabels.push(timeLabel);
+      
       rxData.shift();
       txData.shift();
-      netChart.update();
+      netLabels.shift();
+      
+      netChart.update('none');
     }
 
     // Storage

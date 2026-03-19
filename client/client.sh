@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cockpit Native Client v3.3.20 (Bash Version)
+# Cockpit Native Client v4.0.3 (Bash Version)
 # Zero-dependency monitoring for Linux / Raspberry Pi
 
 DB_URL="${DB_URL:-http://localhost:3000}"
@@ -21,23 +21,33 @@ log "Starting Cockpit Bash Client on $HOSTNAME ($MODEL)"
 log "DB URL: $DB_URL"
 
 # Initialize network counters
-read -r _ rx1 _ _ _ _ _ _ tx1 _ < <(grep "eth0\|wlan0\|enp" /proc/net/dev | head -1 | sed 's/:/ /')
-last_time=$(date +%s)
+IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+[ -z "$IFACE" ] && IFACE="eth0"
+
+read -r rx1 tx1 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
+last_time=$(date +%s.%N)
+
+# Initialize CPU counters
+read -r _ u n s i io _ _ _ < /proc/stat
+prev_total=$((u+n+s+i+io))
+prev_idle=$((i+io))
 
 while true; do
-    # 1. CPU Load
+    sleep $INTERVAL
+    
+    # 1. CPU Load (Delta over INTERVAL)
     read -r _ u n s i io _ _ _ < /proc/stat
     total=$((u+n+s+i+io))
     idle=$((i+io))
     
-    sleep 1 # Measurment window
-    
-    read -r _ u n s i io _ _ _ < /proc/stat
-    total2=$((u+n+s+i+io))
-    idle2=$((i+io))
-    
-    cpu_load=$(( 100 * ( (total2 - total) - (idle2 - idle) ) / (total2 - total) ))
-    
+    cpu_load=$(echo "$total $prev_total $idle $prev_idle" | awk '{
+        diff_total = $1 - $2;
+        diff_idle = $3 - $4;
+        if (diff_total > 0) printf "%.1f", 100 * (diff_total - diff_idle) / diff_total;
+        else print "0.0"
+    }')
+    prev_total=$total; prev_idle=$idle
+
     # 2. Temperature
     temp=0
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
@@ -48,21 +58,23 @@ while true; do
     mem_total=$(grep MemTotal /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
     mem_avail=$(grep MemAvailable /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
     mem_used=$((mem_total - mem_avail))
-    mem_pct=$(( 100 * mem_used / mem_total ))
+    mem_pct=$(echo "$mem_used $mem_total" | awk '{if($2>0) printf "%.1f", 100 * $1 / $2; else print "0.0"}')
 
-    # 4. Network
-    read -r _ rx2 _ _ _ _ _ _ tx2 _ < <(grep "eth0\|wlan0\|enp" /proc/net/dev | head -1 | sed 's/:/ /')
-    now=$(date +%s)
-    diff=$((now - last_time))
-    rx_sec=$(( (rx2 - rx1) / diff ))
-    tx_sec=$(( (tx2 - tx1) / diff ))
+    # 4. Network usage (kB/s)
+    read -r rx2 tx2 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
+    now=$(date +%s.%N)
+    diff=$(echo "$now $last_time" | awk '{print $1 - $2}')
+    
+    rx_sec=$(echo "$rx2 $rx1 $diff" | awk '{if($3>0) printf "%.1f", ($1 - $2) / 1024 / $3; else print "0.0"}')
+    tx_sec=$(echo "$tx2 $tx1 $diff" | awk '{if($3>0) printf "%.1f", ($1 - $2) / 1024 / $3; else print "0.0"}')
+    
     rx1=$rx2; tx1=$tx2; last_time=$now
 
     # 5. Storage (Root)
     df_out=$(df -B1 / | tail -1)
     st_total=$(echo "$df_out" | awk '{print $2}')
     st_used=$(echo "$df_out" | awk '{print $3}')
-    st_pct=$(echo "$df_out" | awk '{print $5}' | tr -d '%')
+    st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
 
     # Construct JSON
     json_payload=$(cat <<EOF
@@ -72,7 +84,7 @@ while true; do
   "system_info": {
     "model": "$MODEL",
     "platform": "linux",
-    "version": "4.0.2"
+    "version": "4.0.3"
   },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },
@@ -96,6 +108,4 @@ EOF
     else
         log "❌ Reporting failed"
     fi
-
-    sleep $((INTERVAL - 1))
 done
