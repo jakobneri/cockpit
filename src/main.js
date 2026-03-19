@@ -264,8 +264,8 @@ async function fetchNodeStats() {
       netChart?.update('none');
     }
 
-    // Update History Table if in table mode
-    if (data.history && detailViewMode === 'table') {
+    // Update History Table if in raw mode
+    if (data.history && detailViewMode === 'raw') {
       renderHistoryTable(data.history);
     }
 
