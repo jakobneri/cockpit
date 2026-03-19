@@ -37,8 +37,8 @@ while true; do
     fi
 
     # 3. Memory
-    mem_total=$(grep MemTotal /proc/meminfo | awk '{print $2 * 1024}')
-    mem_avail=$(grep MemAvailable /proc/meminfo | awk '{print $2 * 1024}')
+    mem_total=$(grep MemTotal /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
+    mem_avail=$(grep MemAvailable /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
     mem_used=$((mem_total - mem_avail))
     mem_pct=$(( 100 * mem_used / mem_total ))
 
