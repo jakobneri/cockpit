@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "2.2.0",
+  "version": "3.3.0",
   "description": "Multi-node Raspberry Pi Monitoring Dashboard",
   "main": "server/index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "hub": "node server/index.js",
-    "agent": "node agent/agent.js",
+    "client": "node client/client.js",
     "start": "npm run hub"
   },
   "repository": {
