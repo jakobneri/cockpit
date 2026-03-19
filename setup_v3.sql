@@ -53,6 +53,8 @@ FROM information_schema.tables
 WHERE table_schema = 'public' 
 AND table_name LIKE 'metrics_%';
 
--- 4. Set up permissions (Adjust as needed for your PostgREST role)
--- GRANT ALL ON TABLE clients TO postgres;
--- GRANT ALL ON FUNCTION report_client_metrics(jsonb) TO postgres;
+-- 4. Set up permissions for the PostgREST role
+GRANT ALL ON TABLE clients TO cockpit_user;
+GRANT ALL ON FUNCTION report_client_metrics(jsonb) TO cockpit_user;
+GRANT ALL ON fleet_tables TO cockpit_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cockpit_user;

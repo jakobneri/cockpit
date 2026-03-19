@@ -15,6 +15,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HUB_PASSWORD = process.env.HUB_PASSWORD || 'change-me'; // SET THIS IN YOUR ENVIRONMENT
 
+// Logging Utility
+const log = {
+  info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
+  success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
+  warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
+  error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
+  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📡 ${msg}`),
+  update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
+};
+
 // Security Middleware: Simple Password Check
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -154,6 +164,6 @@ setInterval(() => runAutoUpdate(), 10 * 60 * 1000); // 10 minutes frequency
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 cockpit hub v3.0.0 running on http://localhost:${PORT}`);
+  console.log(`\n🚀 cockpit hub v3.2.1 running on http://localhost:${PORT}`);
   log.info(`Reading data from PostgREST at ${DB_URL}\n`);
 });
