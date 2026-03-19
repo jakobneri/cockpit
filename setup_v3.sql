@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE OR REPLACE FUNCTION report_client_metrics(
     hostname TEXT,
     stats JSONB,
-    systemInfo JSONB,
+    system_info JSONB,
     reported_at TIMESTAMPTZ DEFAULT NOW()
 )
 RETURNS jsonb AS $$
@@ -35,7 +35,7 @@ BEGIN
     
     -- Update the clients registry
     INSERT INTO clients (hostname, last_seen, system_info) 
-    VALUES (hostname, NOW(), systemInfo)
+    VALUES (hostname, NOW(), system_info)
     ON CONFLICT (hostname) DO UPDATE 
     SET last_seen = NOW(), system_info = EXCLUDED.system_info;
     

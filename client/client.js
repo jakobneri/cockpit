@@ -51,7 +51,7 @@ if (system.isLinux) {
   system.model = 'Windows PC';
 }
 
-log.info(`Cockpit Client v3.0.0 starting on ${HOSTNAME}`);
+log.info(`Cockpit Client v3.3.0 starting on ${HOSTNAME}`);
 log.info(`System: ${system.model} (${system.platform})`);
 log.info(`PostgREST endpoint: ${DB_URL}`);
 
@@ -273,7 +273,7 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       stats,
-      systemInfo: system,
+      system_info: system,
       reported_at: new Date().toISOString()
     };
 
