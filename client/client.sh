@@ -72,7 +72,7 @@ while true; do
   "system_info": {
     "model": "$MODEL",
     "platform": "linux",
-    "version": "4.0.1"
+    "version": "4.0.2"
   },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },

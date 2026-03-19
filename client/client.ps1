@@ -55,7 +55,7 @@ while ($true) {
         system_info = @{
             model = $model
             platform = "windows"
-            version = "4.0.1"
+            version = "4.0.2"
         }
         stats = @{
             cpu = @{ load = [int]$cpu; temp = 0 }

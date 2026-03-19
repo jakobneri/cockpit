@@ -76,6 +76,18 @@ app.use((req, res, next) => {
 // Protect all /api endpoints EXCEPT the ones we decide to leave public (none for now)
 app.use('/api', authMiddleware);
 
+// Admin Update Endpoint (Manually trigger update)
+app.post('/api/admin/update', async (req, res) => {
+  hubLog.info(`Manual update triggered by ${req.ip}`);
+  try {
+    const updated = await runAutoUpdate(true);
+    res.json({ success: true, message: updated ? 'Update started. Hub will restart.' : 'Hub is already up to date.' });
+  } catch (err) {
+    hubLog.error(`Manual update failed: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // ============================================================
@@ -175,29 +187,45 @@ app.post('/api/services/:hostname/:service/:action', (req, res) => {
 });
 
 const runAutoUpdate = async (force = false) => {
-  if (process.platform === 'win32') return;
+  if (process.platform === 'win32') return false;
   try {
+    hubLog.info('Checking for updates...');
     await execAsync('git fetch origin main');
     const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     const count = parseInt(behindCount.trim());
+    
     if (count === 0 && !force) {
-      if (force) hubLog.info('Hub is already up to date.');
+      hubLog.info('Hub is up to date.');
       return false;
     }
-    hubLog.update(`Found ${count} new commits. Pulling...`);
-    await execAsync('git pull origin main');
+
+    hubLog.update(`Found ${count} new commits. Deploying v${count > 0 ? 'next' : 'current (forced)'}...`);
+    
+    // Attempt clean pull
+    try {
+      await execAsync('git pull origin main');
+    } catch (pullErr) {
+      hubLog.warn('Git pull failed, attempting hard reset...');
+      await execAsync('git reset --hard origin/main');
+    }
+
+    hubLog.info('Installing dependencies...');
     await execAsync('npm install --include=dev');
+    
+    hubLog.info('Building frontend...');
     await execAsync('npx vite build');
-    hubLog.success(`Update complete. Restarting Hub...`);
-    setTimeout(() => process.exit(0), 1000);
+    
+    hubLog.success(`Update successful. Restarting process...`);
+    setTimeout(() => process.exit(0), 1500);
     return true;
   } catch (error) { 
-    hubLog.error(`Auto-update failed: ${error.message}`);
+    hubLog.error(`Deployment failed: ${error.message}`);
     return false;
   }
 };
 
-setInterval(() => runAutoUpdate(), 10 * 60 * 1000);
+// Check every 2 minutes for faster updates
+setInterval(() => runAutoUpdate(), 2 * 60 * 1000);
 
 app.listen(PORT, async () => {
   try {
@@ -212,7 +240,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.1${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
