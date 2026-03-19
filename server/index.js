@@ -180,6 +180,9 @@ app.get('/api/stats/:hostname', async (req, res) => {
   }
 });
 
+// Heartbeat to Hub to suppress noisy logs when watching
+app.post('/api/active', (req, res) => res.sendStatus(200));
+
 // Service control endpoints remain similar but might need database-driven command queuing later
 // For now, they return 501 until implemented via DB
 app.post('/api/services/:hostname/:service/:action', (req, res) => {
@@ -240,7 +243,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.3${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }

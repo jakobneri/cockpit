@@ -270,6 +270,8 @@ async function fetchNodeStats() {
 
     // Populate initial history if charts are fresh
     if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
+      const hist = data.history.slice(-maxDataPoints);
+      const padding = maxDataPoints - hist.length;
       const labels = [...Array(padding).fill(''), ...hist.map(h => new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))];
       
       cpuChart.data.labels = labels;
