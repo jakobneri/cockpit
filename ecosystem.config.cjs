@@ -3,19 +3,18 @@ module.exports = {
     {
       name: 'cockpit-hub',
       script: 'server/index.js',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 3000,
+        DB_URL: 'http://localhost:3001' // Assuming PostgREST runs on 3001
       }
     },
     {
-      name: 'cockpit-agent',
-      script: 'agent/agent.js',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      name: 'cockpit-client',
+      script: 'client/client.js',
       env: {
         NODE_ENV: 'production',
-        HUB_URL: 'http://192.168.188.22:3000'
+        DB_URL: 'http://localhost:3001'
       }
     }
   ]

@@ -10,7 +10,12 @@ const execAsync = promisify(exec);
  * Multi-platform support with system-specific data collection.
  */
 
-const HUB_URL = process.env.HUB_URL || 'http://localhost:3000';
+/** 
+ * PI COCKPIT CLIENT v3.0.0
+ * Multi-platform support reporting to PostgREST.
+ */
+
+const DB_URL = process.env.DB_URL || 'http://localhost:3000'; // Default to PostgREST on port 3000
 const POLL_INTERVAL = 5000;
 const HOSTNAME = os.hostname();
 
@@ -46,9 +51,9 @@ if (system.isLinux) {
   system.model = 'Windows PC';
 }
 
-log.info(`Cockpit Agent v2.2.0 starting on ${HOSTNAME}`);
+log.info(`Cockpit Client v3.0.0 starting on ${HOSTNAME}`);
 log.info(`System: ${system.model} (${system.platform})`);
-log.info(`Reporting to: ${HUB_URL}`);
+log.info(`PostgREST endpoint: ${DB_URL}`);
 
 let lastCpuTicks = { idle: 0, total: 0 };
 let lastNetBytes = { tx: 0, rx: 0, time: 0 };
@@ -62,14 +67,13 @@ function getCpuLoad() {
       const cpuLine = data.split('\n').find(l => l.startsWith('cpu '));
       const parts = cpuLine.split(/\s+/).slice(1).map(Number);
       const idle = parts[3] + parts[4];
-      const total = parts.reduce((a, b) => a + b, 0);
+      const total = parts.reduce((a, b) => a + b, 1); // Avoid div by zero
       const diffIdle = idle - lastCpuTicks.idle;
       const diffTotal = total - lastCpuTicks.total;
       const load = diffTotal > 0 ? Math.round(100 * (1 - diffIdle / diffTotal)) : 0;
       lastCpuTicks = { idle, total };
-      return load;
+      return Math.max(0, Math.min(100, load));
     } else {
-      // Portable Fallback
       const cpus = os.cpus();
       let totalIdle = 0, totalTick = 0;
       cpus.forEach(cpu => {
@@ -80,7 +84,7 @@ function getCpuLoad() {
       const diffTotal = totalTick - lastCpuTicks.total;
       const load = diffTotal > 0 ? Math.round(100 * (1 - diffIdle / diffTotal)) : 0;
       lastCpuTicks = { idle: totalIdle, total: totalTick };
-      return load;
+      return Math.max(0, Math.min(100, load));
     }
   } catch { return 0; }
 }
@@ -196,7 +200,7 @@ async function getStorage() {
         }));
         return {
           root: parsed.find(d => d.path === 'C:'),
-          smb: parsed.find(d => d.type === 'CSVFS' || d.path.startsWith('\\')) // Rough SMB detection
+          smb: parsed.find(d => d.type === 'CSVFS' || d.path.startsWith('\\')) 
         };
       } catch { return { root: null, smb: null }; }
     }
@@ -216,7 +220,6 @@ async function getProcesses() {
         mem: (p.WorkingSet / 1024 / 1024).toFixed(1),
         name: p.Name
       }));
-      // Memory sorted
       const { stdout: mOut } = await execAsync('powershell "Get-Process | Sort-Object WorkingSet -Descending | Select-Object -First 5 Name, Id, CPU, WorkingSet | ConvertTo-Json"');
       const mData = JSON.parse(mOut);
       const memProcs = (Array.isArray(mData) ? mData : [mData]).map(p => ({
@@ -227,7 +230,6 @@ async function getProcesses() {
       }));
       return { cpu: cpuProcs, mem: memProcs };
     } catch (err) {
-      log.error(`Process detection failed: ${err.message}`);
       return { cpu: [], mem: [] };
     }
   }
@@ -253,25 +255,10 @@ async function getProcesses() {
   }
 }
 
-async function handleCommand(cmd) {
-  log.info(`🛠️ Executing command: ${cmd.type} - ${cmd.action} ${cmd.service}`);
-  try {
-    if (system.isLinux && cmd.type === 'SERVICE_CONTROL') {
-      let target = cmd.service;
-      if (cmd.service === 'unifi') target = 'unifi-core.service';
-      await execAsync(`sudo systemctl ${cmd.action} ${target}`);
-      log.success(`Command execution finished.`);
-    }
-  } catch (err) {
-    log.error(`Command failed: ${err.message}`);
-  }
-}
-
 // ── Main Loop ──
 
 async function report() {
   try {
-    // Conditional collection flow
     const stats = {
       cpu: { load: getCpuLoad(), temp: getTemperature() },
       memory: getMemory(),
@@ -286,7 +273,6 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       stats,
-      services: {}, // Generic agent doesn't check services unless configured
       systemInfo: system,
       timestamp: Date.now()
     };
@@ -294,68 +280,26 @@ async function report() {
     const jsonPayload = JSON.stringify(payload);
     const bytesSent = Buffer.byteLength(jsonPayload);
 
-    const response = await fetch(`${HUB_URL}/api/report`, {
+    // V3: Report to PostgREST RPC function
+    const response = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: jsonPayload
     });
 
     if (response.ok) {
-      const data = await response.json();
-      const bytesReceived = Buffer.byteLength(JSON.stringify(data));
-      log.report(`In: ${bytesReceived}B | Out: ${bytesSent}B | Status: ${response.status}`);
-      
-      if (data.commands && data.commands.length > 0) {
-        for (const cmd of data.commands) await handleCommand(cmd);
-      }
+      log.report(`Status: ${response.status} | Bytes Sent: ${bytesSent}B`);
     } else {
-      log.error(`Report failed with status: ${response.status}`);
+      log.error(`Database reporting failed: ${response.status}`);
+      const errText = await response.text();
+      console.error(errText);
     }
   } catch (err) {
-    log.error(`Hub unreachable: ${err.message}`);
+    log.error(`Database unreachable: ${err.message}`);
   }
 }
 
-const AGENT_VERSION = '2.2.0';
-
-async function runAutoUpdate() {
-  if (system.isWindows) return;
-  try {
-    const isGit = fs.existsSync('.git') || fs.existsSync('../.git');
-    process.stdout.write(`[${new Date().toLocaleTimeString()}] 🔄 Checking for Agent updates... `);
-    
-    if (isGit) {
-      await execAsync('git fetch origin main');
-      const { stdout } = await execAsync('git rev-list HEAD..origin/main --count');
-      const count = parseInt(stdout.trim());
-      if (count > 0) {
-        console.log(`🚀 Found ${count} commits.`);
-        log.update(`Pulling...`);
-        await execAsync('git pull origin main');
-        log.success('Restarting Agent...');
-        process.exit(0);
-      } else {
-        console.log('✅ Up to date.');
-      }
-    } else {
-      const res = await fetch('https://raw.githubusercontent.com/jakobneri/cockpit/main/agent/agent.js');
-      if (!res.ok) { console.log('❌ Failed.'); return; }
-      const text = await res.text();
-      const match = text.match(/const AGENT_VERSION = '(.+?)'/);
-      if (match && match[1] !== AGENT_VERSION) {
-        console.log(`🚀 New version ${match[1]} found.`);
-        fs.writeFileSync('agent.js', text);
-        log.success('Restarting Agent...');
-        process.exit(0);
-      } else {
-        console.log('✅ Up to date.');
-      }
-    }
-  } catch (err) { console.log('❌ Error.'); }
-}
-
-setInterval(runAutoUpdate, 5 * 60 * 1000);
-runAutoUpdate();
+const CLIENT_VERSION = '3.0.0';
 
 setInterval(report, POLL_INTERVAL);
 report();
