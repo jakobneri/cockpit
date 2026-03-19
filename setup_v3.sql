@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS clients (
     latest_metrics JSONB
 );
 
+-- Ensure columns exist if table was created in an older version
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS system_info JSONB;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS latest_metrics JSONB;
+
 -- 2. Drop ALL old overloads of the function
 DROP FUNCTION IF EXISTS report_client_metrics(jsonb);
 DROP FUNCTION IF EXISTS report_client_metrics(text, jsonb, jsonb, timestamptz);
