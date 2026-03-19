@@ -207,27 +207,31 @@ h1 {
 
 .metrics-big-box {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2.5rem;
 }
 
 .big-metric {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  min-height: 240px;
+  gap: 1rem;
+  min-height: 280px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .metric-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  height: 44px;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 
 .metric-header .label {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   color: var(--text-secondary);
@@ -235,28 +239,30 @@ h1 {
 }
 
 .metric-header .value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: #fff;
 }
 
 .metric-header .unit {
-  font-size: 1rem;
+  font-size: 1.2rem;
   color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 2px;
 }
 
 .big-metric .chart-container {
-  height: 150px;
+  flex-grow: 1;
   width: 100%;
+  min-height: 180px;
 }
 
 .big-metric .detail {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-secondary);
   text-align: right;
-  margin-top: 0.25rem;
-  height: 1.2rem;
-  display: block;
+  margin-top: 0.5rem;
+  opacity: 0.8;
 }
 
 .net-metric {
@@ -265,8 +271,8 @@ h1 {
 
 .storage-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
 }
 
 .mini-metric {

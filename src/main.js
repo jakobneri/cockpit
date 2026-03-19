@@ -37,20 +37,20 @@ function updateElement(id, value) {
 }
 
 // Chart.js Setup
-const maxDataPoints = 30; // ~2.5 minutes of history @ 5s interval
+const maxDataPoints = 120; // 10 minutes of history @ 5s interval
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   scales: {
     x: { display: false },
     y: {
-      min: 0, max: 100, display: true,
+      min: 0, display: true,
       ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3, callback: v => v + '%' },
       grid: { color: 'rgba(255,255,255,0.03)' },
       border: { display: false }
     }
   },
-  plugins: { legend: { display: false }, tooltip: { enabled: false } },
+  plugins: { legend: { display: false }, tooltip: { enabled: true } },
   animation: { duration: 400 },
   elements: {
     line: { tension: 0.4, borderWidth: 2.5 },
@@ -121,19 +121,19 @@ function createCharts() {
         labels: Array(maxDataPoints).fill(''),
         datasets: [
           {
-            label: 'Tx',
+            label: 'Download (Rx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#10b981',
-            backgroundColor: createGradient(ctx, '#10b981'),
+            borderColor: '#f59e0b',
+            backgroundColor: createGradient(ctx, '#f59e0b'),
             fill: true,
             tension: 0.4,
             borderWidth: 2
           },
           {
-            label: 'Rx',
+            label: 'Upload (Tx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#f59e0b',
-            backgroundColor: createGradient(ctx, '#f59e0b'),
+            borderColor: '#10b981',
+            backgroundColor: createGradient(ctx, '#10b981'),
             fill: true,
             tension: 0.4,
             borderWidth: 2
@@ -255,8 +255,8 @@ async function fetchNodeStats() {
       cpuChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.cpu)];
       ramChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.ram)];
       if (netChart) {
-        netChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.tx / 1024).toFixed(1)))];
-        netChart.data.datasets[1].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.rx / 1024).toFixed(1)))];
+        netChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.rx / 1024).toFixed(1)))];
+        netChart.data.datasets[1].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.tx / 1024).toFixed(1)))];
       }
       cpuChart.update('none');
       ramChart.update('none');
@@ -277,13 +277,13 @@ async function fetchNodeStats() {
       updateElement('net-tx', txKB);
       updateElement('net-rx', rxKB);
       
-      // Update dual dataset chart
-      const txData = netChart.data.datasets[0].data;
-      const rxData = netChart.data.datasets[1].data;
-      txData.push(parseFloat(txKB));
+      // Update dual dataset chart (Rx is set 0, Tx is set 1)
+      const rxData = netChart.data.datasets[0].data;
+      const txData = netChart.data.datasets[1].data;
       rxData.push(parseFloat(rxKB));
-      txData.shift();
+      txData.push(parseFloat(txKB));
       rxData.shift();
+      txData.shift();
       netChart.update();
     }
 
@@ -294,15 +294,7 @@ async function fetchNodeStats() {
       updateElement('root-detail', `${formatBytes(data.storage.root.used)} / ${formatBytes(data.storage.root.total)}`);
     }
 
-    if (data.storage.smb) {
-      updateElement('smb-name', `SMB (${data.storage.smb.path})`);
-      updateElement('smb-percent', `${data.storage.smb.percent}%`);
-      updateProgress('smb-bar', data.storage.smb.percent);
-      updateElement('smb-detail', `${formatBytes(data.storage.smb.used)} / ${formatBytes(data.storage.smb.total)}`);
-    } else {
-      updateElement('smb-detail', 'Not Mounted');
-      updateProgress('smb-bar', 0);
-    }
+    // Removed SMB section for v4.0.0
 
   } catch (error) {
     console.error('Error fetching node stats:', error);

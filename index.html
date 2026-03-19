@@ -62,10 +62,10 @@
             <!-- Network Combined -->
             <div class="big-metric net-metric">
               <div class="metric-header">
-                <span class="label">Network Activity (Tx: <span id="net-tx">0</span> / Rx: <span id="net-rx">0</span> KB/s)</span>
+                <span class="label">Network Activity (<span style="color: #f59e0b;">Download Rx: <span id="net-rx">0</span></span> / <span style="color: #10b981;">Upload Tx: <span id="net-tx">0</span></span> KB/s)</span>
               </div>
               <div class="chart-container"><canvas id="netChart"></canvas></div>
-              <span class="detail">Realtime Traffic</span>
+              <span class="detail">Realtime Traffic (10m History)</span>
             </div>
           </div>
 
@@ -79,15 +79,6 @@
               </div>
               <div class="progress-bar"><div class="progress-fill" id="root-bar"></div></div>
               <span class="detail" id="root-detail">-- / -- GB</span>
-            </div>
-
-            <div class="storage-item">
-              <div class="storage-header">
-                <span class="storage-name" id="smb-name">SMB Drive</span>
-                <span class="storage-percent" id="smb-percent">--%</span>
-              </div>
-              <div class="progress-bar"><div class="progress-fill" id="smb-bar"></div></div>
-              <span class="detail" id="smb-detail">Not Mounted</span>
             </div>
           </div>
         </section>
@@ -107,7 +98,7 @@
       </div>
     </div>
       <footer>
-        <p>nerifeige.de hub <span class="version-tag">v3.3.19</span></p>
+        <p>nerifeige.de hub <span class="version-tag">v4.0.0</span></p>
       </footer>
 
     </div>
