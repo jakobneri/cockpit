@@ -9,7 +9,12 @@ CREATE TABLE IF NOT EXISTS clients (
     system_info JSONB
 );
 
--- 2. Create the RPC function for reporting metrics
+-- 2. Drop ALL old overloads of the function (cleanup from previous versions)
+DROP FUNCTION IF EXISTS report_client_metrics(jsonb);
+DROP FUNCTION IF EXISTS report_client_metrics(text, jsonb, jsonb, timestamptz);
+DROP FUNCTION IF EXISTS report_client_metrics(text, jsonb, jsonb);
+
+-- 3. Create the RPC function for reporting metrics
 CREATE OR REPLACE FUNCTION report_client_metrics(
     hostname TEXT,
     stats JSONB,
