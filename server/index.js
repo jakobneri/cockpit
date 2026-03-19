@@ -164,6 +164,10 @@ setInterval(() => runAutoUpdate(), 10 * 60 * 1000); // 10 minutes frequency
 runAutoUpdate();
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 cockpit hub v3.2.2 running on http://localhost:${PORT}`);
-  log.info(`Reading data from PostgREST at ${DB_URL}\n`);
+  try {
+    console.log(`\n🚀 cockpit hub v3.2.3 running on http://localhost:${PORT}`);
+    log.info(`Reading data from PostgREST at ${DB_URL}\n`);
+  } catch (e) {
+    console.error(`Startup log failed: ${e.message}`);
+  }
 });

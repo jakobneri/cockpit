@@ -58,3 +58,6 @@ GRANT ALL ON TABLE clients TO cockpit_user;
 GRANT ALL ON FUNCTION report_client_metrics(jsonb) TO cockpit_user;
 GRANT ALL ON fleet_tables TO cockpit_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cockpit_user;
+
+-- 5. Force PostgREST to reload the schema cache
+NOTIFY pgrst, 'reload schema';
