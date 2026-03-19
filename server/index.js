@@ -165,7 +165,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.2.3 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.2.4 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);

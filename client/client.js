@@ -299,7 +299,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.2.3';
+const CLIENT_VERSION = '3.2.4';
 
 setInterval(report, POLL_INTERVAL);
 report();
