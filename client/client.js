@@ -274,7 +274,7 @@ async function report() {
       hostname: HOSTNAME,
       stats,
       systemInfo: system,
-      timestamp: Date.now()
+      reported_at: new Date().toISOString()
     };
 
     const jsonPayload = JSON.stringify(payload);
@@ -299,7 +299,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.2.5';
+const CLIENT_VERSION = '3.2.6';
 
 setInterval(report, POLL_INTERVAL);
 report();

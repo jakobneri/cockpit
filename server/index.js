@@ -13,29 +13,26 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HUB_PASSWORD = process.env.HUB_PASSWORD || 'change-me'; // SET THIS IN YOUR ENVIRONMENT
+const HUB_PASSWORD = process.env.HUB_PASSWORD || 'change-me';
+const PROXY_IP = '192.168.178.187';
 
-// Logging Utility
-const log = {
-  info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
-  success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
-  warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
-  error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
-  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📡 ${msg}`),
-  update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
-};
-
-// Security Middleware: Simple Password Check
+// Security Middleware: Trust Proxy + Password Fallback
 const authMiddleware = (req, res, next) => {
+  const clientIp = req.ip.replace('::ffff:', ''); // Clean IPv6 prefix
   const authHeader = req.headers['authorization'];
   const queryToken = req.query.token;
   
-  // Accept if header matches or query param matches
+  // 1. Check if it's the trusted reverse proxy
+  if (clientIp === PROXY_IP) {
+    return next();
+  }
+
+  // 2. Otherwise, require the password/token
   if (authHeader === `Bearer ${HUB_PASSWORD}` || queryToken === HUB_PASSWORD) {
     return next();
   }
   
-  log.warn(`Blocked unauthorized access attempt from ${req.ip}`);
+  log.warn(`Blocked unauthorized access attempt from ${clientIp}`);
   res.status(401).send('<h1>401 Unauthorized</h1><p>Please provide a valid token.</p>');
 };
 
@@ -165,7 +162,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.2.5 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.2.7 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);

@@ -14,7 +14,7 @@ CREATE OR REPLACE FUNCTION report_client_metrics(
     hostname TEXT,
     stats JSONB,
     systemInfo JSONB,
-    timestamp TIMESTAMPTZ DEFAULT NOW()
+    reported_at TIMESTAMPTZ DEFAULT NOW()
 )
 RETURNS jsonb AS $$
 DECLARE
@@ -31,7 +31,7 @@ BEGIN
     )', v_table_name);
     
     -- Insert the new metrics
-    EXECUTE format('INSERT INTO %I (data, timestamp) VALUES (%L, %L)', v_table_name, stats, timestamp);
+    EXECUTE format('INSERT INTO %I (data, timestamp) VALUES (%L, %L)', v_table_name, stats, reported_at);
     
     -- Update the clients registry
     INSERT INTO clients (hostname, last_seen, system_info) 
