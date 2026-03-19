@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // GLOBAL LOGGING UTILITY (V3.3.9)
-const log = {
+const hubLog = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
   warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
@@ -43,7 +43,7 @@ const authMiddleware = (req, res, next) => {
     return next();
   }
   
-  log.warn(`Blocked unauthorized access attempt from IP: [${clientIp}]`);
+  hubLog.warn(`Blocked unauthorized access attempt from IP: [${clientIp}]`);
   res.status(401).send('<h1>401 Unauthorized</h1><p>Please provide a valid token.</p>');
 };
 
@@ -95,7 +95,7 @@ app.get('/api/fleet', async (req, res) => {
         });
       }
     } catch (dbErr) {
-      log.warn(`DB partial failure in fleet: ${dbErr.message}`);
+      hubLog.warn(`DB partial failure in fleet: ${dbErr.message}`);
     }
 
     res.json({ 
@@ -104,7 +104,7 @@ app.get('/api/fleet', async (req, res) => {
       servers: serverMap 
     });
   } catch (err) {
-    log.error(`Top-level fleet fetch failed: ${err.message}`);
+    hubLog.error(`Top-level fleet fetch failed: ${err.message}`);
     res.status(500).json({ error: 'Hub internal error' });
   }
 });
@@ -140,7 +140,7 @@ app.get('/api/stats/:hostname', async (req, res) => {
       lastReport: new Date(latest.recorded_at).getTime()
     });
   } catch (err) {
-    log.error(`Stats fetch failed: ${err.message}`);
+    hubLog.error(`Stats fetch failed: ${err.message}`);
     res.status(500).json({ error: 'Database unreachable' });
   }
 });
@@ -158,18 +158,18 @@ const runAutoUpdate = async (force = false) => {
     const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     const count = parseInt(behindCount.trim());
     if (count === 0 && !force) {
-      if (force) log.info('Hub is already up to date.');
+      if (force) hubLog.info('Hub is already up to date.');
       return false;
     }
-    log.update(`Found ${count} new commits. Pulling...`);
+    hubLog.update(`Found ${count} new commits. Pulling...`);
     await execAsync('git pull origin main');
     await execAsync('npm install --include=dev');
     await execAsync('npx vite build');
-    log.success(`Update complete. Restarting Hub...`);
+    hubLog.success(`Update complete. Restarting Hub...`);
     setTimeout(() => process.exit(0), 1000);
     return true;
   } catch (error) { 
-    log.error(`Auto-update failed: ${error.message}`);
+    hubLog.error(`Auto-update failed: ${error.message}`);
     return false;
   }
 };
@@ -189,7 +189,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n🚀 cockpit hub v3.3.18 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
+    console.log(`\n🚀 cockpit hub v3.3.19 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }
