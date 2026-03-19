@@ -10,21 +10,18 @@ CREATE TABLE IF NOT EXISTS clients (
 );
 
 -- 2. Create the RPC function for reporting metrics
--- This function dynamically creates a table for each client and inserts the data.
-CREATE OR REPLACE FUNCTION report_client_metrics(payload jsonb)
+CREATE OR REPLACE FUNCTION report_client_metrics(
+    hostname TEXT,
+    stats JSONB,
+    systemInfo JSONB,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+)
 RETURNS jsonb AS $$
 DECLARE
-    v_hostname TEXT;
     v_table_name TEXT;
-    v_stats JSONB;
-    v_system_info JSONB;
 BEGIN
-    v_hostname := payload->>'hostname';
-    v_stats := payload->'stats';
-    v_system_info := payload->'systemInfo';
-    
-    -- Sanitize hostname to use as table name (replace non-alphanumeric with underscores)
-    v_table_name := 'metrics_' || regexp_replace(lower(v_hostname), '[^a-z0-9]', '_', 'g');
+    -- Sanitize hostname to use as table name
+    v_table_name := 'metrics_' || regexp_replace(lower(hostname), '[^a-z0-9]', '_', 'g');
     
     -- Create the client-specific table if it doesn't exist
     EXECUTE format('CREATE TABLE IF NOT EXISTS %I (
@@ -34,11 +31,11 @@ BEGIN
     )', v_table_name);
     
     -- Insert the new metrics
-    EXECUTE format('INSERT INTO %I (data) VALUES (%L)', v_table_name, v_stats);
+    EXECUTE format('INSERT INTO %I (data, timestamp) VALUES (%L, %L)', v_table_name, stats, timestamp);
     
     -- Update the clients registry
     INSERT INTO clients (hostname, last_seen, system_info) 
-    VALUES (v_hostname, NOW(), v_system_info)
+    VALUES (hostname, NOW(), systemInfo)
     ON CONFLICT (hostname) DO UPDATE 
     SET last_seen = NOW(), system_info = EXCLUDED.system_info;
     
