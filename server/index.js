@@ -11,8 +11,8 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// GLOBAL LOGGING UTILITY (V3.3.7)
-globalThis.log = {
+// GLOBAL LOGGING UTILITY (V3.3.9)
+const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
   warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
@@ -20,8 +20,6 @@ globalThis.log = {
   report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📡 ${msg}`),
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
-
-const log = globalThis.log;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -149,13 +147,12 @@ app.post('/api/services/:hostname/:service/:action', (req, res) => {
 const runAutoUpdate = async (force = false) => {
   if (process.platform === 'win32') return;
   try {
-    process.stdout.write(`[${new Date().toLocaleTimeString()}] 🔄 Checking for Hub updates... `);
     await execAsync('git fetch origin main');
     const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     const count = parseInt(behindCount.trim());
     if (count === 0 && !force) {
-      console.log('✅ Up to date.');
-      return;
+      if (force) log.info('Hub is already up to date.');
+      return false;
     }
     log.update(`Found ${count} new commits. Pulling...`);
     await execAsync('git pull origin main');
@@ -163,19 +160,30 @@ const runAutoUpdate = async (force = false) => {
     await execAsync('npx vite build');
     log.success(`Update complete. Restarting Hub...`);
     setTimeout(() => process.exit(0), 1000);
+    return true;
   } catch (error) { 
     log.error(`Auto-update failed: ${error.message}`);
+    return false;
   }
 };
 
-setInterval(() => runAutoUpdate(), 10 * 60 * 1000); // 10 minutes frequency
-runAutoUpdate();
+setInterval(() => runAutoUpdate(), 10 * 60 * 1000);
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.3.8 running on http://localhost:${PORT}`);
-    log.info(`Reading data from PostgREST at ${DB_URL}\n`);
+    const isUpdated = await runAutoUpdate();
+    if (isUpdated) return; // Exit if auto-update is restarting the process
+
+    // Fetch node count for verification
+    let nodeCount = 0;
+    try {
+      const res = await fetch(`${DB_URL}/clients?select=hostname`);
+      const data = await res.json();
+      nodeCount = data.length || 0;
+    } catch (e) {}
+
+    console.log(`\n🚀 cockpit hub v3.3.9 | 🌐 http://localhost:${PORT} | 📊 PostgREST: ${nodeCount} nodes online\n`);
   } catch (e) {
-    console.error(`Startup log failed: ${e.message}`);
+    console.error(`Startup sequence failed: ${e.message}`);
   }
 });
