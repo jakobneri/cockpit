@@ -11,7 +11,7 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// GLOBAL LOGGING UTILITY (V3.2.9)
+// GLOBAL LOGGING UTILITY (V3.3.6)
 const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
@@ -23,7 +23,7 @@ const log = {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HUB_PASSWORD = process.env.HUB_PASSWORD || 'change-me';
+const HUB_PASSWORD = process.env.HUB_PASSWORD || 'test123';
 const PROXY_IP = '192.168.178.187';
 
 // Security Middleware: Trust Proxy + Password Fallback
@@ -172,7 +172,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.3.5 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.3.6 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);
