@@ -84,9 +84,8 @@ app.get('/api/fleet', async (req, res) => {
         lastReport: new Date(c.last_seen).getTime(),
         model: c.system_info?.model || 'Unknown',
         os: c.system_info?.platform || 'Unknown',
-        // Note: For full fleet view, we might want to fetch latest stats for each, 
-        // but for now we send the registry info.
-        ...c.system_info 
+        ...c.system_info,
+        ...c.latest_metrics // Real-time CPU/RAM stats
       };
     });
 
@@ -174,7 +173,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.3.7 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.3.8 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);

@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS clients (
     id SERIAL PRIMARY KEY,
     hostname TEXT UNIQUE NOT NULL,
     last_seen TIMESTAMPTZ DEFAULT NOW(),
-    system_info JSONB
+    system_info JSONB,
+    latest_metrics JSONB
 );
 
 -- 2. Drop ALL old overloads of the function
@@ -42,10 +43,12 @@ BEGIN
     EXECUTE format('INSERT INTO %I (data) VALUES (%L)', v_table_name, v_stats);
 
     -- Update the clients registry
-    INSERT INTO clients (hostname, last_seen, system_info)
-    VALUES (v_hostname, NOW(), v_system_info)
+    INSERT INTO clients (hostname, last_seen, system_info, latest_metrics)
+    VALUES (v_hostname, NOW(), v_system_info, v_stats)
     ON CONFLICT (hostname) DO UPDATE
-    SET last_seen = NOW(), system_info = EXCLUDED.system_info;
+    SET last_seen = NOW(), 
+        system_info = EXCLUDED.system_info,
+        latest_metrics = EXCLUDED.latest_metrics;
 
     RETURN jsonb_build_object('success', true, 'table', v_table_name);
 END;
