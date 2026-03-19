@@ -16,6 +16,16 @@ const PORT = process.env.PORT || 3000;
 const HUB_PASSWORD = process.env.HUB_PASSWORD || 'change-me';
 const PROXY_IP = '192.168.178.187';
 
+// Logging Utility
+const log = {
+  info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
+  success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
+  warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
+  error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
+  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📡 ${msg}`),
+  update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
+};
+
 // Security Middleware: Trust Proxy + Password Fallback
 const authMiddleware = (req, res, next) => {
   const clientIp = req.ip.replace('::ffff:', ''); // Clean IPv6 prefix
@@ -162,7 +172,7 @@ runAutoUpdate();
 
 app.listen(PORT, () => {
   try {
-    console.log(`\n🚀 cockpit hub v3.2.7 running on http://localhost:${PORT}`);
+    console.log(`\n🚀 cockpit hub v3.2.8 running on http://localhost:${PORT}`);
     log.info(`Reading data from PostgREST at ${DB_URL}\n`);
   } catch (e) {
     console.error(`Startup log failed: ${e.message}`);
