@@ -47,22 +47,27 @@ BEGIN
     EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS recorded_at TIMESTAMPTZ DEFAULT NOW()', v_table_name);
 
     -- Insert the new metrics
-    EXECUTE format('INSERT INTO %I (data) VALUES (%L)', v_table_name, v_stats);
-
-    -- Update the clients registry
-    INSERT INTO clients (hostname, last_seen, system_info, latest_metrics)
-    VALUES (v_hostname, NOW(), v_system_info, v_stats)
-    ON CONFLICT (hostname) DO UPDATE
-    SET last_seen = NOW(), 
-        system_info = EXCLUDED.system_info,
-        latest_metrics = EXCLUDED.latest_metrics;
-
-    -- Return history count for diagnostics (v5.3.19)
-    DECLARE 
+    DECLARE
+        v_new_id INT;
         v_count INT;
     BEGIN
+        EXECUTE format('INSERT INTO %I (data) VALUES (%L) RETURNING id', v_table_name, v_stats) INTO v_new_id;
         EXECUTE format('SELECT count(*) FROM %I', v_table_name) INTO v_count;
-        RETURN jsonb_build_object('success', true, 'table', v_table_name, 'history_count', v_count);
+        
+        -- Update the clients registry
+        INSERT INTO clients (hostname, last_seen, system_info, latest_metrics)
+        VALUES (v_hostname, NOW(), v_system_info, v_stats)
+        ON CONFLICT (hostname) DO UPDATE
+        SET last_seen = NOW(), 
+            system_info = EXCLUDED.system_info,
+            latest_metrics = EXCLUDED.latest_metrics;
+
+        RETURN jsonb_build_object(
+            'success', true, 
+            'table', v_table_name, 
+            'new_id', v_new_id,
+            'history_count', v_count
+        );
     END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
