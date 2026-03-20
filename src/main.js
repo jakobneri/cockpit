@@ -398,12 +398,25 @@ async function fetchNodeStats() {
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     // Metrics
-    updateElement('cpu-load', data.cpu.load);
-    updateChart(cpuChart, data.cpu.load, timeLabel);
+    const hasCpu = data.cpu && data.cpu.load !== undefined && data.cpu.load > 0;
+    const hasRam = data.memory && data.memory.percent !== undefined && data.memory.percent > 0;
+    
+    const cpuBox = document.getElementById('cpu-metric-box');
+    const ramBox = document.getElementById('ram-metric-box');
+    
+    if (cpuBox) cpuBox.style.display = hasCpu ? 'block' : 'none';
+    if (ramBox) ramBox.style.display = hasRam ? 'block' : 'none';
 
-    updateElement('ram-usage', data.memory.percent);
-    updateChart(ramChart, data.memory.percent, timeLabel);
-    updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
+    if (hasCpu) {
+      updateElement('cpu-load', data.cpu.load);
+      updateChart(cpuChart, data.cpu.load, timeLabel);
+    }
+
+    if (hasRam) {
+      updateElement('ram-usage', data.memory.percent);
+      updateChart(ramChart, data.memory.percent, timeLabel);
+      updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
+    }
 
     if (data.network && netChart) {
       const txKB = (data.network.tx_sec / 1024).toFixed(1);

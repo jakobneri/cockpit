@@ -47,67 +47,79 @@
         <section id="details-charts" class="card glass">
           <div class="metrics-big-box">
             <!-- CPU -->
-            <div class="big-metric">
-              <div class="metric-header">
-                <span class="label">CPU Usage</span>
-                <div><span class="value" id="cpu-load">--</span><span class="unit">%</span></div>
+            <div id="cpu-metric-box" class="big-metric">
+              <div class="metric-top">
+                <div class="metric-info">
+                  <span class="label">CPU USAGE</span>
+                  <h2><span id="cpu-load">--</span><small>%</small></h2>
+                </div>
+                <div class="metric-icon cpu"></div>
               </div>
               <div class="chart-container"><canvas id="cpuChart"></canvas></div>
-              <span class="detail">System Load</span> 
+              <div class="metric-footer">System Load</div>
             </div>
 
-            <!-- RAM -->
-            <div class="big-metric">
-              <div class="metric-header">
-                <span class="label">Memory</span>
-                <div><span class="value" id="ram-usage">--</span><span class="unit">%</span></div>
+            <!-- Memory -->
+            <div id="ram-metric-box" class="big-metric">
+              <div class="metric-top">
+                <div class="metric-info">
+                  <span class="label">MEMORY</span>
+                  <h2><span id="ram-usage">--</span><small>%</small></h2>
+                </div>
+                <div class="metric-icon ram"></div>
               </div>
               <div class="chart-container"><canvas id="ramChart"></canvas></div>
-              <span class="detail" id="ram-detail">-- / -- GB</span>
+              <div class="metric-footer"><span id="ram-detail">-- / -- GB</span></div>
             </div>
 
-            <!-- Network Combined -->
-            <div class="big-metric net-metric">
-              <div class="metric-header">
-                <span class="label">Network Activity (<span style="color: #f59e0b;">Download Rx: <span id="net-rx">0</span></span> / <span style="color: #10b981;">Upload Tx: <span id="net-tx">0</span></span> KB/s)</span>
-              </div>
-              <div class="chart-container"><canvas id="netChart"></canvas></div>
-              <span class="detail">Realtime Traffic (10m History)</span>
-            </div>
-          </div>
-
-          <!-- Storage Section Simplified -->
-          <h3><span class="icon">💾</span> Storage</h3>
-          <div class="storage-grid">
-            <div class="storage-item">
-              <div class="storage-header">
-                <span class="storage-name">Root Partition (/)</span>
-                <span class="storage-percent" id="root-percent">--%</span>
-              </div>
-              <div class="progress-bar"><div class="progress-fill" id="root-bar"></div></div>
-              <span class="detail" id="root-detail">-- / -- GB</span>
-            </div>
-          </div>
-
-          <!-- Gateway Stats Section (Hidden by default) -->
-          <div id="gateway-stats-section" style="display: none; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
-            <h3><span class="icon">🌐</span> Gateway Connectivity</h3>
-            <div class="storage-grid">
-              <div class="storage-item">
-                <div class="storage-header">
-                  <span class="storage-name">DSL Sync Status</span>
-                  <span id="gw-dsl-sync" style="font-weight: 700; color: var(--accent-blue);">--</span>
+            <!-- Network -->
+            <div id="net-metric-box" class="big-metric">
+              <div class="metric-top">
+                <div class="metric-info">
+                  <span class="label">NETWORK ACTIVITY <small>(DOWNLOAD RX: <span id="net-rx" style="color: var(--accent-orange);">0</span> / UPLOAD TX: <span id="net-tx" style="color: var(--accent-green);">0</span> KB/S)</small></span>
                 </div>
               </div>
-              <div class="storage-item">
-                <div class="storage-header">
-                  <span class="storage-name">VPN Bridge</span>
-                  <span id="gw-vpn-badge" class="status-badge checking"><span id="gw-vpn-status">---</span></span>
+              <div class="chart-container"><canvas id="netChart"></canvas></div>
+              <div class="metric-footer">Realtime Traffic (10m History)</div>
+            </div>
+          </div>
+          
+          <!-- Gateway Connection Metrics -->
+          <div id="gateway-stats-section" style="display: none; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+            <div style="display: flex; gap: 2rem; align-items: center;">
+              <h3>Gateway Connectivity</h3>
+              <div style="display: flex; gap: 1rem;">
+                <div class="mini-metric">
+                  <span class="label">DSL SYNC</span>
+                  <span id="gw-dsl-sync" class="status-badge" style="font-size: 0.8rem; padding: 4px 10px;">--</span>
+                </div>
+                <div class="mini-metric">
+                  <span class="label">VPN BRIDGE</span>
+                  <span id="gw-vpn-status" class="status-badge" style="font-size: 0.8rem; padding: 4px 10px;">--</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
+
+        <!-- Node Storage -->
+        <section class="card glass">
+          <div class="storage-grid">
+            <div class="storage-item">
+              <div class="storage-header">
+                <div class="storage-icon root"></div>
+                <div class="storage-info">
+                  <span class="label">Storage</span>
+                  <h3 id="root-path">Root Partition (/)</h3>
+                </div>
+                <span id="root-percent" class="storage-val">--%</span>
+              </div>
+              <div class="progress-bar"><div id="root-bar" class="progress-fill"></div></div>
+              <div id="root-detail" class="storage-footer">-- / -- GB</div>
+            </div>
+          </div>
+        </section>
+      </main>
 
         <!-- Raw History Table (Hidden by default) -->
         <section id="details-raw" class="card glass" style="display: none;">
