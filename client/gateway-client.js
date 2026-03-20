@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.22
+ * COCKPIT GATEWAY CLIENT v5.3.23
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -109,6 +109,18 @@ function processVPN(dev, stats, resolve) {
 async function report() {
   try {
     const fbData = await getFritzBoxData();
+    const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
+
+    // Collect Logs (v5.3.23)
+    let fbLogs = "";
+    if (deviceConfig) {
+      try {
+        const getLogs = promisify(deviceConfig.actions.GetLogs);
+        const logRes = await getLogs();
+        fbLogs = logRes.NewLogData || "";
+      } catch (e) {}
+    }
+
     const payload = {
       hostname: HOSTNAME,
       stats: {
@@ -120,14 +132,15 @@ async function report() {
         gateway: {
           dsl_sync: fbData.dsl_sync,
           vpn_active: fbData.vpn_active,
-          model: fbData.model
+          model: fbData.model,
+          logs: fbLogs
         }
       },
       reported_at: new Date().toISOString(),
       system_info: {
         model: fbData.model,
         platform: 'fritzbox',
-        version: '5.3.4'
+        version: '5.3.23'
       }
     };
 

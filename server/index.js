@@ -306,9 +306,17 @@ app.get('/api/export/:hostname', async (req, res) => {
           }
           xml += '      </storage>\n';
         }
+        // Uptime
+        if (row.data.uptime !== undefined) {
+          xml += `      <uptime_seconds>${row.data.uptime}</uptime_seconds>\n`;
+        }
         // Gateway-specific
         if (row.data.gateway) {
-          xml += `      <gateway>\n        <model>${row.data.gateway.model}</model>\n        <dsl_sync>${row.data.gateway.dsl_sync}</dsl_sync>\n        <vpn_active>${row.data.gateway.vpn_active}</vpn_active>\n      </gateway>\n`;
+          xml += `      <gateway>\n        <model>${row.data.gateway.model}</model>\n        <dsl_sync>${row.data.gateway.dsl_sync}</dsl_sync>\n        <vpn_active>${row.data.gateway.vpn_active}</vpn_active>\n`;
+          if (row.data.gateway.logs) {
+            xml += `        <logs>${row.data.gateway.logs.replace(/[<&]/g, c => ({'<':'&lt;','&':'&amp;'}[c]))}</logs>\n`;
+          }
+          xml += '      </gateway>\n';
         }
       }
       xml += '    </entry>\n';
@@ -378,6 +386,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.22${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.23${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
