@@ -528,12 +528,16 @@ function renderHistoryTable(history) {
   }).join('');
 }
 
-window.openDetails = (hostname) => {
+window.openDetails = (hostname, push = true) => {
   selectedHostname = hostname;
   currentView = 'details';
   document.getElementById('view-overview').style.display = 'none';
   document.getElementById('view-details').style.display = 'grid';
   
+  if (push) {
+    window.history.pushState({ hostname }, '', `/${hostname}`);
+  }
+
   // Reset to chart view when opening new node
   setDetailMode('chart');
   
@@ -544,17 +548,48 @@ window.openDetails = (hostname) => {
   statsTimer = setInterval(fetchNodeStats, REFRESH_INTERVAL_STATS);
 };
 
-window.showOverview = () => {
+window.showOverview = (push = true) => {
   selectedHostname = null;
   currentView = 'overview';
   document.getElementById('view-overview').style.display = 'block';
   document.getElementById('view-details').style.display = 'none';
   
+  if (push) {
+    window.history.pushState({}, '', '/');
+  }
+
   // os-info is handled inside fetchFleet for overview
   
   if (statsTimer) clearInterval(statsTimer);
   fetchFleet();
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
+};
+
+window.exportData = async () => {
+  if (!selectedHostname) return;
+  const timeframe = document.getElementById('export-timeframe').value;
+  const url = `/api/export/${selectedHostname}?timeframe=${timeframe}`;
+  
+  // Create a temporary link to trigger download
+  const link = document.createElement('a');
+  link.href = `${url}&token=${hubToken}`; // Pass token for auth in download
+  link.setAttribute('download', '');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+function handleRouting() {
+  const path = window.location.pathname.replace(/^\/|\/$/g, '');
+  if (!path) {
+    showOverview(false);
+  } else {
+    openDetails(path, false);
+  }
+}
+
+window.onpopstate = (event) => {
+  handleRouting();
 };
 
 // Utilities
@@ -574,7 +609,7 @@ async function sendActiveHeartbeat() {
 
 // Start
 document.addEventListener('DOMContentLoaded', () => {
-  showOverview();
+  handleRouting();
   setInterval(sendActiveHeartbeat, 10000); 
   sendActiveHeartbeat();
 });

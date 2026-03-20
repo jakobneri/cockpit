@@ -123,7 +123,20 @@
         <!-- Raw Data View (Hidden by default) -->
         <section id="details-raw" style="display: none; margin-top: 1.5rem;">
           <div class="card glass">
-            <h3><span class="icon">📜</span> Raw History (Last 200 Logs)</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+              <h3 style="margin-bottom: 0;"><span class="icon">📜</span> Raw History (Last 200 Logs)</h3>
+              
+              <div class="export-controls" style="display: flex; gap: 0.5rem; align-items: center;">
+                <select id="export-timeframe" class="toggle-btn" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 6px 12px;">
+                  <option value="hour">Last Hour</option>
+                  <option value="day">Last Day</option>
+                  <option value="week">Last Week</option>
+                  <option value="year">Last Year</option>
+                  <option value="all" selected>All Time</option>
+                </select>
+                <button class="toggle-btn active" onclick="exportData()" style="padding: 6px 16px;">📥 Export XML</button>
+              </div>
+            </div>
             <div class="history-table-container">
               <table class="technical-table history-table">
                 <thead>
@@ -173,7 +186,7 @@
     </div>
 
     <footer>
-      <p>nerifeige.de hub <span class="version-tag">v5.2.2</span></p>
+      <p>nerifeige.de hub <span class="version-tag">v5.3.0</span></p>
     </footer>
 
     <script type="module" src="/src/main.js"></script>

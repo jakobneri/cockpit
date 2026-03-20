@@ -43,12 +43,13 @@ const PROXY_IPS = TRUSTED_IPS_ENV.split(',').map(ip => ip.trim());
 const authMiddleware = (req, res, next) => {
   const clientIp = req.ip.replace('::ffff:', '');
   const authHeader = req.headers['authorization'];
+  const queryToken = req.query.token;
   
   if (PROXY_IPS.includes(clientIp) || clientIp.startsWith('172.')) {
     return next();
   }
 
-  if (authHeader === `Bearer ${HUB_PASSWORD}`) {
+  if (authHeader === `Bearer ${HUB_PASSWORD}` || queryToken === HUB_PASSWORD) {
     return next();
   }
   
@@ -160,6 +161,49 @@ app.get('/api/stats/:hostname', async (req, res) => {
   }
 });
 
+app.get('/api/export/:hostname', async (req, res) => {
+  try {
+    const { hostname } = req.params;
+    const { timeframe } = req.query;
+    const tableName = 'metrics_' + hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    
+    let timeFilter = '';
+    const now = Date.now();
+    if (timeframe === 'hour') timeFilter = `&recorded_at=gte.${new Date(now - 3600000).toISOString()}`;
+    else if (timeframe === 'day') timeFilter = `&recorded_at=gte.${new Date(now - 86400000).toISOString()}`;
+    else if (timeframe === 'week') timeFilter = `&recorded_at=gte.${new Date(now - 7 * 86400000).toISOString()}`;
+    else if (timeframe === 'year') timeFilter = `&recorded_at=gte.${new Date(now - 365 * 86400000).toISOString()}`;
+
+    const response = await fetch(`${DB_URL}/${tableName}?order=recorded_at.desc${timeFilter}`);
+    if (!response.ok) return res.status(404).json({ error: 'Data not found' });
+    
+    const data = await response.json();
+
+    // Simple XML Builder
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<cockpit_export>\n';
+    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n  </metadata>\n`;
+    xml += '  <history>\n';
+    
+    data.forEach(row => {
+      xml += '    <entry>\n';
+      xml += `      <time>${row.recorded_at}</time>\n`;
+      if (row.data) {
+        if (row.data.cpu) xml += `      <cpu_load>${row.data.cpu.load}</cpu_load>\n      <cpu_temp>${row.data.cpu.temp || 'N/A'}</cpu_temp>\n`;
+        if (row.data.memory) xml += `      <ram_percent>${row.data.memory.percent}</ram_percent>\n`;
+        if (row.data.network) xml += `      <net_tx>${row.data.network.tx_sec}</net_tx>\n      <net_rx>${row.data.network.rx_sec}</net_rx>\n`;
+      }
+      xml += '    </entry>\n';
+    });
+    xml += '  </history>\n</cockpit_export>';
+
+    res.header('Content-Type', 'application/xml');
+    res.attachment(`cockpit_export_${hostname}_${timeframe || 'all'}.xml`);
+    res.send(xml);
+  } catch (err) {
+    res.status(500).send('<error>' + err.message + '</error>');
+  }
+});
+
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
 const runAutoUpdate = async (force = false) => {
@@ -186,6 +230,11 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
+app.get('*', (req, res, next) => {
+  if (req.url.startsWith('/api')) return next();
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 setInterval(() => runAutoUpdate(), 5 * 60 * 1000);
 
 app.listen(PORT, async () => {
@@ -197,6 +246,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.2.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.0${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
