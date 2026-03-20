@@ -546,6 +546,15 @@ function renderHistoryTable(history) {
     const date = h.time ? new Date(h.time) : null;
     const timeStr = (date && !isNaN(date)) ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '---';
     
+    // Create a copy without the UI-specific aliases for the "raw" view
+    const rawFields = { ...h };
+    delete rawFields.time;
+    delete rawFields.cpu;
+    delete rawFields.ram;
+    delete rawFields.tx;
+    delete rawFields.rx;
+    const jsonStr = JSON.stringify(rawFields);
+
     return `
       <tr>
         <td style="color: var(--text-secondary); font-family: monospace;">${timeStr}</td>
@@ -553,6 +562,9 @@ function renderHistoryTable(history) {
         <td style="color: var(--accent-purple); font-weight: 600;">${h.ram}%</td>
         <td style="color: var(--accent-orange);">${(h.rx / 1024).toFixed(1)} KB/s</td>
         <td style="color: var(--accent-green);">${(h.tx / 1024).toFixed(1)} KB/s</td>
+        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.6;">
+          ${jsonStr}
+        </td>
       </tr>
     `;
   }).join('');

@@ -209,18 +209,20 @@ app.get('/api/stats/:hostname', async (req, res) => {
     const model = meta.system_info?.model || 'Unknown';
     const osPlatform = meta.system_info?.platform || 'Linux';
 
-    // Map history safely (v5.3.11)
+    // Map history safely (v5.3.12) - Spread h.data to preserve ALL fields
     const history = [...historyData].reverse().map(h => ({
-      cpu: h.data?.cpu?.load || 0,
+      ...(h.data || {}),
+      cpu: h.data?.cpu?.load || 0, // Keep aliases for charts
       ram: h.data?.memory?.percent || 0,
       tx: h.data?.network?.tx_sec || 0,
       rx: h.data?.network?.rx_sec || 0,
       time: h.recorded_at
     }));
 
-    // If history is empty, inject latest as a single point for the table (v5.3.11)
+    // If history is empty, inject latest as a single point for the table
     if (history.length === 0 && latest) {
       history.push({
+        ...(latest.data || {}),
         cpu: latest.data?.cpu?.load || 0,
         ram: latest.data?.memory?.percent || 0,
         tx: latest.data?.network?.tx_sec || 0,
@@ -360,6 +362,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.11${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.12${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
