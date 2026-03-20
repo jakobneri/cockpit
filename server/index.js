@@ -336,32 +336,37 @@ app.post('/api/active', (req, res) => res.sendStatus(200));
 const runAutoUpdate = async (force = false) => {
   if (process.platform === 'win32') return false;
   try {
-    hubLog.info('Checking for updates (v5.3.14)...');
-    await execAsync('git fetch origin main');
+    hubLog.info('Checking for repository updates...');
+    await execAsync('git remote update');
     const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     
-    if (parseInt(behindCount.trim()) === 0 && !force) return false;
+    const count = parseInt(behindCount.trim()) || 0;
+    if (count === 0 && !force) {
+      hubLog.info('System is up to date.');
+      return false;
+    }
 
-    hubLog.update(`Update found (${behindCount.trim()} commits). Deploying...`);
+    hubLog.update(`Update found (${count} commits). Deploying...`);
     
-    // Hard reset to ensure we are exactly match origin/main
+    // Hard reset to ensure we match origin/main exactly
+    await execAsync('git fetch origin main');
     await execAsync('git reset --hard origin/main');
-    hubLog.info('Git Reset Successful. Installing dependencies...');
+    hubLog.success('Git Reset Successful. Installing dependencies...');
     
     await execAsync('npm install');
     hubLog.info('NPM Install Successful. Building frontend...');
     
     await execAsync('npx vite build');
-    hubLog.success('Build Successful. Restarting Hub...');
+    hubLog.success('Build Successful. Hub will restart in 5 seconds...');
     
     setTimeout(() => {
-        hubLog.info('PM2 Restarting...');
+        hubLog.info('PM2 Restarting Process...');
         process.exit(0); 
-    }, 2000);
+    }, 5000);
     return true;
   } catch (error) { 
     hubLog.error(`Update failed: ${error.message}`);
-    // If we failed mid-update, try one last desperate reset
+    // Desperate reset if caught in a broken state
     try { await execAsync('git reset --hard origin/main'); } catch(e) {}
     return false;
   }
@@ -386,6 +391,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.4.1${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.4.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
