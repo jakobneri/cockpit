@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "description": "Multi-node Raspberry Pi Monitoring Dashboard",
   "main": "server/index.js",
   "scripts": {
@@ -25,7 +25,8 @@
   "homepage": "https://github.com/jakobneri/cockpit#readme",
   "dependencies": {
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "tr-064": "^0.0.2"
   },
   "devDependencies": {
     "vite": "^5.0.0"

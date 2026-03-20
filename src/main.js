@@ -276,36 +276,54 @@ function renderFleet(servers) {
 
   container.innerHTML = Object.entries(servers).map(([hostname, data]) => {
     const isOnline = (Date.now() - data.lastReport) < 15000;
-    const isGateway = hostname.includes('gateway');
     
-    if (isGateway) {
-      const vpnActive = data.gateway?.vpn_active;
-      const dslStatus = data.gateway?.dsl_sync || 'Offline';
-      return `
-        <div class="card glass node-card" onclick="openDetails('${hostname}')">
-          <div class="node-header" style="align-items: flex-start;">
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-              <span class="node-hostname">${hostname}</span>
-              <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Fritz!Box'}</span>
-            </div>
-            <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
-          </div>
-          <div class="node-metrics">
-            <div class="mini-metric">
-              <span class="label">DSL Sync</span>
-              <span class="status-badge ${dslStatus === 'Up' ? 'online' : 'offline'}" style="font-size: 0.7rem;">${dslStatus}</span>
-            </div>
-            <div class="mini-metric">
-              <span class="label">VPN Bridge</span>
-              <span class="status-badge ${vpnActive ? 'online' : 'offline'}" style="font-size: 0.7rem;">${vpnActive ? 'Active' : 'Down'}</span>
-            </div>
-            <div class="mini-metric" style="margin-top: 0.5rem;">
-              <span class="label">Uptime</span>
-              <span class="val" style="color: var(--text-secondary); font-size: 0.8rem;">${formatUptime(data.uptime)}</span>
-            </div>
-          </div>
+    // Build dynamic metrics
+    let metricsHtml = '';
+    
+    // 1. Gateway Metrics
+    if (data.gateway) {
+      if (data.gateway.dsl_sync) {
+        metricsHtml += `
+          <div class="mini-metric">
+            <span class="label">DSL Sync</span>
+            <span class="status-badge ${data.gateway.dsl_sync === 'Up' ? 'online' : 'offline'}">${data.gateway.dsl_sync}</span>
+          </div>`;
+      }
+      if (data.gateway.vpn_active !== undefined) {
+        metricsHtml += `
+          <div class="mini-metric">
+            <span class="label">VPN Bridge</span>
+            <span class="status-badge ${data.gateway.vpn_active ? 'online' : 'offline'}">${data.gateway.vpn_active ? 'Active' : 'Down'}</span>
+          </div>`;
+      }
+    }
+
+    // 2. Client Metrics (CPU/RAM)
+    if (data.cpu && data.cpu.load !== undefined && data.cpu.load > 0) {
+      metricsHtml += `
+        <div class="mini-metric">
+          <span class="label">CPU</span>
+          <span class="val">${data.cpu.load}%</span>
         </div>
-      `;
+        <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.cpu.load}%;"></div></div>`;
+    }
+
+    if (data.memory && data.memory.percent !== undefined && data.memory.percent > 0) {
+      metricsHtml += `
+        <div class="mini-metric">
+          <span class="label">RAM</span>
+          <span class="val">${data.memory.percent}%</span>
+        </div>
+        <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.memory.percent}%; background-color: var(--accent-purple);"></div></div>`;
+    }
+
+    // 3. Uptime (Always have space for it if present)
+    if (data.uptime) {
+      metricsHtml += `
+        <div class="mini-metric" style="margin-top: 0.5rem;">
+          <span class="label">Uptime</span>
+          <span class="val" style="color: var(--text-secondary); font-size: 0.8rem;">${formatUptime(data.uptime)}</span>
+        </div>`;
     }
 
     return `
@@ -313,27 +331,12 @@ function renderFleet(servers) {
         <div class="node-header" style="align-items: flex-start;">
           <div style="display: flex; flex-direction: column; gap: 2px;">
             <span class="node-hostname">${hostname}</span>
-            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Linux Node'}</span>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Node'}</span>
           </div>
           <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
         </div>
         <div class="node-metrics">
-          <div class="mini-metric">
-            <span class="label">CPU</span>
-            <span class="val">${data.cpu.load}%</span>
-          </div>
-          <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.cpu.load}%;"></div></div>
-          
-          <div class="mini-metric">
-            <span class="label">RAM</span>
-            <span class="val">${data.memory.percent}%</span>
-          </div>
-          <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.memory.percent}%; background-color: var(--accent-purple);"></div></div>
-          
-          <div class="mini-metric" style="margin-top: 0.5rem;">
-            <span class="label">Uptime</span>
-            <span class="val" style="color: var(--text-secondary); font-size: 0.8rem;">${formatUptime(data.uptime)}</span>
-          </div>
+          ${metricsHtml || '<span style="color: var(--text-secondary); font-size: 0.8rem;">No metrics reported</span>'}
         </div>
       </div>
     `;

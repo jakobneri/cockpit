@@ -1,16 +1,18 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.0.0
- * Fetches metrics from Fritz!Box via TR-064 SOAP API.
+ * COCKPIT GATEWAY CLIENT v5.0.1
+ * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
-import os from 'os';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const tr064 = require('tr-064');
 
-const GATEWAY_IP = process.env.GATEWAY_IP || '192.168.178.1';
+const GATEWAY_IP = process.env.GATEWAY_IP || '192.168.188.1';
 const GATEWAY_USER = process.env.GATEWAY_USER || 'admin';
 const GATEWAY_PASS = process.env.GATEWAY_PASS || '';
 const DB_URL = process.env.DB_URL || 'http://localhost:3000';
 const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
-const POLL_INTERVAL = 10000;
+const POLL_INTERVAL = 15000;
 
 const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
@@ -18,117 +20,91 @@ const log = {
   error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`)
 };
 
-log.info(`Starting Gateway Client for ${GATEWAY_IP} as ${HOSTNAME}`);
+log.info(`Starting Gateway Client v5.0.1 for ${GATEWAY_IP}`);
 
-/** ── SOAP Helper ── **/
-async function soapRequest(service, action, params = '') {
-  const url = `http://${GATEWAY_IP}:49000/upnp/control/${service}`;
-  const soapAction = `urn:dslforum-org:service:${service}:1#${action}`;
-  
-  const body = `<?xml version="1.0" encoding="utf-8"?>
-    <s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-      <s:Body>
-        <u:${action} xmlns:u="urn:dslforum-org:service:${service}:1">
-          ${params}
-        </u:${action}>
-      </s:Body>
-    </s:Envelope>`;
+const device = new tr064.TR064();
 
-  // Base64 Auth
-  const auth = Buffer.from(`${GATEWAY_USER}:${GATEWAY_PASS}`).toString('base64');
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset="utf-8"',
-        'SOAPACTION': `"${soapAction}"`,
-        'Authorization': `Basic ${auth}`
-      },
-      body
-    });
-
-    if (!res.ok) {
-      if (res.status === 401) throw new Error('Auth failed (Check user/pass)');
-      throw new Error(`HTTP ${res.status}`);
-    }
-
-    return await res.text();
-  } catch (err) {
-    throw err;
-  }
-}
-
-function parseXmlTag(xml, tag) {
-  const match = xml.match(new RegExp(`<${tag}>(.*?)</${tag}>`));
-  return match ? match[1] : null;
-}
-
-/** ── Metrics Collection ── **/
-async function getMetrics() {
-  const stats = {
-    cpu: { load: 0, temp: 0 },
-    memory: { total: 0, used: 0, percent: 0 },
-    network: { tx_sec: 0, rx_sec: 0 },
-    storage: { root: { total: 0, used: 0, percent: 0 } },
-    uptime: 0,
-    gateway: {
-      dsl_sync: "Unknown",
-      dsl_crashes: 0,
-      vpn_active: false,
-      model: "Fritz!Box"
-    }
-  };
-
-  try {
-    // 1. Device Info (Uptime & Model)
-    try {
-      const devInfo = await soapRequest('DeviceInfo', 'GetInfo');
-      stats.uptime = parseInt(parseXmlTag(devInfo, 'NewUpTime') || 0);
-      stats.gateway.model = parseXmlTag(devInfo, 'NewModelName') || "Fritz!Box";
-    } catch (e) { log.error(`DeviceInfo failed: ${e.message}`); }
-
-    // 2. DSL Sync & Stats
-    try {
-      const dslInfo = await soapRequest('WANCommonInterfaceConfig', 'GetCommonLinkProperties');
-      stats.gateway.dsl_sync = parseXmlTag(dslInfo, 'NewPhysicalLinkStatus') || "Disconnected";
+async function getFritzBoxData() {
+  return new Promise((resolve, reject) => {
+    device.initDevice(GATEWAY_IP, 49000, (err, dev) => {
+      if (err) return reject(new Error(`Initalization failed: ${err.message}`));
       
-      const addonInfo = await soapRequest('WANCommonInterfaceConfig', 'GetAddonInfos');
-      // We interpret 'NewX_AVM_DE_DSLConectionStats' or similar if available
-      // For now, let's just get throughput
-      stats.network.rx_sec = parseInt(parseXmlTag(addonInfo, 'NewByteReceiveRate') || 0) / 1024; // KB/s
-      stats.network.tx_sec = parseInt(parseXmlTag(addonInfo, 'NewByteSendRate') || 0) / 1024; // KB/s
-    } catch (e) { log.error(`DSL Info failed: ${e.message}`); }
+      dev.login(GATEWAY_USER, GATEWAY_PASS);
+      
+      const stats = {
+        uptime: 0,
+        model: "Fritz!Box",
+        dsl_sync: "Unknown",
+        rx_sec: 0,
+        tx_sec: 0,
+        vpn_active: false
+      };
 
-    // 3. VPN Status
-    try {
-      // Use X_AVM-DE_VPN service if possible, or check active connections
-      const vpnInfo = await soapRequest('X_AVM-DE_VPN', 'GetVPNInfo');
-      // This returns a list of VPN connections in XML format
-      stats.gateway.vpn_active = vpnInfo.includes('Connected') || vpnInfo.includes('true');
-    } catch (e) { 
-      // Fallback: Check if any host has X_AVM-DE_IsVPN
-      stats.gateway.vpn_active = false;
-    }
+      // 1. Device Info
+      const devInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
+      devInfo.actions.GetInfo((err, result) => {
+        if (!err && result) {
+          stats.uptime = parseInt(result.NewUpTime || 0);
+          stats.model = result.NewModelName || "Fritz!Box";
+        }
 
-  } catch (err) {
-    log.error(`Collection cycle failed: ${err.message}`);
-  }
+        // 2. DSL & Network Stats
+        const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
+        commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
+          if (!err && linkResult) {
+            stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
+          }
 
-  return stats;
+          commonLink.actions.GetAddonInfos((err, addonResult) => {
+            if (!err && addonResult) {
+              stats.rx_sec = parseInt(addonResult.NewByteReceiveRate || 0) / 1024;
+              stats.tx_sec = parseInt(addonResult.NewByteSendRate || 0) / 1024;
+            }
+
+            // 3. VPN Status (Try X_AVM-DE_VPN)
+            const vpnService = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
+            if (vpnService) {
+              vpnService.actions.GetVPNInfo((err, vpnResult) => {
+                // VPN info is often a long XML string in NewVPNInfo
+                if (!err && vpnResult) {
+                  const info = JSON.stringify(vpnResult);
+                  stats.vpn_active = info.includes('Connected') || info.includes('1');
+                }
+                resolve(stats);
+              });
+            } else {
+              resolve(stats);
+            }
+          });
+        });
+      });
+    });
+  });
 }
 
 async function report() {
   try {
-    const stats = await getMetrics();
+    const fbData = await getFritzBoxData();
+    
     const payload = {
       hostname: HOSTNAME,
-      stats,
+      stats: {
+        cpu: { load: 0, temp: 0 },
+        memory: { total: 0, used: 0, percent: 0 },
+        network: { tx_sec: fbData.tx_sec, rx_sec: fbData.rx_sec },
+        storage: { root: { total: 0, used: 0, percent: 0 } },
+        uptime: fbData.uptime,
+        gateway: {
+          dsl_sync: fbData.dsl_sync,
+          vpn_active: fbData.vpn_active,
+          model: fbData.model
+        }
+      },
       reported_at: new Date().toISOString(),
       system_info: {
-        model: stats.gateway.model,
+        model: fbData.model,
         platform: 'fritzbox',
-        version: '5.0.0'
+        version: '5.0.1'
       }
     };
 
@@ -142,14 +118,17 @@ async function report() {
     });
 
     if (response.ok) {
-      log.report(`Status: ${response.status} | Uptime: ${stats.uptime}s | VPN: ${stats.gateway.vpn_active}`);
+      log.report(`Status: ${response.status} | Sync: ${fbData.dsl_sync} | VPN: ${fbData.vpn_active}`);
     } else {
       log.error(`Reporting failed: ${response.status}`);
     }
   } catch (err) {
-    log.error(`Database unreachable: ${err.message}`);
+    log.error(`Collection failed: ${err.message}`);
   }
 }
 
-setInterval(report, POLL_INTERVAL);
-report();
+// Initial delay to let PM2 settle
+setTimeout(() => {
+  setInterval(report, POLL_INTERVAL);
+  report();
+}, 2000);
