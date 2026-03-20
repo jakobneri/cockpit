@@ -193,28 +193,47 @@ app.get('/api/stats/:hostname', async (req, res) => {
     }
 
     hubLog.success(`Resolved ${foundTable ? `table ${foundTable}` : 'Registry'} for ${hostname}`);
-    const historyData = foundTable ? await (await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`)).json() : [];
     
-    let model = registryData?.system_info?.model || 'Unknown';
-    let osPlatform = registryData?.system_info?.platform || 'Linux';
-   // No need for the try/catch block here as registryData is already fetched
-   // and model/osPlatform are assigned from it.
+    let historyData = [];
+    if (foundTable) {
+        try {
+          const hRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
+          if (hRes.ok) {
+            const arr = await hRes.json();
+            if (Array.isArray(arr)) historyData = arr;
+          }
+        } catch (hErr) { hubLog.error(`History fetch failed: ${hErr.message}`); }
+    }
+    
+    const meta = registryData || {};
+    const model = meta.system_info?.model || 'Unknown';
+    const osPlatform = meta.system_info?.platform || 'Linux';
 
-    const history = historyData.reverse().map(h => ({
+    // Map history safely (v5.3.9)
+    const history = [...historyData].reverse().map(h => ({
       cpu: h.data?.cpu?.load || 0,
       ram: h.data?.memory?.percent || 0,
       tx: h.data?.network?.tx_sec || 0,
       rx: h.data?.network?.rx_sec || 0,
-      time: new Date(h.recorded_at).getTime()
+      recorded_at: h.recorded_at
     }));
 
-    res.json({ 
-      hostname, model, os: osPlatform,
-      ...latest.data, history,
-      lastReport: new Date(latest.recorded_at).getTime()
+    res.json({
+      hostname,
+      model,
+      os: osPlatform,
+      uptime: latest.data?.uptime || 0,
+      cpu: latest.data?.cpu || { load: 0, temp: 0 },
+      memory: latest.data?.memory || { total: 0, used: 0, percent: 0 },
+      network: latest.data?.network || { tx_sec: 0, rx_sec: 0 },
+      storage: latest.data?.storage || { root: { total: 0, used: 0, percent: 0 } },
+      gateway: latest.data?.gateway,
+      history: history
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+  } catch (error) {
+    hubLog.error(`Stats Error for ${req.params.hostname}: ${error.message} \n ${error.stack}`);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -327,6 +346,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.8${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.9${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

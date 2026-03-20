@@ -356,6 +356,7 @@ async function fetchNodeStats() {
   try {
     const res = await apiFetch(`/api/stats/${selectedHostname}`);
     const data = await res.json();
+    console.log('[Cockpit] Received node stats:', data);
 
     // Heartbeat
     const heartbeat = document.getElementById('heartbeat-dot');
