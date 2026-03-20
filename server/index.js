@@ -35,7 +35,7 @@ const app = express();
 app.set('trust proxy', true); // Support X-Forwarded-For headers
 const PORT = process.env.PORT || 3000;
 const HUB_PASSWORD = process.env.HUB_PASSWORD || 'test123';
-const TRUSTED_IPS_ENV = process.env.HUB_TRUSTED_IPS || '192.168.178.187,95.117.170.17,127.0.0.1,46.31.216.50';
+const TRUSTED_IPS_ENV = process.env.HUB_TRUSTED_IPS || '192.168.178.187,95.117.170.17,127.0.0.1,46.31.216.50,95.117.210.49';
 const PROXY_IPS = TRUSTED_IPS_ENV.split(',').map(ip => ip.trim());
 
 // Security Middleware: Trust Proxy + Password Fallback
