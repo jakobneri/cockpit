@@ -90,7 +90,7 @@ app.post('/api/admin/update', async (req, res) => {
 
 app.use(express.static(path.join(__dirname, '../dist')));
 
-const DB_URL = process.env.DB_URL || 'http://localhost:3001';
+const DB_URL = process.env.DB_URL || 'http://localhost:3000';
 
 app.get('/api/fleet', async (req, res) => {
   try {
@@ -378,6 +378,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.20${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.21${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
