@@ -122,50 +122,51 @@ app.get('/api/fleet', async (req, res) => {
   }
 });
 
-app.get('/api/stats/:hostname', async (req, res) => {
-  try {
-    const hostname = req.params.hostname;
+// Utility: Resolve Table (v5.3.15)
+async function resolveTableName(hostname) {
     const sanitized = hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const directName = `metrics_${sanitized}`;
     
-    // 1. Try common variations
-    const directTables = [`metrics_${sanitized}`, `metrics_${hostname.toLowerCase()}`, `metrics_${hostname}`];
-    let foundTable = null;
-    let latest = null;
-
-    for (const tableName of directTables) {
-      const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=recorded_at.desc`);
-      if (response.ok) {
-        [latest] = await response.json();
-        foundTable = tableName;
-        break;
-      }
-    }
-
-    // 2. Fuzzy Discovery if needed (v5.3.6)
-    if (!foundTable) {
-      try {
+    // Check direct
+    const checkRes = await fetch(`${DB_URL}/${directName}?limit=1`);
+    if (checkRes.ok) return directName;
+    
+    // Fuzzy Discovery
+    try {
         const fleetRes = await fetch(`${DB_URL}/fleet_tables`);
         if (fleetRes.ok) {
-          const allTables = await fleetRes.json();
-          hubLog.info(`Fuzzy search for ${hostname} (Discovery found: ${allTables.map(t => t.table_name).join(', ')})`);
-          
-          // Find closest match: table starts with metrics_ and looks related
-          const bestMatch = allTables.find(t => 
-            t.table_name.toLowerCase().includes(sanitized) || 
-            sanitized.includes(t.table_name.replace('metrics_', '')) ||
-            t.table_name.toLowerCase().includes(hostname.toLowerCase().split('.')[0]) // Try first part of IP
-          );
-          
-          if (bestMatch) {
-            foundTable = bestMatch.table_name;
-            const retryRes = await fetch(`${DB_URL}/${foundTable}?limit=1&order=recorded_at.desc`);
-            if (retryRes.ok) [latest] = await retryRes.json();
-          }
+            const allTables = await fleetRes.json();
+            const bestMatch = allTables.find(t => 
+                t.table_name.toLowerCase().includes(sanitized) || 
+                sanitized.includes(t.table_name.replace('metrics_', ''))
+            );
+            return bestMatch?.table_name || null;
         }
-      } catch (e) { hubLog.error(`Fuzzy discovery failed: ${e.message}`); }
-    }
+    } catch (e) {}
+    return null;
+}
 
-    // 3. Last Resort Fallback: Use Registry Data (Registry fallback v5.3.8)
+// Utility: Flatten Object (v5.3.15)
+function flattenMetrics(obj, prefix = '') {
+    let result = {};
+    for (const [key, val] of Object.entries(obj)) {
+        const propName = prefix ? `${prefix}_${key}` : key;
+        if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+            Object.assign(result, flattenMetrics(val, propName));
+        } else {
+            result[propName.toUpperCase()] = val;
+        }
+    }
+    return result;
+}
+
+app.get('/api/stats/:hostname', async (req, res) => {
+  try {
+    const { hostname } = req.params;
+    let foundTable = await resolveTableName(hostname);
+    let latest = null;
+
+    // Registry Fallback (v5.3.8)
     const metaRes = await fetch(`${DB_URL}/clients?hostname=eq.${hostname}&select=system_info,latest_metrics`);
     let registryData = null;
     if (metaRes.ok) {
@@ -181,18 +182,17 @@ app.get('/api/stats/:hostname', async (req, res) => {
         }
     }
 
-    // If still no latest, use registry data as placeholder
     if (!latest && registryData?.latest_metrics) {
         hubLog.warn(`Using registry fallback for ${hostname}`);
         latest = { data: registryData.latest_metrics };
     }
 
     if (!latest) {
-      hubLog.warn(`Stats NOT FOUND for ${hostname}. Table ${foundTable || 'N/A'} might be empty or client never reported.`);
+      hubLog.warn(`Stats NOT FOUND for ${hostname}`);
       return res.status(404).json({ error: 'Not found' });
     }
 
-    hubLog.success(`Resolved ${foundTable ? `table ${foundTable}` : 'Registry'} for ${hostname}`);
+    hubLog.success(`Resolved ${foundTable || 'Registry'} for ${hostname}`);
     
     let historyData = [];
     if (foundTable) {
@@ -205,14 +205,10 @@ app.get('/api/stats/:hostname', async (req, res) => {
         } catch (hErr) { hubLog.error(`History fetch failed: ${hErr.message}`); }
     }
     
-    const meta = registryData || {};
-    const model = meta.system_info?.model || 'Unknown';
-    const osPlatform = meta.system_info?.platform || 'Linux';
-
-    // Map history safely (v5.3.12) - Spread h.data to preserve ALL fields
+    // Map history with recursive flattening (v5.3.15)
     const history = [...historyData].reverse().map(h => ({
-      ...(h.data || {}),
-      cpu: h.data?.cpu?.load || 0, // Keep aliases for charts
+      ...flattenMetrics(h.data || {}),
+      cpu: h.data?.cpu?.load || 0, // Legacy aliases
       ram: h.data?.memory?.percent || 0,
       tx: h.data?.network?.tx_sec || 0,
       rx: h.data?.network?.rx_sec || 0,
@@ -222,7 +218,7 @@ app.get('/api/stats/:hostname', async (req, res) => {
     // If history is empty, inject latest as a single point for the table
     if (history.length === 0 && latest) {
       history.push({
-        ...(latest.data || {}),
+        ...flattenMetrics(latest.data || {}),
         cpu: latest.data?.cpu?.load || 0,
         ram: latest.data?.memory?.percent || 0,
         tx: latest.data?.network?.tx_sec || 0,
@@ -233,8 +229,8 @@ app.get('/api/stats/:hostname', async (req, res) => {
 
     const finalData = {
       hostname,
-      model,
-      os: osPlatform,
+      model: registryData?.system_info?.model || 'Unknown',
+      os: registryData?.system_info?.platform || 'Linux',
       uptime: latest.data?.uptime || 0,
       cpu: latest.data?.cpu || { load: 0, temp: 0 },
       memory: latest.data?.memory || { total: 0, used: 0, percent: 0 },
@@ -257,8 +253,10 @@ app.get('/api/export/:hostname', async (req, res) => {
   try {
     const { hostname } = req.params;
     const { timeframe } = req.query;
-    const tableName = 'metrics_' + hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const tableName = await resolveTableName(hostname);
     
+    if (!tableName) return res.status(404).json({ error: 'No table found for this host' });
+
     let timeFilter = '';
     const now = Date.now();
     if (timeframe === 'hour') timeFilter = `&recorded_at=gte.${new Date(now - 3600000).toISOString()}`;
@@ -271,9 +269,9 @@ app.get('/api/export/:hostname', async (req, res) => {
     
     const data = await response.json();
 
-    // Simple XML Builder (Rich v5.3.4)
+    // Simple XML Builder (Fix v5.3.15)
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<cockpit_export>\n';
-    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n    <hub_version>v5.3.4</hub_version>\n  </metadata>\n`;
+    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n    <hub_version>v5.3.15</hub_version>\n  </metadata>\n`;
     xml += '  <history>\n';
     
     data.forEach(row => {
@@ -282,7 +280,7 @@ app.get('/api/export/:hostname', async (req, res) => {
       if (row.data) {
         // CPU
         if (row.data.cpu) {
-          xml += `      <cpu>\n        <load>${row.data.cpu.load}</cpu_load>\n        <temp>${row.data.cpu.temp || 0}</temp>\n      </cpu>\n`;
+          xml += `      <cpu>\n        <load>${row.data.cpu.load}</load>\n        <temp>${row.data.cpu.temp || 0}</temp>\n      </cpu>\n`;
         }
         // Memory
         if (row.data.memory) {
@@ -372,6 +370,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.14${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.15${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

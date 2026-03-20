@@ -564,18 +564,16 @@ function renderHistoryTable(history) {
     
     return `
       <tr>
-        <td style="font-family: monospace; white-space: nowrap; padding-right: 20px;">${timeStr}</td>
+        <td style="font-family: monospace; white-space: nowrap; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); min-width: 120px;">${timeStr}</td>
         ${sortedKeys.map(k => {
           let val = h[k];
-          // Intelligent Object Extraction (v5.3.14)
-          if (typeof val === 'object' && val !== null) {
-            if (val.percent !== undefined) val = `${val.percent}%`;
-            else if (val.load !== undefined) val = `${val.load}%`;
-            else if (val.used !== undefined) val = formatBytes(val.used);
-            else if (val.vpn_active !== undefined) val = val.vpn_active ? 'ON' : 'OFF';
-            else val = JSON.stringify(val);
-          }
-          return `<td style="font-family: monospace; font-size: 0.85rem; min-width: 80px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${val !== undefined ? val : '-'}</td>`;
+          // Format based on key (v5.3.15)
+          if (k.includes('PERCENT') || k === 'CPU' || k === 'RAM') val = typeof val === 'number' ? `${val.toFixed(1)}%` : val;
+          else if (k.includes('BYTES') || k === 'TX' || k === 'RX') val = typeof val === 'number' ? formatBytes(val) : val;
+          
+          return `<td style="font-family: monospace; font-size: 0.85rem; min-width: 140px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; vertical-align: top;">
+            ${val !== undefined ? val : '-'}
+          </td>`;
         }).join('')}
       </tr>
     `;
