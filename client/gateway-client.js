@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.4
+ * COCKPIT GATEWAY CLIENT v5.3.6
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -24,7 +24,7 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.3.4 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.3.6 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
 // Global state for delta calculation
@@ -63,7 +63,7 @@ async function getFritzBoxData() {
           commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
             if (!err && linkResult) stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
 
-            // Use Total Bytes delta for reliable speed calculation (v5.3.4)
+            // Use Total Bytes delta for reliable speed calculation (v5.3.6)
             commonLink.actions.GetTotalBytesReceived((err, rxResult) => {
               commonLink.actions.GetTotalBytesSent((err, txResult) => {
                 const now = Date.now();
@@ -138,7 +138,8 @@ async function report() {
     });
 
     if (response.ok) {
-      log.report(`Reporting Successful | DSL: ${fbData.dsl_sync} | VPN: ${fbData.vpn_active ? 'Active' : 'Down'} | RX: ${fbData.rx_sec.toFixed(1)} KB/s`);
+      const result = await response.json();
+      log.report(`Reporting Successful | Table: ${result.table || 'N/A'} | DSL: ${fbData.dsl_sync} | RX: ${fbData.rx_sec.toFixed(1)} KB/s`);
     }
   } catch (err) {
     log.error(`Collection Cycle failed: ${err.message}`);

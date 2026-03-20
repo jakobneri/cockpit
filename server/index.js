@@ -126,27 +126,49 @@ app.get('/api/stats/:hostname', async (req, res) => {
   try {
     const hostname = req.params.hostname;
     const sanitized = hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const tableNames = [`metrics_${sanitized}`, `metrics_${hostname.toLowerCase()}`];
     
-    let latest = null;
-    let historyData = [];
+    // 1. Try common variations
+    const directTables = [`metrics_${sanitized}`, `metrics_${hostname.toLowerCase()}`, `metrics_${hostname}`];
     let foundTable = null;
+    let latest = null;
 
-    for (const tableName of tableNames) {
+    for (const tableName of directTables) {
       const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=recorded_at.desc`);
       if (response.ok) {
         [latest] = await response.json();
-        const histRes = await fetch(`${DB_URL}/${tableName}?limit=200&order=recorded_at.desc`);
-        historyData = await histRes.json();
         foundTable = tableName;
         break;
       }
     }
 
+    // 2. Fuzzy Discovery if needed (v5.3.6)
     if (!foundTable) {
-      hubLog.warn(`Stats 404 for ${hostname} (Tried: ${tableNames.join(', ')})`);
+      try {
+        const fleetRes = await fetch(`${DB_URL}/fleet_tables`);
+        if (fleetRes.ok) {
+          const allTables = await fleetRes.json();
+          // Find closest match: table contains the sanitized hostname parts
+          const bestMatch = allTables.find(t => 
+            t.table_name.toLowerCase().includes(sanitized) || 
+            sanitized.includes(t.table_name.replace('metrics_', ''))
+          );
+          if (bestMatch) {
+            foundTable = bestMatch.table_name;
+            const retryRes = await fetch(`${DB_URL}/${foundTable}?limit=1&order=recorded_at.desc`);
+            if (retryRes.ok) [latest] = await retryRes.json();
+          }
+        }
+      } catch (e) { hubLog.error(`Fuzzy discovery failed: ${e.message}`); }
+    }
+
+    if (!foundTable || !latest) {
+      hubLog.warn(`Stats NOT FOUND for ${hostname} (Tried: ${directTables.join(', ')})`);
       return res.status(404).json({ error: 'Not found' });
     }
+
+    hubLog.info(`Resolved table ${foundTable} for ${hostname}`);
+    const histRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
+    const historyData = await histRes.json();
     
     let model = 'Unknown';
     let osPlatform = 'Linux';
@@ -267,9 +289,11 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
-// SPA Fallback: Serve index.html for any unknown non-API routes
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
+// SPA fallback for routing (v5.3.6)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).send('API endpoint not found');
+  }
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
@@ -284,6 +308,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.5${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.6${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
