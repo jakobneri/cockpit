@@ -139,16 +139,12 @@
                 <button class="toggle-btn active" onclick="exportData()" style="padding: 6px 16px;">📥 Export XML</button>
               </div>
             </div>
-            <div class="history-table-container">
-              <table class="technical-table history-table">
+            <div class="history-table-container" style="overflow-x: auto;">
+              <table class="technical-table history-table" style="width: 100%; min-width: 800px; border-collapse: collapse;">
                 <thead>
                   <tr>
-                    <th style="width: 180px;">Timestamp</th>
-                    <th>CPU %</th>
-                    <th>RAM %</th>
-                    <th>Down (Rx)</th>
-                    <th>Up (Tx)</th>
-                    <th>Full Data</th>
+                    <th>Timestamp</th>
+                    <!-- Dynamic Headers v5.3.13 -->
                   </tr>
                 </thead>
                 <tbody id="history-table-body">
@@ -189,7 +185,7 @@
     </div>
 
     <footer>
-      <p>nerifeige.de hub <span class="version-tag">v5.3.12</span></p>
+      <p>nerifeige.de hub <span class="version-tag">v5.3.13</span></p>
     </footer>
 
     <script type="module" src="/src/main.js"></script>

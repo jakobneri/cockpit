@@ -537,34 +537,39 @@ window.setDetailMode = (mode) => {
 
 function renderHistoryTable(history) {
   const tbody = document.getElementById('history-table-body');
-  if (!tbody) return;
+  const thead = document.querySelector('.history-table thead tr');
+  if (!tbody || !thead || !history.length) return;
   
-  // Clone history and reverse it to show newest first for the table
+  // Identify all unique keys across the history (v5.3.13)
+  const allKeys = new Set();
+  history.forEach(h => {
+    Object.keys(h).forEach(k => {
+      if (!['time', 'recorded_at', 'data'].includes(k)) allKeys.add(k);
+    });
+  });
+  const sortedKeys = Array.from(allKeys).sort();
+
+  // Re-build Headers
+  thead.innerHTML = `
+    <th>Timestamp</th>
+    ${sortedKeys.map(k => `<th>${k.toUpperCase()}</th>`).join('')}
+  `;
+  
+  // Clone and reverse history
   const tableData = [...history].reverse();
   
   tbody.innerHTML = tableData.map(h => {
     const date = h.time ? new Date(h.time) : null;
     const timeStr = (date && !isNaN(date)) ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '---';
     
-    // Create a copy without the UI-specific aliases for the "raw" view
-    const rawFields = { ...h };
-    delete rawFields.time;
-    delete rawFields.cpu;
-    delete rawFields.ram;
-    delete rawFields.tx;
-    delete rawFields.rx;
-    const jsonStr = JSON.stringify(rawFields);
-
     return `
       <tr>
-        <td style="color: var(--text-secondary); font-family: monospace;">${timeStr}</td>
-        <td style="font-weight: 600;">${h.cpu}%</td>
-        <td style="color: var(--accent-purple); font-weight: 600;">${h.ram}%</td>
-        <td style="color: var(--accent-orange);">${(h.rx / 1024).toFixed(1)} KB/s</td>
-        <td style="color: var(--accent-green);">${(h.tx / 1024).toFixed(1)} KB/s</td>
-        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.75rem; color: var(--text-secondary); opacity: 0.6;">
-          ${jsonStr}
-        </td>
+        <td style="font-family: monospace; white-space: nowrap;">${timeStr}</td>
+        ${sortedKeys.map(k => {
+          let val = h[k];
+          if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
+          return `<td style="font-family: monospace; font-size: 0.85rem;">${val !== undefined ? val : '-'}</td>`;
+        }).join('')}
       </tr>
     `;
   }).join('');
