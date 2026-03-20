@@ -209,14 +209,25 @@ app.get('/api/stats/:hostname', async (req, res) => {
     const model = meta.system_info?.model || 'Unknown';
     const osPlatform = meta.system_info?.platform || 'Linux';
 
-    // Map history safely (v5.3.9)
+    // Map history safely (v5.3.11)
     const history = [...historyData].reverse().map(h => ({
       cpu: h.data?.cpu?.load || 0,
       ram: h.data?.memory?.percent || 0,
       tx: h.data?.network?.tx_sec || 0,
       rx: h.data?.network?.rx_sec || 0,
-      recorded_at: h.recorded_at
+      time: h.recorded_at
     }));
+
+    // If history is empty, inject latest as a single point for the table (v5.3.11)
+    if (history.length === 0 && latest) {
+      history.push({
+        cpu: latest.data?.cpu?.load || 0,
+        ram: latest.data?.memory?.percent || 0,
+        tx: latest.data?.network?.tx_sec || 0,
+        rx: latest.data?.network?.rx_sec || 0,
+        time: latest.recorded_at || new Date().toISOString()
+      });
+    }
 
     const finalData = {
       hostname,
@@ -349,6 +360,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.10${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.11${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
