@@ -540,7 +540,7 @@ function renderHistoryTable(history) {
   const thead = document.querySelector('.history-table thead tr');
   if (!tbody || !thead || !history.length) return;
   
-  // Identify all unique keys across the history (v5.3.13)
+  // Identify all unique keys across the history (v5.3.14)
   const allKeys = new Set();
   history.forEach(h => {
     Object.keys(h).forEach(k => {
@@ -564,11 +564,18 @@ function renderHistoryTable(history) {
     
     return `
       <tr>
-        <td style="font-family: monospace; white-space: nowrap;">${timeStr}</td>
+        <td style="font-family: monospace; white-space: nowrap; padding-right: 20px;">${timeStr}</td>
         ${sortedKeys.map(k => {
           let val = h[k];
-          if (typeof val === 'object' && val !== null) val = JSON.stringify(val);
-          return `<td style="font-family: monospace; font-size: 0.85rem;">${val !== undefined ? val : '-'}</td>`;
+          // Intelligent Object Extraction (v5.3.14)
+          if (typeof val === 'object' && val !== null) {
+            if (val.percent !== undefined) val = `${val.percent}%`;
+            else if (val.load !== undefined) val = `${val.load}%`;
+            else if (val.used !== undefined) val = formatBytes(val.used);
+            else if (val.vpn_active !== undefined) val = val.vpn_active ? 'ON' : 'OFF';
+            else val = JSON.stringify(val);
+          }
+          return `<td style="font-family: monospace; font-size: 0.85rem; min-width: 80px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05);">${val !== undefined ? val : '-'}</td>`;
         }).join('')}
       </tr>
     `;
