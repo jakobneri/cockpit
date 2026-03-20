@@ -89,6 +89,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-container.full-width {
+  max-width: 98vw;
 }
 
 /* Header */
@@ -509,7 +514,7 @@ h2 {
   border-spacing: 0 0.5rem;
   text-align: left;
   font-size: 0.85rem;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .technical-table th,

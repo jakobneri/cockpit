@@ -521,6 +521,13 @@ window.setDetailMode = (mode) => {
   const btnChart = document.getElementById('btn-chart-view');
   const btnRaw = document.getElementById('btn-raw-view');
 
+  // Handle Full Width Mode (v5.3.16)
+  const container = document.querySelector('.app-container');
+  if (container) {
+    if (mode === 'raw') container.classList.add('full-width');
+    else container.classList.remove('full-width');
+  }
+
   if (mode === 'chart') {
     chartSect.style.display = 'block';
     rawSect.style.display = 'none';
