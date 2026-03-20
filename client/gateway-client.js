@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.23
+ * COCKPIT GATEWAY CLIENT v5.4.0
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 

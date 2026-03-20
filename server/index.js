@@ -279,7 +279,7 @@ app.get('/api/export/:hostname', async (req, res) => {
 
     // Simple XML Builder (Fix v5.3.15)
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<cockpit_export>\n';
-    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n    <hub_version>v5.3.15</hub_version>\n  </metadata>\n`;
+    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n    <hub_version>v5.4.0</hub_version>\n  </metadata>\n`;
     xml += '  <history>\n';
     
     data.forEach(row => {
@@ -386,6 +386,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.23${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.4.0${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
