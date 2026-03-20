@@ -232,8 +232,9 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
-app.get('/*', (req, res, next) => {
-  if (req.url.startsWith('/api')) return next();
+// SPA Fallback: Serve index.html for any unknown non-API routes
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
@@ -248,6 +249,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.1${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
