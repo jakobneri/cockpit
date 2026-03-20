@@ -154,11 +154,10 @@ function createCharts() {
   if (ramChart) ramChart.destroy();
   if (netChart) netChart.destroy();
 
-  const createGradient = (ctx, color) => {
+  const createGradient = (ctx, color, alphaTop, alphaBottom) => {
     const grd = ctx.createLinearGradient(0, 0, 0, 150);
-    grd.addColorStop(0, color + '70'); // Stronger fill at the top
-    grd.addColorStop(0.3, color + '20'); // Quick fade
-    grd.addColorStop(1, color + '00'); // Complete transparency
+    grd.addColorStop(0, color.replace(')', `, ${alphaTop})`).replace('rgb', 'rgba'));
+    grd.addColorStop(1, color.replace(')', `, ${alphaBottom})`).replace('rgb', 'rgba'));
     return grd;
   };
 
@@ -167,6 +166,15 @@ function createCharts() {
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
     
+    // Convert hex to rgb for gradient helper
+    const hexToRgb = (hex) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+    const rgbColor = hexToRgb(color);
+
     return new Chart(ctx, {
       type: 'line',
       data: {
@@ -174,7 +182,7 @@ function createCharts() {
         datasets: [{
           data: Array(maxDataPoints).fill(null),
           borderColor: color,
-          backgroundColor: createGradient(ctx, color),
+          backgroundColor: createGradient(ctx, rgbColor, 0.4, 0),
           fill: true,
           spanGaps: true
         }]
@@ -199,7 +207,7 @@ function createCharts() {
             label: 'Download (Rx)',
             data: Array(maxDataPoints).fill(null),
             borderColor: '#f59e0b',
-            backgroundColor: createGradient(ctx, '#f59e0b'),
+            backgroundColor: createGradient(ctx, 'rgb(245, 158, 11)', 0.4, 0),
             fill: true,
             tension: 0.4,
             borderWidth: 2
@@ -208,7 +216,7 @@ function createCharts() {
             label: 'Upload (Tx)',
             data: Array(maxDataPoints).fill(null),
             borderColor: '#10b981',
-            backgroundColor: createGradient(ctx, '#10b981'),
+            backgroundColor: createGradient(ctx, 'rgb(16, 185, 129)', 0.4, 0),
             fill: true,
             tension: 0.4,
             borderWidth: 2
