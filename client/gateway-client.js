@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.6
+ * COCKPIT GATEWAY CLIENT v5.3.7
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -24,7 +24,7 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.3.6 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.3.7 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
 // Global state for delta calculation

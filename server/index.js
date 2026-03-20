@@ -147,11 +147,15 @@ app.get('/api/stats/:hostname', async (req, res) => {
         const fleetRes = await fetch(`${DB_URL}/fleet_tables`);
         if (fleetRes.ok) {
           const allTables = await fleetRes.json();
-          // Find closest match: table contains the sanitized hostname parts
+          hubLog.info(`Fuzzy search for ${hostname} (Discovery found: ${allTables.map(t => t.table_name).join(', ')})`);
+          
+          // Find closest match: table starts with metrics_ and looks related
           const bestMatch = allTables.find(t => 
             t.table_name.toLowerCase().includes(sanitized) || 
-            sanitized.includes(t.table_name.replace('metrics_', ''))
+            sanitized.includes(t.table_name.replace('metrics_', '')) ||
+            t.table_name.toLowerCase().includes(hostname.toLowerCase().split('.')[0]) // Try first part of IP
           );
+          
           if (bestMatch) {
             foundTable = bestMatch.table_name;
             const retryRes = await fetch(`${DB_URL}/${foundTable}?limit=1&order=recorded_at.desc`);
@@ -162,11 +166,11 @@ app.get('/api/stats/:hostname', async (req, res) => {
     }
 
     if (!foundTable || !latest) {
-      hubLog.warn(`Stats NOT FOUND for ${hostname} (Tried: ${directTables.join(', ')})`);
+      hubLog.warn(`Stats NOT FOUND for ${hostname}. Tried sanitized: ${sanitized}`);
       return res.status(404).json({ error: 'Not found' });
     }
 
-    hubLog.info(`Resolved table ${foundTable} for ${hostname}`);
+    hubLog.success(`Resolved table ${foundTable} for ${hostname}`);
     const histRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
     const historyData = await histRes.json();
     
@@ -289,10 +293,10 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
-// SPA fallback for routing (v5.3.6)
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).send('API endpoint not found');
+// SPA fallback for routing (v5.3.7)
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api')) {
+    return next();
   }
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
@@ -308,6 +312,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.6${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.7${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
