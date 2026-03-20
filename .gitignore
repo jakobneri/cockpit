@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 
 # Runtime Data
 data/
+cockpit.config.json
