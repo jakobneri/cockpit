@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.21
+ * COCKPIT GATEWAY CLIENT v5.3.22
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -10,7 +10,7 @@ const tr064Lib = require('tr-064');
 const GATEWAY_IP = process.env.GATEWAY_IP || '192.168.188.1';
 const GATEWAY_USER = process.env.GATEWAY_USER || 'admin';
 const GATEWAY_PASS = process.env.GATEWAY_PASS || '';
-const DB_URL = process.env.DB_URL || 'http://localhost:3000';
+const DB_URL = process.env.DB_URL || 'http://localhost:3001';
 const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
 const POLL_INTERVAL = 15000;
 
