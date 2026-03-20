@@ -144,6 +144,13 @@ h1 {
   border-color: rgba(245, 158, 11, 0.2);
 }
 
+.temp-badge.hot {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff4d4d;
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
 .status-container {
   display: flex;
   align-items: center;
