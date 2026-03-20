@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.2.1
+ * COCKPIT GATEWAY CLIENT v5.2.2
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -24,12 +24,12 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.2.0 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.2.2 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
 async function getFritzBoxData() {
   return new Promise((resolve, reject) => {
-    tr064.initDevice(GATEWAY_IP, 49000, (err, dev) => {
+    tr064.initTR064Device(GATEWAY_IP, 49000, (err, dev) => {
       if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}. Check IP and connection.`));
       
       dev.login(GATEWAY_USER, GATEWAY_PASS);
