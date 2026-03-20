@@ -125,14 +125,28 @@ app.get('/api/fleet', async (req, res) => {
 app.get('/api/stats/:hostname', async (req, res) => {
   try {
     const hostname = req.params.hostname;
-    const tableName = 'metrics_' + hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const sanitized = hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const tableNames = [`metrics_${sanitized}`, `metrics_${hostname.toLowerCase()}`];
     
-    const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=recorded_at.desc`);
-    if (!response.ok) return res.status(404).json({ error: 'Not found' });
-    
-    const [latest] = await response.json();
-    const histRes = await fetch(`${DB_URL}/${tableName}?limit=200&order=recorded_at.desc`);
-    const historyData = await histRes.json();
+    let latest = null;
+    let historyData = [];
+    let foundTable = null;
+
+    for (const tableName of tableNames) {
+      const response = await fetch(`${DB_URL}/${tableName}?limit=1&order=recorded_at.desc`);
+      if (response.ok) {
+        [latest] = await response.json();
+        const histRes = await fetch(`${DB_URL}/${tableName}?limit=200&order=recorded_at.desc`);
+        historyData = await histRes.json();
+        foundTable = tableName;
+        break;
+      }
+    }
+
+    if (!foundTable) {
+      hubLog.warn(`Stats 404 for ${hostname} (Tried: ${tableNames.join(', ')})`);
+      return res.status(404).json({ error: 'Not found' });
+    }
     
     let model = 'Unknown';
     let osPlatform = 'Linux';
@@ -270,6 +284,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.4${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.5${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

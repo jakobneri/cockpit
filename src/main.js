@@ -394,20 +394,18 @@ async function fetchNodeStats() {
     // Populate initial history if charts are fresh
     if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
       const hist = data.history.slice(-maxDataPoints);
-      const padding = maxDataPoints - hist.length;
-      const labels = [...Array(padding).fill(''), ...hist.map(h => new Date(h.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))];
-      
-      cpuChart.data.labels = labels;
-      cpuChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.cpu)];
-      
-      ramChart.data.labels = labels;
-      ramChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => h.ram)];
-      
-      if (netChart) {
-        netChart.data.labels = labels;
-        netChart.data.datasets[0].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.rx / 1024).toFixed(1)))];
-        netChart.data.datasets[1].data = [...Array(padding).fill(null), ...hist.map(h => parseFloat((h.tx / 1024).toFixed(1)))];
-      }
+      hist.forEach(h => {
+        const time = new Date(h.recorded_at).toLocaleTimeString();
+        cpuChart.data.labels.push(time);
+        cpuChart.data.datasets[0].data.push(h.data.cpu?.load || 0);
+        ramChart.data.labels.push(time);
+        ramChart.data.datasets[0].data.push(h.data.memory?.percent || 0);
+        if (netChart) {
+          netChart.data.labels.push(time);
+          netChart.data.datasets[0].data.push(h.data.network?.rx_sec || 0);
+          netChart.data.datasets[1].data.push(h.data.network?.tx_sec || 0);
+        }
+      });
       cpuChart.update('none');
       ramChart.update('none');
       netChart?.update('none');
