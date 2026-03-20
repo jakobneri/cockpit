@@ -122,13 +122,16 @@ app.get('/api/fleet', async (req, res) => {
   }
 });
 
-// Utility: Resolve Table (v5.3.15)
+// Utility: Resolve Table (v5.3.17)
 async function resolveTableName(hostname) {
     const sanitized = hostname.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const directName = `metrics_${sanitized}`;
     
+    hubLog.info(`[v5.3.17] Resolving table for ${hostname} (Sanitized: ${sanitized})`);
+    
     // Check direct
     const checkRes = await fetch(`${DB_URL}/${directName}?limit=1`);
+    hubLog.info(`[v5.3.17] Direct check ${directName} status: ${checkRes.status}`);
     if (checkRes.ok) return directName;
     
     // Fuzzy Discovery
@@ -136,13 +139,15 @@ async function resolveTableName(hostname) {
         const fleetRes = await fetch(`${DB_URL}/fleet_tables`);
         if (fleetRes.ok) {
             const allTables = await fleetRes.json();
+            hubLog.info(`[v5.3.17] Fuzzy Discovery found ${allTables.length} tables: ${allTables.map(t => t.table_name).join(', ')}`);
             const bestMatch = allTables.find(t => 
                 t.table_name.toLowerCase().includes(sanitized) || 
                 sanitized.includes(t.table_name.replace('metrics_', ''))
             );
+            if (bestMatch) hubLog.success(`[v5.3.17] Fuzzy match found: ${bestMatch.table_name}`);
             return bestMatch?.table_name || null;
         }
-    } catch (e) {}
+    } catch (e) { hubLog.error(`[v5.3.17] Fuzzy search error: ${e.message}`); }
     return null;
 }
 
@@ -370,6 +375,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.16${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.17${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
