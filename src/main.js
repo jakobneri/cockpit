@@ -369,8 +369,11 @@ async function fetchNodeStats() {
     document.title = `${selectedHostname} | Cockpit`;
     const osInfo = document.getElementById('os-info');
     
-    // Gateway vs Server UI Toggle (v5.3.4)
-    const isGateway = data.os === 'fritzbox' || (data.model && data.model.includes('FRITZ!Box'));
+    // Gateway vs Server UI Toggle (v5.3.8)
+    const isGateway = data.os === 'fritzbox' || 
+                      (data.model && data.model.toLowerCase().includes('fritz')) ||
+                      data.hostname.includes('gateway');
+                      
     document.getElementById('gateway-info').style.display = isGateway ? 'block' : 'none';
     
     // Hide standard server bars for gateways
@@ -418,15 +421,15 @@ async function fetchNodeStats() {
 
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Metrics
-    const hasCpu = data.cpu && data.cpu.load !== undefined && data.cpu.load > 0;
-    const hasRam = data.memory && data.memory.percent !== undefined && data.memory.percent > 0;
+    // Metrics (v5.3.8)
+    const hasCpu = data.cpu && data.cpu.load !== undefined;
+    const hasRam = data.memory && data.memory.percent !== undefined;
     
     const cpuBox = document.getElementById('cpu-metric-box');
     const ramBox = document.getElementById('ram-metric-box');
     
-    if (cpuBox) cpuBox.style.display = hasCpu ? 'block' : 'none';
-    if (ramBox) ramBox.style.display = hasRam ? 'block' : 'none';
+    if (cpuBox) cpuBox.style.display = (hasCpu && !isGateway) ? 'block' : 'none';
+    if (ramBox) ramBox.style.display = (hasRam && !isGateway) ? 'block' : 'none';
 
     if (hasCpu) {
       updateElement('cpu-load', data.cpu.load);

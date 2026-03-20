@@ -165,25 +165,40 @@ app.get('/api/stats/:hostname', async (req, res) => {
       } catch (e) { hubLog.error(`Fuzzy discovery failed: ${e.message}`); }
     }
 
-    if (!foundTable || !latest) {
-      hubLog.warn(`Stats NOT FOUND for ${hostname}. Tried sanitized: ${sanitized}`);
+    // 3. Last Resort Fallback: Use Registry Data (Registry fallback v5.3.8)
+    const metaRes = await fetch(`${DB_URL}/clients?hostname=eq.${hostname}&select=system_info,latest_metrics`);
+    let registryData = null;
+    if (metaRes.ok) {
+        const [meta] = await metaRes.json();
+        registryData = meta;
+    }
+
+    if (foundTable) {
+        const response = await fetch(`${DB_URL}/${foundTable}?limit=1&order=recorded_at.desc`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.length > 0) latest = data[0];
+        }
+    }
+
+    // If still no latest, use registry data as placeholder
+    if (!latest && registryData?.latest_metrics) {
+        hubLog.warn(`Using registry fallback for ${hostname}`);
+        latest = { data: registryData.latest_metrics };
+    }
+
+    if (!latest) {
+      hubLog.warn(`Stats NOT FOUND for ${hostname}. Table ${foundTable || 'N/A'} might be empty or client never reported.`);
       return res.status(404).json({ error: 'Not found' });
     }
 
-    hubLog.success(`Resolved table ${foundTable} for ${hostname}`);
-    const histRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
-    const historyData = await histRes.json();
+    hubLog.success(`Resolved ${foundTable ? `table ${foundTable}` : 'Registry'} for ${hostname}`);
+    const historyData = foundTable ? await (await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`)).json() : [];
     
-    let model = 'Unknown';
-    let osPlatform = 'Linux';
-    try {
-      const metaRes = await fetch(`${DB_URL}/clients?hostname=eq.${hostname}&select=system_info`);
-      if (metaRes.ok) {
-        const [meta] = await metaRes.json();
-        model = meta?.system_info?.model || model;
-        osPlatform = meta?.system_info?.platform || osPlatform;
-      }
-    } catch (e) {}
+    let model = registryData?.system_info?.model || 'Unknown';
+    let osPlatform = registryData?.system_info?.platform || 'Linux';
+   // No need for the try/catch block here as registryData is already fetched
+   // and model/osPlatform are assigned from it.
 
     const history = historyData.reverse().map(h => ({
       cpu: h.data?.cpu?.load || 0,
@@ -312,6 +327,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.7${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.8${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
