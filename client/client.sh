@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cockpit Native Client v4.0.3 (Bash Version)
+# Cockpit Native Client v4.0.4 (Bash Version)
 # Zero-dependency monitoring for Linux / Raspberry Pi
 
 DB_URL="${DB_URL:-http://localhost:3000}"
@@ -84,7 +84,7 @@ while true; do
   "system_info": {
     "model": "$MODEL",
     "platform": "linux",
-    "version": "4.0.3"
+    "version": "4.0.4"
   },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },

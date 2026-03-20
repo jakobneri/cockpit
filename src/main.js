@@ -9,6 +9,63 @@ let selectedHostname = null;
 let statsTimer = null;
 let fleetTimer = null;
 
+/** ── Auth State Management ── **/
+let hubToken = localStorage.getItem('hub_token') || '';
+
+// Handle ?token= in URL for pre-auth
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('token')) {
+  hubToken = urlParams.get('token');
+  localStorage.setItem('hub_token', hubToken);
+  // Clean URL to keep it pretty
+  const newUrl = window.location.pathname;
+  window.history.replaceState({}, '', newUrl);
+}
+
+async function apiFetch(url, options = {}) {
+  const headers = { ...options.headers };
+  if (hubToken) {
+    headers['Authorization'] = `Bearer ${hubToken}`;
+  }
+  
+  const res = await fetch(url, { ...options, headers });
+  
+  if (res.status === 401) {
+    showAuthModal();
+    const err = new Error('Unauthorized');
+    err.status = 401;
+    throw err;
+  }
+  
+  return res;
+}
+
+function showAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    const input = document.getElementById('hub-password-input');
+    if (input) input.focus();
+  }
+}
+
+window.submitPassword = async () => {
+  const input = document.getElementById('hub-password-input');
+  const pwd = input ? input.value : '';
+  if (!pwd) return;
+  
+  hubToken = pwd;
+  localStorage.setItem('hub_token', hubToken);
+  document.getElementById('auth-modal').style.display = 'none';
+  
+  // Clear input
+  if (input) input.value = '';
+
+  // Immediate retry to unlock data
+  if (currentView === 'overview') await fetchFleet();
+  else if (selectedHostname) await fetchNodeStats();
+};
+
 // Helper to format bytes
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
@@ -178,7 +235,7 @@ function updateChart(chart, newValue, label = '') {
 
 async function fetchFleet() {
   try {
-    const res = await fetch('/api/fleet');
+    const res = await apiFetch('/api/fleet');
     const data = await res.json();
     
     // Update Hub branding in Header if not in details view
@@ -248,7 +305,7 @@ function renderFleet(servers) {
 async function fetchNodeStats() {
   if (!selectedHostname) return;
   try {
-    const res = await fetch(`/api/stats/${selectedHostname}`);
+    const res = await apiFetch(`/api/stats/${selectedHostname}`);
     const data = await res.json();
 
     // Heartbeat
@@ -426,7 +483,7 @@ function updateProgress(id, percent) {
 
 // Heartbeat to Hub to suppress noisy logs when watching
 async function sendActiveHeartbeat() {
-  try { await fetch('/api/active', { method: 'POST' }); }
+  try { await apiFetch('/api/active', { method: 'POST' }); }
   catch (e) {}
 }
 

@@ -35,7 +35,8 @@ const app = express();
 app.set('trust proxy', true); // Support X-Forwarded-For headers
 const PORT = process.env.PORT || 3000;
 const HUB_PASSWORD = process.env.HUB_PASSWORD || 'test123';
-const PROXY_IPS = ['192.168.178.187', '95.117.170.17', '127.0.0.1', '46.31.216.50'];
+const TRUSTED_IPS_ENV = process.env.HUB_TRUSTED_IPS || '192.168.178.187,95.117.170.17,127.0.0.1,46.31.216.50';
+const PROXY_IPS = TRUSTED_IPS_ENV.split(',').map(ip => ip.trim());
 
 // Security Middleware: Trust Proxy + Password Fallback
 const authMiddleware = (req, res, next) => {
@@ -259,7 +260,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.3${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v4.0.4${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }

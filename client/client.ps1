@@ -1,4 +1,4 @@
-# Cockpit Native Client v3.3.20 (PowerShell Version)
+# Cockpit Native Client v4.0.4 (PowerShell Version)
 # Lightweight monitoring for Windows
 
 $DB_URL = if ($env:DB_URL) { $env:DB_URL } else { "http://localhost:3000" }
@@ -56,7 +56,7 @@ while ($true) {
         system_info = @{
             model = $model
             platform = "windows"
-            version = "4.0.3"
+            version = "4.0.4"
         }
         stats = @{
             cpu = @{ load = $cpu; temp = 0 }

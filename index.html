@@ -113,6 +113,20 @@
       </main>
     </div>
 
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal" style="display: none;">
+      <div class="modal-content glass" style="max-width: 400px; min-height: auto;">
+        <div class="modal-header">
+          <h2>Authentication Required</h2>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.5;">Your IP has changed or the session expired. Please enter the Hub Password to continue.</p>
+          <input type="password" id="hub-password-input" placeholder="Enter Password" style="width: 100%; padding: 0.8rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 1rem; outline: none; transition: border-color 0.3s;" onkeydown="if(event.key === 'Enter') submitPassword()">
+          <button class="toggle-btn active" style="width: 100%; padding: 0.8rem; height: auto; font-size: 1rem;" onclick="submitPassword()">Unlock Dashboard</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Logs Modal -->
     <div id="logs-modal" class="modal">
       <div class="modal-content glass">
@@ -126,7 +140,7 @@
       </div>
     </div>
       <footer>
-        <p>nerifeige.de hub <span class="version-tag">v4.0.3</span></p>
+        <p>nerifeige.de hub <span class="version-tag">v4.0.4</span></p>
       </footer>
 
     </div>
