@@ -43,6 +43,9 @@ BEGIN
         data JSONB
     )', v_table_name);
 
+    -- Ensure recorded_at exists (v5.3.18 migration)
+    EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS recorded_at TIMESTAMPTZ DEFAULT NOW()', v_table_name);
+
     -- Insert the new metrics
     EXECUTE format('INSERT INTO %I (data) VALUES (%L)', v_table_name, v_stats);
 
@@ -54,7 +57,13 @@ BEGIN
         system_info = EXCLUDED.system_info,
         latest_metrics = EXCLUDED.latest_metrics;
 
-    RETURN jsonb_build_object('success', true, 'table', v_table_name);
+    -- Return history count for diagnostics (v5.3.19)
+    DECLARE 
+        v_count INT;
+    BEGIN
+        EXECUTE format('SELECT count(*) FROM %I', v_table_name) INTO v_count;
+        RETURN jsonb_build_object('success', true, 'table', v_table_name, 'history_count', v_count);
+    END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

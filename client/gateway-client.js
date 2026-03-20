@@ -139,7 +139,7 @@ async function report() {
 
     if (response.ok) {
       const result = await response.json();
-      log.report(`Reporting Successful | Table: ${result.table || 'N/A'} | DSL: ${fbData.dsl_sync} | RX: ${fbData.rx_sec.toFixed(1)} KB/s`);
+      log.report(`Reporting Successful | Table: ${result.table || 'N/A'} | History: ${result.history_count || 1} rows | RX: ${fbData.rx_sec.toFixed(1)} KB/s`);
     }
   } catch (err) {
     log.error(`Collection Cycle failed: ${err.message}`);

@@ -205,7 +205,10 @@ app.get('/api/stats/:hostname', async (req, res) => {
           const hRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
           if (hRes.ok) {
             const arr = await hRes.json();
-            if (Array.isArray(arr)) historyData = arr;
+            if (Array.isArray(arr)) {
+              historyData = arr;
+              hubLog.info(`[v5.3.19] Fetched ${arr.length} history points for ${hostname} from ${foundTable}`);
+            }
           }
         } catch (hErr) { hubLog.error(`History fetch failed: ${hErr.message}`); }
     }
@@ -375,6 +378,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.17${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.19${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
