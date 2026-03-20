@@ -181,18 +181,39 @@ app.get('/api/export/:hostname', async (req, res) => {
     
     const data = await response.json();
 
-    // Simple XML Builder
+    // Simple XML Builder (Rich v5.3.4)
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<cockpit_export>\n';
-    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n  </metadata>\n`;
+    xml += `  <metadata>\n    <hostname>${hostname}</hostname>\n    <timeframe>${timeframe || 'all'}</timeframe>\n    <timestamp>${new Date().toISOString()}</timestamp>\n    <count>${data.length}</count>\n    <hub_version>v5.3.4</hub_version>\n  </metadata>\n`;
     xml += '  <history>\n';
     
     data.forEach(row => {
       xml += '    <entry>\n';
-      xml += `      <time>${row.recorded_at}</time>\n`;
+      xml += `      <recorded_at>${row.recorded_at}</recorded_at>\n`;
       if (row.data) {
-        if (row.data.cpu) xml += `      <cpu_load>${row.data.cpu.load}</cpu_load>\n      <cpu_temp>${row.data.cpu.temp || 'N/A'}</cpu_temp>\n`;
-        if (row.data.memory) xml += `      <ram_percent>${row.data.memory.percent}</ram_percent>\n`;
-        if (row.data.network) xml += `      <net_tx>${row.data.network.tx_sec}</net_tx>\n      <net_rx>${row.data.network.rx_sec}</net_rx>\n`;
+        // CPU
+        if (row.data.cpu) {
+          xml += `      <cpu>\n        <load>${row.data.cpu.load}</cpu_load>\n        <temp>${row.data.cpu.temp || 0}</temp>\n      </cpu>\n`;
+        }
+        // Memory
+        if (row.data.memory) {
+          xml += `      <memory>\n        <percent>${row.data.memory.percent}</percent>\n        <total_bytes>${row.data.memory.total || 0}</total_bytes>\n        <used_bytes>${row.data.memory.used || 0}</used_bytes>\n      </memory>\n`;
+        }
+        // Network
+        if (row.data.network) {
+          xml += `      <network>\n        <tx_kb_sec>${row.data.network.tx_sec}</tx_kb_sec>\n        <rx_kb_sec>${row.data.network.rx_sec}</rx_kb_sec>\n      </network>\n`;
+        }
+        // Storage
+        if (row.data.storage) {
+          xml += '      <storage>\n';
+          for (const [drive, info] of Object.entries(row.data.storage)) {
+            xml += `        <disk name="${drive}">\n          <total_bytes>${info.total}</total_bytes>\n          <used_bytes>${info.used}</used_bytes>\n          <percent>${info.percent}</percent>\n        </disk>\n`;
+          }
+          xml += '      </storage>\n';
+        }
+        // Gateway-specific
+        if (row.data.gateway) {
+          xml += `      <gateway>\n        <model>${row.data.gateway.model}</model>\n        <dsl_sync>${row.data.gateway.dsl_sync}</dsl_sync>\n        <vpn_active>${row.data.gateway.vpn_active}</vpn_active>\n      </gateway>\n`;
+        }
       }
       xml += '    </entry>\n';
     });
@@ -249,6 +270,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.4${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

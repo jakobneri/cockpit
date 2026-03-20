@@ -84,25 +84,35 @@
               </div>
             </div>
           
-            <!-- Gateway Connection Metrics -->
-            <div id="gateway-stats-section" class="card glass" style="display: none; margin-top: 1.5rem;">
-                <div style="display: flex; gap: 2rem; align-items: center;">
-                  <h3>Gateway Connectivity</h3>
-                  <div style="display: flex; gap: 1rem;">
-                    <div class="mini-metric">
-                      <span class="label">DSL SYNC</span>
-                      <span id="gw-dsl-sync" class="status-badge" style="font-size: 0.8rem; padding: 4px 10px;">--</span>
-                    </div>
-                    <div class="mini-metric">
-                      <span class="label">VPN BRIDGE</span>
-                      <span id="gw-vpn-status" class="status-badge" style="font-size: 0.8rem; padding: 4px 10px;">--</span>
-                    </div>
-                  </div>
+            <!-- Gateway Specific Stats (Router Mode) -->
+            <div id="gateway-info" class="card glass" style="display: none; grid-column: 1 / -1; margin-bottom: 1.5rem;">
+              <h3 style="margin-bottom: 1.5rem;"><span class="icon">🔌</span> Gateway Connection</h3>
+              <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="metric-item">
+                  <span class="metric-label">DSL SYNC</span>
+                  <div class="metric-value" id="gw-dsl-sync">--</div>
                 </div>
+                <div class="metric-item">
+                  <span class="metric-label">VPN STATUS</span>
+                  <div class="metric-value"><span id="gw-vpn-status" class="temp-badge cool">--</span></div>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">EXT. IP</span>
+                  <div class="metric-value" style="font-size: 1.1rem; color: var(--accent);" id="gw-ext-ip">--</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="details-network" class="card glass" style="margin-top: 1.5rem;">
+              <h3 style="margin-bottom: 1.5rem;"><span class="icon">📡</span> Network Activity <span id="net-details-ext" style="font-size: 0.8rem; opacity: 0.6; font-weight: normal; margin-left: 0.5rem;">(DOWNLOAD RX: -- / UPLOAD TX: -- KB/S)</span></h3>
+              <div class="chart-container" style="height: 300px;">
+                <canvas id="details-network-chart"></canvas>
+              </div>
+              <p style="font-size: 0.8rem; opacity: 0.5; margin-top: 1rem;">Realtime Traffic (10m History)</p>
             </div>
 
             <!-- Node Storage (Only in charts view) -->
-            <section id="storage-section" class="card glass" style="margin-top: 1.5rem;">
+            <section id="details-storage" class="card glass" style="margin-top: 1.5rem;">
               <div class="storage-grid">
                 <div class="storage-item">
                   <div class="storage-header">
@@ -122,7 +132,7 @@
 
         <!-- Raw Data View (Hidden by default) -->
         <section id="details-raw" style="display: none; margin-top: 1.5rem;">
-          <div class="card glass">
+            <div class="card glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
               <h3 style="margin-bottom: 0;"><span class="icon">📜</span> Raw History (Last 200 Logs)</h3>
               
@@ -186,7 +196,7 @@
     </div>
 
     <footer>
-      <p>nerifeige.de hub <span class="version-tag">v5.3.0</span></p>
+      <p>nerifeige.de hub <span class="version-tag">v5.3.4</span></p>
     </footer>
 
     <script type="module" src="/src/main.js"></script>

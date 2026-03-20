@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.3.1
+ * COCKPIT GATEWAY CLIENT v5.3.4
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -24,14 +24,20 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.3.1 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.3.4 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
+
+// Global state for delta calculation
+let prevStats = {
+  rx_total: 0,
+  tx_total: 0,
+  time: Date.now()
+};
 
 async function getFritzBoxData() {
   return new Promise((resolve, reject) => {
     tr064.initTR064Device(GATEWAY_IP, 49000, (err, dev) => {
-      if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}. Check IP and connection.`));
-      
+      if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}`));
       dev.login(GATEWAY_USER, GATEWAY_PASS);
       
       const stats = {
@@ -43,44 +49,41 @@ async function getFritzBoxData() {
         vpn_active: false
       };
 
-      // 1. Device Info
       const devInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
-      if (!devInfo) return reject(new Error('DeviceInfo service not found. This might not be a Fritz!Box.'));
+      if (!devInfo) return reject(new Error('DeviceInfo service not found.'));
 
       devInfo.actions.GetInfo((err, result) => {
-        if (err) log.error(`DeviceInfo:GetInfo failed (Auth?): ${err.message}`);
         if (!err && result) {
           stats.uptime = parseInt(result.NewUpTime || 0);
           stats.model = result.NewModelName || "Fritz!Box";
-          log.success(`Fetched DeviceInfo: ${stats.model} (Uptime: ${stats.uptime}s)`);
         }
 
-        // 2. DSL & Network Stats
         const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
         if (commonLink) {
           commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
-            if (err) log.warn(`DSL Link Properties failed: ${err.message}`);
-            if (!err && linkResult) {
-              stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
-            }
+            if (!err && linkResult) stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
 
-            // Safety check for GetAddonInfos as it might not be supported on all firmware versions
-            if (commonLink.actions.GetAddonInfos) {
-              commonLink.actions.GetAddonInfos((err, addonResult) => {
-                if (err) log.warn(`AddonInfos (Throughput) failed: ${err.message}`);
-                if (!err && addonResult) {
-                  stats.rx_sec = parseInt(addonResult.NewByteReceiveRate || 0) / 1024;
-                  stats.tx_sec = parseInt(addonResult.NewByteSendRate || 0) / 1024;
+            // Use Total Bytes delta for reliable speed calculation (v5.3.4)
+            commonLink.actions.GetTotalBytesReceived((err, rxResult) => {
+              commonLink.actions.GetTotalBytesSent((err, txResult) => {
+                const now = Date.now();
+                const rx_total = parseInt(rxResult?.NewTotalBytesReceived || 0);
+                const tx_total = parseInt(txResult?.NewTotalBytesSent || 0);
+                
+                if (prevStats.rx_total > 0) {
+                  const dt = (now - prevStats.time) / 1000;
+                  if (dt > 0) {
+                    stats.rx_sec = Math.max(0, (rx_total - prevStats.rx_total) / 1024 / dt);
+                    stats.tx_sec = Math.max(0, (tx_total - prevStats.tx_total) / 1024 / dt);
+                  }
                 }
+                
+                prevStats = { rx_total, tx_total, time: now };
                 processVPN(dev, stats, resolve);
               });
-            } else {
-              log.warn('GetAddonInfos not supported. Throughput metrics will be 0.');
-              processVPN(dev, stats, resolve);
-            }
+            });
           });
         } else {
-          log.warn('WANCommonInterfaceConfig service not found.');
           resolve(stats);
         }
       });
@@ -92,7 +95,6 @@ function processVPN(dev, stats, resolve) {
   const vpnService = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
   if (vpnService && vpnService.actions.GetVPNInfo) {
     vpnService.actions.GetVPNInfo((err, vpnResult) => {
-      if (err) log.warn(`VPN Info fetch failed: ${err.message}`);
       if (!err && vpnResult) {
         const info = JSON.stringify(vpnResult);
         stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
@@ -100,7 +102,6 @@ function processVPN(dev, stats, resolve) {
       resolve(stats);
     });
   } else {
-    log.warn('VPN service (X_AVM-DE_VPN) not supported on this device.');
     resolve(stats);
   }
 }
@@ -108,7 +109,6 @@ function processVPN(dev, stats, resolve) {
 async function report() {
   try {
     const fbData = await getFritzBoxData();
-    
     const payload = {
       hostname: HOSTNAME,
       stats: {
@@ -127,30 +127,24 @@ async function report() {
       system_info: {
         model: fbData.model,
         platform: 'fritzbox',
-        version: '5.1.0'
+        version: '5.3.4'
       }
     };
 
     const response = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Prefer': 'params=single-object'
-      },
+      headers: { 'Content-Type': 'application/json', 'Prefer': 'params=single-object' },
       body: JSON.stringify(payload)
     });
 
     if (response.ok) {
       log.report(`Reporting Successful | DSL: ${fbData.dsl_sync} | VPN: ${fbData.vpn_active ? 'Active' : 'Down'} | RX: ${fbData.rx_sec.toFixed(1)} KB/s`);
-    } else {
-      log.error(`Hub reporting failed with status: ${response.status}`);
     }
   } catch (err) {
     log.error(`Collection Cycle failed: ${err.message}`);
   }
 }
 
-// Initial delay to let PM2 settle
 setTimeout(() => {
   setInterval(report, POLL_INTERVAL);
   report();

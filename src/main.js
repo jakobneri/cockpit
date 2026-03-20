@@ -368,12 +368,29 @@ async function fetchNodeStats() {
     document.getElementById('header-hostname').innerHTML = `<span style="cursor: pointer;" onclick="showOverview()">${selectedHostname}</span>`;
     document.title = `${selectedHostname} | Cockpit`;
     const osInfo = document.getElementById('os-info');
-    if (osInfo) {
-      osInfo.style.display = 'block';
-      const model = data.model || 'Unknown System';
-      osInfo.textContent = `${model} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+    
+    // Gateway vs Server UI Toggle (v5.3.4)
+    const isGateway = data.os === 'fritzbox' || (data.model && data.model.includes('FRITZ!Box'));
+    document.getElementById('gateway-info').style.display = isGateway ? 'block' : 'none';
+    
+    // Hide standard server bars for gateways
+    const cpuCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.includes('CPU Usage'));
+    const ramCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.includes('Memory Usage'));
+    if (cpuCard) cpuCard.style.display = isGateway ? 'none' : 'block';
+    if (ramCard) ramCard.style.display = isGateway ? 'none' : 'block';
+    document.getElementById('details-storage').style.display = isGateway ? 'none' : 'block';
+
+    if (isGateway && data.gateway) {
+      document.getElementById('gw-dsl-sync').textContent = data.gateway.dsl_sync || 'Up';
+      document.getElementById('gw-vpn-status').textContent = data.gateway.vpn_active ? 'CONNECTED' : 'DISCONNECTED';
+      document.getElementById('gw-vpn-status').className = `temp-badge ${data.gateway.vpn_active ? 'cool' : 'hot'}`;
+      document.getElementById('gw-ext-ip').textContent = data.network?.ext_ip || 'Managed';
     }
 
+    // Header Info
+    document.getElementById('header-hostname').textContent = data.hostname;
+    document.getElementById('os-info').textContent = `${data.model || 'Unknown'} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+    
     // Populate initial history if charts are fresh
     if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
       const hist = data.history.slice(-maxDataPoints);
