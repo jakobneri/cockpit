@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.2.2
+ * COCKPIT GATEWAY CLIENT v5.3.1
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
@@ -24,7 +24,7 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.2.2 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.3.1 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
 async function getFritzBoxData() {
@@ -64,29 +64,20 @@ async function getFritzBoxData() {
               stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
             }
 
-            commonLink.actions.GetAddonInfos((err, addonResult) => {
-              if (err) log.warn(`AddonInfos (Throughput) failed: ${err.message}`);
-              if (!err && addonResult) {
-                stats.rx_sec = parseInt(addonResult.NewByteReceiveRate || 0) / 1024;
-                stats.tx_sec = parseInt(addonResult.NewByteSendRate || 0) / 1024;
-              }
-
-              // 3. VPN Status
-              const vpnService = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
-              if (vpnService) {
-                vpnService.actions.GetVPNInfo((err, vpnResult) => {
-                  if (err) log.warn(`VPN Info fetch failed: ${err.message}`);
-                  if (!err && vpnResult) {
-                    const info = JSON.stringify(vpnResult);
-                    stats.vpn_active = info.includes('Connected') || info.includes('1') || info.includes('true');
-                  }
-                  resolve(stats);
-                });
-              } else {
-                log.warn('VPN service (X_AVM-DE_VPN) not supported on this device.');
-                resolve(stats);
-              }
-            });
+            // Safety check for GetAddonInfos as it might not be supported on all firmware versions
+            if (commonLink.actions.GetAddonInfos) {
+              commonLink.actions.GetAddonInfos((err, addonResult) => {
+                if (err) log.warn(`AddonInfos (Throughput) failed: ${err.message}`);
+                if (!err && addonResult) {
+                  stats.rx_sec = parseInt(addonResult.NewByteReceiveRate || 0) / 1024;
+                  stats.tx_sec = parseInt(addonResult.NewByteSendRate || 0) / 1024;
+                }
+                processVPN(dev, stats, resolve);
+              });
+            } else {
+              log.warn('GetAddonInfos not supported. Throughput metrics will be 0.');
+              processVPN(dev, stats, resolve);
+            }
           });
         } else {
           log.warn('WANCommonInterfaceConfig service not found.');
@@ -95,6 +86,23 @@ async function getFritzBoxData() {
       });
     });
   });
+}
+
+function processVPN(dev, stats, resolve) {
+  const vpnService = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
+  if (vpnService && vpnService.actions.GetVPNInfo) {
+    vpnService.actions.GetVPNInfo((err, vpnResult) => {
+      if (err) log.warn(`VPN Info fetch failed: ${err.message}`);
+      if (!err && vpnResult) {
+        const info = JSON.stringify(vpnResult);
+        stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
+      }
+      resolve(stats);
+    });
+  } else {
+    log.warn('VPN service (X_AVM-DE_VPN) not supported on this device.');
+    resolve(stats);
+  }
 }
 
 async function report() {

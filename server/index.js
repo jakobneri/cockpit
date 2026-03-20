@@ -62,6 +62,8 @@ app.use(express.json());
 
 // Request logging
 app.use((req, res, next) => {
+  if (req.originalUrl === '/api/active') return next(); // Silence heartbeat logs
+  
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
@@ -230,7 +232,7 @@ const runAutoUpdate = async (force = false) => {
   }
 };
 
-app.get('*', (req, res, next) => {
+app.get('/*', (req, res, next) => {
   if (req.url.startsWith('/api')) return next();
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
@@ -246,6 +248,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.0${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.1${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
