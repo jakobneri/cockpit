@@ -1,30 +1,60 @@
 const os = require('os');
+const fs = require('fs');
+const path = require('path');
 const isWindows = os.platform() === 'win32';
+const hostname = os.hostname().toLowerCase();
 
-module.exports = {
-  apps: [
-    {
-      name: 'cockpit-hub',
-      script: 'server/index.js',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000,
-        DB_URL: 'http://localhost:3001' // Assuming PostgREST runs on 3001
-      }
-    },
-    {
-      name: 'cockpit-client',
-      // Dynamically select the native script based on OS
-      script: isWindows ? 'client/client.ps1' : 'client/client.sh',
-      interpreter: isWindows ? 'powershell' : 'bash',
-      env: {
-        NODE_ENV: 'production',
-        DB_URL: 'http://localhost:3001'
-      },
-      // Restart on failure
-      autorestart: true,
-      max_restarts: 10,
-      restart_delay: 5000
+let config = { gateways: [] };
+try {
+  const configPath = path.join(__dirname, 'cockpit.config.json');
+  if (fs.existsSync(configPath)) {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  }
+} catch (e) {
+  console.error("Error reading cockpit.config.json:", e.message);
+}
+
+const apps = [
+  {
+    name: 'cockpit-hub',
+    script: 'server/index.js',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000,
+      DB_URL: 'http://localhost:3001'
     }
-  ]
-};
+  },
+  {
+    name: `${hostname}-client`,
+    script: isWindows ? 'client/client.ps1' : 'client/client.sh',
+    interpreter: isWindows ? 'powershell' : 'bash',
+    env: {
+      NODE_ENV: 'production',
+      DB_URL: 'http://localhost:3001'
+    },
+    autorestart: true,
+    max_restarts: 10,
+    restart_delay: 5000
+  }
+];
+
+// Add Fritz!Box Gateways
+config.gateways.forEach(gw => {
+  const name = `${gw.ip}-gateway-client`;
+  apps.push({
+    name: name,
+    script: 'client/gateway-client.js',
+    env: {
+      GATEWAY_IP: gw.ip,
+      GATEWAY_USER: gw.user,
+      GATEWAY_PASS: gw.password,
+      DB_URL: 'http://localhost:3001',
+      HOSTNAME: name // Use process name as hostname for the report
+    },
+    autorestart: true,
+    max_restarts: 10,
+    restart_delay: 5000
+  });
+});
+
+module.exports = { apps };

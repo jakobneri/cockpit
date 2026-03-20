@@ -268,6 +268,38 @@ function renderFleet(servers) {
 
   container.innerHTML = Object.entries(servers).map(([hostname, data]) => {
     const isOnline = (Date.now() - data.lastReport) < 15000;
+    const isGateway = hostname.includes('gateway');
+    
+    if (isGateway) {
+      const vpnActive = data.gateway?.vpn_active;
+      const dslStatus = data.gateway?.dsl_sync || 'Offline';
+      return `
+        <div class="card glass node-card" onclick="openDetails('${hostname}')">
+          <div class="node-header" style="align-items: flex-start;">
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+              <span class="node-hostname">${hostname}</span>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Fritz!Box'}</span>
+            </div>
+            <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
+          </div>
+          <div class="node-metrics">
+            <div class="mini-metric">
+              <span class="label">DSL Sync</span>
+              <span class="status-badge ${dslStatus === 'Up' ? 'online' : 'offline'}" style="font-size: 0.7rem;">${dslStatus}</span>
+            </div>
+            <div class="mini-metric">
+              <span class="label">VPN Bridge</span>
+              <span class="status-badge ${vpnActive ? 'online' : 'offline'}" style="font-size: 0.7rem;">${vpnActive ? 'Active' : 'Down'}</span>
+            </div>
+            <div class="mini-metric" style="margin-top: 0.5rem;">
+              <span class="label">Uptime</span>
+              <span class="val" style="color: var(--text-secondary); font-size: 0.8rem;">${formatUptime(data.uptime)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="card glass node-card" onclick="openDetails('${hostname}')">
         <div class="node-header" style="align-items: flex-start;">
@@ -389,6 +421,18 @@ async function fetchNodeStats() {
       updateElement('root-percent', `${data.storage.root.percent}%`);
       updateProgress('root-bar', data.storage.root.percent);
       updateElement('root-detail', `${formatBytes(data.storage.root.used)} / ${formatBytes(data.storage.root.total)}`);
+    }
+
+    // Gateway Section
+    const gwSection = document.getElementById('gateway-stats-section');
+    if (data.gateway && gwSection) {
+      gwSection.style.display = 'block';
+      updateElement('gw-dsl-sync', data.gateway.dsl_sync);
+      updateElement('gw-vpn-status', data.gateway.vpn_active ? 'Active' : 'Down');
+      const vpnBadge = document.getElementById('gw-vpn-badge');
+      if (vpnBadge) vpnBadge.className = `status-badge ${data.gateway.vpn_active ? 'online' : 'offline'}`;
+    } else if (gwSection) {
+      gwSection.style.display = 'none';
     }
 
     // Removed SMB section for v4.0.0

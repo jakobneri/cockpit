@@ -51,7 +51,7 @@ if (system.isLinux) {
   system.model = 'Windows PC';
 }
 
-log.info(`Cockpit Client v3.3.20 starting on ${HOSTNAME}`);
+log.info(`Cockpit Client v5.0.0 starting on ${HOSTNAME}`);
 log.info(`System: ${system.model} (${system.platform})`);
 log.info(`PostgREST endpoint: ${DB_URL}`);
 
@@ -261,7 +261,7 @@ async function report() {
   }
 }
 
-const CLIENT_VERSION = '3.3.20';
+const CLIENT_VERSION = '5.0.0';
 
 setInterval(report, POLL_INTERVAL);
 report();
