@@ -370,44 +370,51 @@ async function fetchNodeStats() {
     document.title = `${selectedHostname} | Cockpit`;
     const osInfo = document.getElementById('os-info');
     
-    // Gateway vs Server UI Toggle (v5.3.8)
+    // Gateway vs Server UI Toggle (v5.3.10)
     const isGateway = data.os === 'fritzbox' || 
                       (data.model && data.model.toLowerCase().includes('fritz')) ||
-                      data.hostname.includes('gateway');
+                      data.hostname.toLowerCase().includes('gateway');
                       
+    console.log(`[Cockpit] isGateway: ${isGateway} | model: ${data.model} | os: ${data.os}`);
     document.getElementById('gateway-info').style.display = isGateway ? 'block' : 'none';
     
-    // Hide standard server bars for gateways
-    const cpuCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.includes('CPU Usage'));
-    const ramCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.includes('Memory Usage'));
+    // Hide standard server bars for gateways (v5.3.10)
+    const cpuCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.toUpperCase().includes('CPU USAGE'));
+    const ramCard = [...document.querySelectorAll('#details-charts .card')].find(c => c.innerHTML.toUpperCase().includes('MEMORY USAGE'));
+    const storageCard = document.getElementById('details-storage');
+
     if (cpuCard) cpuCard.style.display = isGateway ? 'none' : 'block';
     if (ramCard) ramCard.style.display = isGateway ? 'none' : 'block';
-    document.getElementById('details-storage').style.display = isGateway ? 'none' : 'block';
+    if (storageCard) storageCard.style.display = isGateway ? 'none' : 'block';
 
     if (isGateway && data.gateway) {
-      document.getElementById('gw-dsl-sync').textContent = data.gateway.dsl_sync || 'Up';
-      document.getElementById('gw-vpn-status').textContent = data.gateway.vpn_active ? 'CONNECTED' : 'DISCONNECTED';
-      document.getElementById('gw-vpn-status').className = `temp-badge ${data.gateway.vpn_active ? 'cool' : 'hot'}`;
-      document.getElementById('gw-ext-ip').textContent = data.network?.ext_ip || 'Managed';
+      updateElement('gw-dsl-sync', data.gateway.dsl_sync || 'Up');
+      const vpnEl = document.getElementById('gw-vpn-status');
+      if (vpnEl) {
+        vpnEl.textContent = data.gateway.vpn_active ? 'CONNECTED' : 'DISCONNECTED';
+        vpnEl.className = `temp-badge ${data.gateway.vpn_active ? 'cool' : 'hot'}`;
+      }
+      updateElement('gw-ext-ip', data.network?.ext_ip || 'Managed');
     }
 
     // Header Info
-    document.getElementById('header-hostname').textContent = data.hostname;
-    document.getElementById('os-info').textContent = `${data.model || 'Unknown'} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`;
+    updateElement('header-hostname', data.hostname);
+    updateElement('os-info', `${data.model || 'Unknown'} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`);
     
     // Populate initial history if charts are fresh
     if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
       const hist = data.history.slice(-maxDataPoints);
+      console.log(`[Cockpit] Injecting ${hist.length} history points into charts`);
       hist.forEach(h => {
         const time = new Date(h.recorded_at).toLocaleTimeString();
         cpuChart.data.labels.push(time);
-        cpuChart.data.datasets[0].data.push(h.data.cpu?.load || 0);
+        cpuChart.data.datasets[0].data.push(h.cpu || 0);
         ramChart.data.labels.push(time);
-        ramChart.data.datasets[0].data.push(h.data.memory?.percent || 0);
+        ramChart.data.datasets[0].data.push(h.ram || 0);
         if (netChart) {
           netChart.data.labels.push(time);
-          netChart.data.datasets[0].data.push(h.data.network?.rx_sec || 0);
-          netChart.data.datasets[1].data.push(h.data.network?.tx_sec || 0);
+          netChart.data.datasets[0].data.push(h.rx || 0);
+          netChart.data.datasets[1].data.push(h.tx || 0);
         }
       });
       cpuChart.update('none');
@@ -422,10 +429,12 @@ async function fetchNodeStats() {
 
     const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Metrics (v5.3.8)
+    // Metrics (v5.3.10)
     const hasCpu = data.cpu && data.cpu.load !== undefined;
     const hasRam = data.memory && data.memory.percent !== undefined;
     
+    console.log(`[Cockpit] Metrics Load Checked: hasCpu=${hasCpu}, hasRam=${hasRam}`);
+
     const cpuBox = document.getElementById('cpu-metric-box');
     const ramBox = document.getElementById('ram-metric-box');
     
@@ -433,6 +442,7 @@ async function fetchNodeStats() {
     if (ramBox) ramBox.style.display = (hasRam && !isGateway) ? 'block' : 'none';
 
     if (hasCpu) {
+      console.log(`[Cockpit] Updating CPU Load: ${data.cpu.load}%`);
       updateElement('cpu-load', data.cpu.load);
       updateChart(cpuChart, data.cpu.load, timeLabel);
       
@@ -449,6 +459,7 @@ async function fetchNodeStats() {
     }
 
     if (hasRam) {
+      console.log(`[Cockpit] Updating RAM Usage: ${data.memory.percent}%`);
       updateElement('ram-usage', data.memory.percent);
       updateChart(ramChart, data.memory.percent, timeLabel);
       updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);

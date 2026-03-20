@@ -218,7 +218,7 @@ app.get('/api/stats/:hostname', async (req, res) => {
       recorded_at: h.recorded_at
     }));
 
-    res.json({
+    const finalData = {
       hostname,
       model,
       os: osPlatform,
@@ -229,10 +229,13 @@ app.get('/api/stats/:hostname', async (req, res) => {
       storage: latest.data?.storage || { root: { total: 0, used: 0, percent: 0 } },
       gateway: latest.data?.gateway,
       history: history
-    });
+    };
+
+    hubLog.info(`Sending ${finalData.history.length} history points for ${hostname}`);
+    res.json(finalData);
 
   } catch (error) {
-    hubLog.error(`Stats Error for ${req.params.hostname}: ${error.message} \n ${error.stack}`);
+    hubLog.error(`Stats Error for ${req.params.hostname}: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });
@@ -346,6 +349,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.9${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.3.10${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
