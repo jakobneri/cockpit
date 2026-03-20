@@ -30,6 +30,7 @@ const hubLog = {
   report: (msg) => console.log(`${colors.gray}[${new Date().toLocaleTimeString()}]${colors.reset} ${colors.magenta}📡 ${msg}${colors.reset}`),
   update: (msg) => console.log(`${colors.gray}[${new Date().toLocaleTimeString()}]${colors.reset} ${colors.yellow}🔄 ${msg}${colors.reset}`)
 };
+const log = hubLog; // Alias for compatibility
 
 const app = express();
 app.set('trust proxy', true); // Support X-Forwarded-For headers
@@ -260,7 +261,7 @@ app.listen(PORT, async () => {
       nodeCount = data.length || 0;
     } catch (e) {}
 
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.1.0${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.1.1${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {
     console.error(`Startup sequence failed: ${e.message}`);
   }

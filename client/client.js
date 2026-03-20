@@ -51,7 +51,7 @@ if (system.isLinux) {
   system.model = 'Windows PC';
 }
 
-log.info(`Cockpit Client v5.0.0 starting on ${HOSTNAME}`);
+log.info(`Cockpit Client v5.1.1 starting on ${HOSTNAME}`);
 log.info(`System: ${system.model} (${system.platform})`);
 log.info(`PostgREST endpoint: ${DB_URL}`);
 
