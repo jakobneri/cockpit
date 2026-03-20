@@ -280,7 +280,7 @@ function renderFleet(servers) {
   }
 
   container.innerHTML = Object.entries(servers).map(([hostname, data]) => {
-    const isOnline = (Date.now() - data.lastReport) < 15000;
+    const isOnline = (Date.now() - data.lastReport) < 45000;
     
     // Build dynamic metrics
     let metricsHtml = '';
