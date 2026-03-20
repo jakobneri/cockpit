@@ -1,11 +1,11 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.1.2
+ * COCKPIT GATEWAY CLIENT v5.2.0
  * Fetches metrics from Fritz!Box via TR-064 library.
  */
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const tr064 = require('tr-064');
+const tr064Lib = require('tr-064');
 
 const GATEWAY_IP = process.env.GATEWAY_IP || '192.168.188.1';
 const GATEWAY_USER = process.env.GATEWAY_USER || 'admin';
@@ -14,7 +14,7 @@ const DB_URL = process.env.DB_URL || 'http://localhost:3001';
 const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
 const POLL_INTERVAL = 15000;
 
-// Logging Utility (Matching client.js)
+// Logging Utility
 const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
@@ -24,14 +24,12 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.1.0 starting for ${GATEWAY_IP}`);
-log.info(`Reporting to: ${DB_URL}`);
-
-const device = new tr064.TR064();
+log.info(`Cockpit Gateway Client v5.2.0 starting for ${GATEWAY_IP}`);
+const tr064 = new tr064Lib.TR064();
 
 async function getFritzBoxData() {
   return new Promise((resolve, reject) => {
-    device.initDevice(GATEWAY_IP, 49000, (err, dev) => {
+    tr064.initDevice(GATEWAY_IP, 49000, (err, dev) => {
       if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}. Check IP and connection.`));
       
       dev.login(GATEWAY_USER, GATEWAY_PASS);

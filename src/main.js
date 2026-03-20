@@ -88,10 +88,15 @@ function formatUptime(seconds) {
   return str.join(' ');
 }
 
-// Update DOM element
 function updateElement(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
+}
+
+function getTempClass(temp) {
+  if (temp < 45) return 'cool';
+  if (temp < 65) return 'warm';
+  return 'hot';
 }
 
 // Chart.js Setup
@@ -300,10 +305,11 @@ function renderFleet(servers) {
 
     // 2. Client Metrics (CPU/RAM)
     if (data.cpu && data.cpu.load !== undefined && data.cpu.load > 0) {
+      const tempHtml = data.cpu.temp ? `<span class="temp-badge ${getTempClass(data.cpu.temp)}">${data.cpu.temp}°C</span>` : '';
       metricsHtml += `
         <div class="mini-metric">
           <span class="label">CPU</span>
-          <span class="val">${data.cpu.load}%</span>
+          <span class="val">${data.cpu.load}% ${tempHtml}</span>
         </div>
         <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.cpu.load}%;"></div></div>`;
     }
@@ -410,6 +416,17 @@ async function fetchNodeStats() {
     if (hasCpu) {
       updateElement('cpu-load', data.cpu.load);
       updateChart(cpuChart, data.cpu.load, timeLabel);
+      
+      const tempEl = document.getElementById('cpu-temp-details');
+      if (tempEl) {
+        if (data.cpu.temp) {
+          tempEl.textContent = `${data.cpu.temp}°C`;
+          tempEl.className = `temp-badge ${getTempClass(data.cpu.temp)}`;
+          tempEl.style.display = 'inline-flex';
+        } else {
+          tempEl.style.display = 'none';
+        }
+      }
     }
 
     if (hasRam) {
