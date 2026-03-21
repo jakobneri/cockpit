@@ -163,5 +163,36 @@ Download only the necessary file to the machine you want to monitor:
   ```
 
 ---
+
+## 🔒 Branch Protection Rules
+
+This repository enforces a **pull request policy** on the `master` branch:
+
+- **Only the repository owner (`@jakobneri`) may push directly to `master`.**
+- **All other contributors must open a pull request** — direct pushes from non-owners are blocked.
+
+### How it works
+
+1. **`CODEOWNERS`** (`.github/CODEOWNERS`): Designates `@jakobneri` as the required reviewer for all code changes.
+2. **`enforce-pr-policy` workflow** (`.github/workflows/enforce-pr-policy.yml`): Runs on every push to `master` and fails if the pusher is not the repository owner.
+
+### ⚙️ Required GitHub Settings (one-time setup by owner)
+
+To fully enforce this policy, the owner must configure the following in **GitHub → Settings → Branches → Add branch protection rule**:
+
+| Setting | Value |
+|---|---|
+| Branch name pattern | `master` |
+| Require a pull request before merging | ✅ Enabled |
+| Require approvals | ✅ 1 approval minimum |
+| Dismiss stale pull request approvals | ✅ Recommended |
+| Require review from Code Owners | ✅ Enabled |
+| Require status checks to pass | ✅ Enabled → add `Enforce Pull Request Policy / Block Direct Push to Master` |
+| Allow specified actors to bypass | `jakobneri` |
+| Do not allow bypassing the above settings | ❌ Leave unchecked (so owner can bypass) |
+
+With these settings applied, only `@jakobneri` can push directly or bypass the PR requirement.
+
+---
 Made with ❤️ by Jakob Neri & Antigravity
 **V5.6 Final Milestone Release**
