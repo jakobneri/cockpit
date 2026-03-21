@@ -9,9 +9,10 @@ try {
   const configPath = path.join(__dirname, 'config.json');
   if (fs.existsSync(configPath)) {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log(`[Config] Loaded config.json, found ${config.gateways?.length || 0} gateways.`);
   }
 } catch (e) {
-  console.error("Error reading cockpit.config.json:", e.message);
+  console.error("Error reading config.json:", e.message);
 }
 
 const apps = [
@@ -31,7 +32,7 @@ const apps = [
     interpreter: isWindows ? 'powershell' : 'bash',
     env: {
       NODE_ENV: 'production',
-      DB_URL: 'http://localhost:3001'
+      DB_URL: 'http://127.0.0.1:3001'
     },
     autorestart: true,
     max_restarts: 10,

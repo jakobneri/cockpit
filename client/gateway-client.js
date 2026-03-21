@@ -18,7 +18,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let GATEWAY_IP = process.env.GATEWAY_IP;
 let GATEWAY_USER = process.env.GATEWAY_USER;
 let GATEWAY_PASS = process.env.GATEWAY_PASS;
-const DB_URL = process.env.DB_URL || 'http://localhost:3001';
+const DB_URL = process.env.DB_URL || 'http://127.0.0.1:3001';
 
 // Try to read config if variables are missing
 try {
