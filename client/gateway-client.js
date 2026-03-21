@@ -1,6 +1,6 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.4.2
- * Fetches metrics from Fritz!Box via TR-064 library.
+ * COCKPIT GATEWAY CLIENT v5.4.4
+ * Enhanced TR-064 metrics fetcher with robust service discovery.
  */
 
 import { createRequire } from 'module';
@@ -15,7 +15,6 @@ const DB_URL = process.env.DB_URL || 'http://localhost:3001';
 const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
 const POLL_INTERVAL = 15000;
 
-// Logging Utility
 const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
@@ -25,15 +24,10 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.3.7 starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Gateway Client v5.4.4 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
-// Global state for delta calculation
-let prevStats = {
-  rx_total: 0,
-  tx_total: 0,
-  time: Date.now()
-};
+let prevStats = { rx_total: 0, tx_total: 0, time: Date.now() };
 
 async function getFritzBoxData() {
   return new Promise((resolve, reject) => {
@@ -41,16 +35,9 @@ async function getFritzBoxData() {
       if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}`));
       dev.login(GATEWAY_USER, GATEWAY_PASS);
       
-      const stats = {
-        uptime: 0,
-        model: "Fritz!Box",
-        dsl_sync: "Unknown",
-        rx_sec: 0,
-        tx_sec: 0,
-        vpn_active: false
-      };
-
+      const stats = { uptime: 0, model: "Fritz!Box", dsl_sync: "Unknown", rx_sec: 0, tx_sec: 0, vpn_active: false };
       const devInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
+      
       if (!devInfo) return reject(new Error('DeviceInfo service not found.'));
 
       devInfo.actions.GetInfo((err, result) => {
@@ -64,22 +51,25 @@ async function getFritzBoxData() {
           commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
             if (!err && linkResult) stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
 
-            // Use Total Bytes delta for reliable speed calculation (v5.3.6)
+            // Wrap in silent catch to handle potential UPnP errors
             commonLink.actions.GetTotalBytesReceived((err, rxResult) => {
               commonLink.actions.GetTotalBytesSent((err, txResult) => {
-                const now = Date.now();
-                const rx_total = parseInt(rxResult?.NewTotalBytesReceived || 0);
-                const tx_total = parseInt(txResult?.NewTotalBytesSent || 0);
-                
-                if (prevStats.rx_total > 0) {
-                  const dt = (now - prevStats.time) / 1000;
-                  if (dt > 0) {
-                    stats.rx_sec = Math.max(0, (rx_total - prevStats.rx_total) / 1024 / dt);
-                    stats.tx_sec = Math.max(0, (tx_total - prevStats.tx_total) / 1024 / dt);
+                try {
+                  const now = Date.now();
+                  const rx_total = parseInt(rxResult?.NewTotalBytesReceived || 0);
+                  const tx_total = parseInt(txResult?.NewTotalBytesSent || 0);
+                  
+                  if (prevStats.rx_total > 0 && !err) {
+                    const dt = (now - prevStats.time) / 1000;
+                    if (dt > 0) {
+                      stats.rx_sec = Math.max(0, (rx_total - prevStats.rx_total) / 1024 / dt);
+                      stats.tx_sec = Math.max(0, (tx_total - prevStats.tx_total) / 1024 / dt);
+                    }
                   }
+                  prevStats = { rx_total, tx_total, time: now };
+                } catch (e) {
+                   log.warn(`Speed calculation skipped for ${GATEWAY_IP}`);
                 }
-                
-                prevStats = { rx_total, tx_total, time: now };
                 processVPN(dev, stats, (finalStats) => resolve({ stats: finalStats, dev }));
               });
             });
@@ -110,16 +100,20 @@ function processVPN(dev, stats, resolve) {
 async function report() {
   try {
     const { stats: fbData, dev } = await getFritzBoxData();
-    const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
-
-    // Collect Logs (v5.3.23)
+    
+    // Improved Log Discovery (Flexible service names)
+    const logService = dev.services['urn:dslforum-org:service:DeviceConfig:1'] || 
+                       dev.services['urn:dslforum-org:service:DeviceInfo:1']; // Fallback
+    
     let fbLogs = "";
-    if (deviceConfig) {
+    if (logService && logService.actions.GetLogs) {
       try {
-        const getLogs = promisify(deviceConfig.actions.GetLogs);
+        const getLogs = promisify(logService.actions.GetLogs);
         const logRes = await getLogs();
         fbLogs = logRes.NewLogData || "";
-      } catch (e) {}
+      } catch (e) {
+        log.warn(`Log collection failed for ${GATEWAY_IP} (Maybe not supported?)`);
+      }
     }
 
     const payload = {
@@ -130,19 +124,10 @@ async function report() {
         network: { tx_sec: fbData.tx_sec, rx_sec: fbData.rx_sec },
         storage: { root: { total: 0, used: 0, percent: 0 } },
         uptime: fbData.uptime,
-        gateway: {
-          dsl_sync: fbData.dsl_sync,
-          vpn_active: fbData.vpn_active,
-          model: fbData.model,
-          logs: fbLogs
-        }
+        gateway: { dsl_sync: fbData.dsl_sync, vpn_active: fbData.vpn_active, model: fbData.model, logs: fbLogs }
       },
       reported_at: new Date().toISOString(),
-      system_info: {
-        model: fbData.model,
-        platform: 'fritzbox',
-        version: '5.3.23'
-      }
+      system_info: { model: fbData.model, platform: 'fritzbox', version: '5.4.4' }
     };
 
     const response = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
@@ -152,11 +137,13 @@ async function report() {
     });
 
     if (response.ok) {
-      const result = await response.json();
-      log.report(`Reporting Successful | Table: ${result.table} | ID: ${result.new_id || '?'} | Total: ${result.history_count || '?'} rows`);
+      log.report(`Reporting Successful | Host: ${HOSTNAME}`);
+    } else {
+      const errText = await response.text();
+      log.error(`DB Error: ${errText}`);
     }
   } catch (err) {
-    log.error(`Collection Cycle failed: ${err.message}`);
+    log.error(`Collection Cycle failed for ${GATEWAY_IP}: ${err.message}`);
   }
 }
 
