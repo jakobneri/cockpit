@@ -6,7 +6,7 @@ const hostname = os.hostname().toLowerCase();
 
 let config = { gateways: [] };
 try {
-  const configPath = path.join(__dirname, 'cockpit.config.json');
+  const configPath = path.join(__dirname, 'config.json');
   if (fs.existsSync(configPath)) {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   }

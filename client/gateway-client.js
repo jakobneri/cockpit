@@ -6,13 +6,47 @@
 
 import { createRequire } from 'module';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 const require = createRequire(import.meta.url);
 const tr064Lib = require('tr-064');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const GATEWAY_IP = process.env.GATEWAY_IP || '192.168.188.1';
-const GATEWAY_USER = process.env.GATEWAY_USER || 'admin';
-const GATEWAY_PASS = process.env.GATEWAY_PASS || '';
+// 1. CONFIG RESOLUTION (ENV > cockpit.config.json > Defaults)
+let GATEWAY_IP = process.env.GATEWAY_IP;
+let GATEWAY_USER = process.env.GATEWAY_USER;
+let GATEWAY_PASS = process.env.GATEWAY_PASS;
 const DB_URL = process.env.DB_URL || 'http://localhost:3001';
+
+// Try to read config if variables are missing
+try {
+  const configPath = path.join(__dirname, '../config.json');
+  if (fs.existsSync(configPath)) {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const gateways = config.gateways || [];
+    
+    // Find either the matching IP or just pick the first one if ENV is empty
+    const match = GATEWAY_IP 
+      ? gateways.find(g => g.ip === GATEWAY_IP) 
+      : gateways[0];
+
+    if (match) {
+      if (!GATEWAY_IP) GATEWAY_IP = match.ip;
+      if (!GATEWAY_USER) GATEWAY_USER = match.user;
+      if (!GATEWAY_PASS) GATEWAY_PASS = match.password;
+    }
+  }
+} catch (e) {
+  // Silent fail, use ENVs or defaults
+}
+
+// Final defaults
+GATEWAY_IP = GATEWAY_IP || '192.168.188.1';
+GATEWAY_USER = GATEWAY_USER || 'admin';
+GATEWAY_PASS = GATEWAY_PASS || '';
+
 const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
 const POLL_INTERVAL = 15000;
 
@@ -25,7 +59,7 @@ const log = {
   report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
 };
 
-log.info(`v5.5.1: Initializing for ${GATEWAY_IP}`);
+log.info(`v5.6.3: Initializing for ${GATEWAY_IP}`);
 
 let prevStats = { rx: 0, tx: 0, time: Date.now() };
 

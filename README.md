@@ -58,7 +58,7 @@ The Hub is managed via [root.config.cjs](./root.config.cjs). You MUST set these 
 | `HUB_TRUSTED_IPS` | Comma-separated list of IPs to skip password | `127.0.0.1` |
 
 #### C. Gateway Registry
-To monitor multiple Fritz!Boxes, edit [cockpit.config.json](./cockpit.config.json):
+To monitor multiple Fritz!Boxes, edit [config.json](./config.json):
 ```json
 {
   "gateways": [
@@ -145,7 +145,7 @@ Download only the necessary file to the machine you want to monitor:
 | **DB Password** | `docker-compose.yml` | Update `POSTGRES_PASSWORD` and `PGRST_DB_URI`. |
 | **Hub Password** | `server/index.js` (or ENV) | Set a strong `HUB_PASSWORD`. |
 | **Trusted IPs** | `server/index.js` (or ENV) | Add your main PC IP to `HUB_TRUSTED_IPS` for easy access. |
-| **Fritz!Box Auth** | `cockpit.config.json` | Ensure every gateway has the correct `admin` password. |
+| **Fritz!Box Auth** | `config.json` | Ensure every gateway has the correct `admin` password. |
 | **DB Persistence** | `docker-compose.yml` | Verify the `cockpit_db_data` volume is kept across restarts. |
 
 ---
