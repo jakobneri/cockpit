@@ -1,4 +1,4 @@
-# 🛡️ Cockpit Hub v5.5.0
+# 🛡️ Cockpit Hub v5.6.0
 ### The Ultimate Fleet Monitoring Dashboard for Raspberry Pi & Home Networks
 
 Cockpit Hub is a distributed monitoring system designed for high-performance home labs. It provides real-time visibility into your Raspberry Pi fleet and network gateway (Fritz!Box) through a beautiful, glassmorphic dashboard.
@@ -125,4 +125,4 @@ Specialized for Fritz!Box. Requires the `tr-064` library.
 
 ---
 Made with ❤️ by Jakob Neri & Antigravity
-**V5.5 Final Milestone Release**
+**V5.6 Final Milestone Release**
