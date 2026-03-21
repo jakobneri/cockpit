@@ -1,6 +1,6 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.4.4
- * Enhanced TR-064 metrics fetcher with robust service discovery.
+ * COCKPIT GATEWAY CLIENT v5.4.5
+ * Bulletproof TR-064 fetcher with silent error suppression for incompatible models.
  */
 
 import { createRequire } from 'module';
@@ -20,133 +20,137 @@ const log = {
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
   warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
   error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
-  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`),
-  update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
+  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
 };
 
-log.info(`Cockpit Gateway Client v5.4.4 starting for ${GATEWAY_IP}`);
-const tr064 = new tr064Lib.TR064();
+log.info(`v5.4.5: Initializing for ${GATEWAY_IP}`);
 
-let prevStats = { rx_total: 0, tx_total: 0, time: Date.now() };
+let prevStats = { rx: 0, tx: 0, time: Date.now() };
 
-async function getFritzBoxData() {
-  return new Promise((resolve, reject) => {
-    tr064.initTR064Device(GATEWAY_IP, 49000, (err, dev) => {
-      if (err) return reject(new Error(`Fritz!Box Init failed: ${err.message}`));
-      dev.login(GATEWAY_USER, GATEWAY_PASS);
-      
-      const stats = { uptime: 0, model: "Fritz!Box", dsl_sync: "Unknown", rx_sec: 0, tx_sec: 0, vpn_active: false };
-      const devInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
-      
-      if (!devInfo) return reject(new Error('DeviceInfo service not found.'));
+async function fetchStats() {
+  const tr064 = new tr064Lib.TR064();
+  const initDevice = promisify(tr064.initTR064Device.bind(tr064));
+  
+  const stats = {
+    uptime: 0,
+    model: "Fritz!Box",
+    dsl_sync: "Unknown",
+    vpn_active: false,
+    rx_sec: 0,
+    tx_sec: 0,
+    logs: ""
+  };
 
-      devInfo.actions.GetInfo((err, result) => {
-        if (!err && result) {
-          stats.uptime = parseInt(result.NewUpTime || 0);
-          stats.model = result.NewModelName || "Fritz!Box";
+  try {
+    const dev = await initDevice(GATEWAY_IP, 49000);
+    dev.login(GATEWAY_USER, GATEWAY_PASS);
+
+    // 1. Device Info & Uptime
+    try {
+      const deviceInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
+      if (deviceInfo) {
+        const getInfo = promisify(deviceInfo.actions.GetInfo);
+        const res = await getInfo();
+        stats.uptime = parseInt(res.NewUpTime || 0);
+        stats.model = res.NewModelName || "Fritz!Box";
+      }
+    } catch (e) {}
+
+    // 2. DSL Sync Status
+    try {
+      const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
+      if (commonLink) {
+        const getProps = promisify(commonLink.actions.GetCommonLinkProperties);
+        const res = await getProps();
+        stats.dsl_sync = res.NewPhysicalLinkStatus || "Unknown";
+      }
+    } catch (e) {}
+
+    // 3. Traffic Counters & Speed
+    try {
+      const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
+      if (commonLink) {
+        const getRx = promisify(commonLink.actions.GetTotalBytesReceived);
+        const getTx = promisify(commonLink.actions.GetTotalBytesSent);
+        const [rxRes, txRes] = await Promise.all([getRx(), getTx()]);
+        
+        const now = Date.now();
+        const rx = parseInt(rxRes.NewTotalBytesReceived || 0);
+        const tx = parseInt(txRes.NewTotalBytesSent || 0);
+        
+        if (prevStats.rx > 0) {
+          const dt = (now - prevStats.time) / 1000;
+          if (dt > 0) {
+            stats.rx_sec = Math.max(0, (rx - prevStats.rx) / 1024 / dt);
+            stats.tx_sec = Math.max(0, (tx - prevStats.tx) / 1024 / dt);
+          }
         }
+        prevStats = { rx, tx, time: now };
+      }
+    } catch (e) {}
 
-        const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
-        if (commonLink) {
-          commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
-            if (!err && linkResult) stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
-
-            // Wrap in silent catch to handle potential UPnP errors
-            commonLink.actions.GetTotalBytesReceived((err, rxResult) => {
-              commonLink.actions.GetTotalBytesSent((err, txResult) => {
-                try {
-                  const now = Date.now();
-                  const rx_total = parseInt(rxResult?.NewTotalBytesReceived || 0);
-                  const tx_total = parseInt(txResult?.NewTotalBytesSent || 0);
-                  
-                  if (prevStats.rx_total > 0 && !err) {
-                    const dt = (now - prevStats.time) / 1000;
-                    if (dt > 0) {
-                      stats.rx_sec = Math.max(0, (rx_total - prevStats.rx_total) / 1024 / dt);
-                      stats.tx_sec = Math.max(0, (tx_total - prevStats.tx_total) / 1024 / dt);
-                    }
-                  }
-                  prevStats = { rx_total, tx_total, time: now };
-                } catch (e) {
-                   log.warn(`Speed calculation skipped for ${GATEWAY_IP}`);
-                }
-                processVPN(dev, stats, (finalStats) => resolve({ stats: finalStats, dev }));
-              });
-            });
-          });
-        } else {
-          resolve({ stats, dev });
-        }
-      });
-    });
-  });
-}
-
-function processVPN(dev, stats, resolve) {
-  const vpnService = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
-  if (vpnService && vpnService.actions.GetVPNInfo) {
-    vpnService.actions.GetVPNInfo((err, vpnResult) => {
-      if (!err && vpnResult) {
-        const info = JSON.stringify(vpnResult);
+    // 4. VPN Status
+    try {
+      const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
+      if (vpn) {
+        const getVpn = promisify(vpn.actions.GetVPNInfo);
+        const res = await getVpn();
+        const info = JSON.stringify(res);
         stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
       }
-      resolve(stats);
-    });
-  } else {
-    resolve(stats);
+    } catch (e) {}
+
+    // 5. Gateway Logs
+    try {
+      const config = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
+      if (config) {
+        const getLogs = promisify(config.actions.GetLogs);
+        const res = await getLogs();
+        stats.logs = res.NewLogData || "";
+      }
+    } catch (e) {}
+
+    return stats;
+  } catch (err) {
+    throw new Error(`Connection failed: ${err.message}`);
   }
 }
 
 async function report() {
   try {
-    const { stats: fbData, dev } = await getFritzBoxData();
+    const stats = await fetchStats();
     
-    // Improved Log Discovery (Flexible service names)
-    const logService = dev.services['urn:dslforum-org:service:DeviceConfig:1'] || 
-                       dev.services['urn:dslforum-org:service:DeviceInfo:1']; // Fallback
-    
-    let fbLogs = "";
-    if (logService && logService.actions.GetLogs) {
-      try {
-        const getLogs = promisify(logService.actions.GetLogs);
-        const logRes = await getLogs();
-        fbLogs = logRes.NewLogData || "";
-      } catch (e) {
-        log.warn(`Log collection failed for ${GATEWAY_IP} (Maybe not supported?)`);
-      }
-    }
-
     const payload = {
       hostname: HOSTNAME,
+      reported_at: new Date().toISOString(),
+      system_info: { model: stats.model, platform: 'fritzbox', version: '5.4.5' },
       stats: {
         cpu: { load: 0, temp: 0 },
         memory: { total: 0, used: 0, percent: 0 },
-        network: { tx_sec: fbData.tx_sec, rx_sec: fbData.rx_sec },
+        network: { tx_sec: stats.tx_sec, rx_sec: stats.rx_sec },
         storage: { root: { total: 0, used: 0, percent: 0 } },
-        uptime: fbData.uptime,
-        gateway: { dsl_sync: fbData.dsl_sync, vpn_active: fbData.vpn_active, model: fbData.model, logs: fbLogs }
-      },
-      reported_at: new Date().toISOString(),
-      system_info: { model: fbData.model, platform: 'fritzbox', version: '5.4.4' }
+        uptime: stats.uptime,
+        gateway: { dsl_sync: stats.dsl_sync, vpn_active: stats.vpn_active, model: stats.model, logs: stats.logs }
+      }
     };
 
-    const response = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
+    const res = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'params=single-object' },
       body: JSON.stringify(payload)
     });
 
-    if (response.ok) {
-      log.report(`Reporting Successful | Host: ${HOSTNAME}`);
+    if (res.ok) {
+      log.report(`Successful | Sync: ${stats.dsl_sync} | Speed: ${stats.rx_sec.toFixed(1)}k/s`);
     } else {
-      const errText = await response.text();
-      log.error(`DB Error: ${errText}`);
+      log.error(`DB Error: ${res.statusText}`);
     }
   } catch (err) {
-    log.error(`Collection Cycle failed for ${GATEWAY_IP}: ${err.message}`);
+    log.error(`Cycle failed: ${err.message}`);
   }
 }
 
+// Initial delay to let PM2 settle
 setTimeout(() => {
   setInterval(report, POLL_INTERVAL);
   report();
