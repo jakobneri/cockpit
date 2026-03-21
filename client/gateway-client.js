@@ -18,13 +18,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let GATEWAY_IP = process.env.GATEWAY_IP;
 let GATEWAY_USER = process.env.GATEWAY_USER;
 let GATEWAY_PASS = process.env.GATEWAY_PASS;
-const DB_URL = process.env.DB_URL || 'http://127.0.0.1:3001';
+let DB_URL = process.env.DB_URL || 'http://127.0.0.1:3001';
 
 // Try to read config if variables are missing
 try {
   const configPath = path.join(__dirname, '../config.json');
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    
+    // Support custom DB_URL from config for remote clients
+    if (!process.env.DB_URL && config.db_url) {
+      log.info(`Using DB_URL from config: ${config.db_url}`);
+      DB_URL = config.db_url;
+    }
+
     const gateways = config.gateways || [];
     
     // Find either the matching IP or just pick the first one if ENV is empty
