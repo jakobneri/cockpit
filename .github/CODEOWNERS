@@ -1,0 +1,7 @@
+# CODEOWNERS
+# This file defines the code owners for this repository.
+# The repository owner (@jakobneri) is the sole code owner.
+# Combined with branch protection rules, this ensures all
+# pull requests to master require review from the owner.
+
+* @jakobneri
