@@ -1,6 +1,7 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.5.0
- * Bulletproof TR-064 fetcher with silent error suppression and diagnostic logging.
+ * COCKPIT GATEWAY CLIENT v5.5.1
+ * Bug fix: Removed crash on undefined actions.
+ * Added: Clearer authentication diagnostics.
  */
 
 import { createRequire } from 'module';
@@ -24,22 +25,28 @@ const log = {
   report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
 };
 
-log.info(`v5.5.0: Diagnostic Mode for ${GATEWAY_IP}`);
-log.diag(`Using credentials for user: ${GATEWAY_USER}`);
+log.info(`v5.5.1: Initializing for ${GATEWAY_IP}`);
 
 let prevStats = { rx: 0, tx: 0, time: Date.now() };
 
-async function safeCall(service, action, params = []) {
-  if (!service) return null;
-  const actionName = action.name || "Unknown";
+async function safeCall(service, action, actionName = "Unknown") {
+  if (!service || !action) {
+    log.diag(`Skipping ${actionName} (Service/Action not found)`);
+    return null;
+  }
+  
   log.diag(`Calling ${actionName}...`);
   try {
     const fn = promisify(action.bind(service));
-    const res = await fn(...params);
-    log.success(`${actionName} returned data.`);
+    const res = await fn();
+    log.success(`${actionName} successful.`);
     return res;
   } catch (err) {
-    log.error(`${actionName} FAILED: ${err.message}`);
+    if (err.message.includes('401')) {
+      log.error(`${actionName} FAILED with 401 CUSTOMER: Check your PASSWORD or if this action is restricted!`);
+    } else {
+      log.error(`${actionName} FAILED: ${err.message}`);
+    }
     return null;
   }
 }
@@ -59,66 +66,58 @@ async function fetchStats() {
   };
 
   try {
-    log.diag(`Initializing connection to ${GATEWAY_IP}...`);
+    log.diag(`Connecting to ${GATEWAY_IP}...`);
     const dev = await initDevice(GATEWAY_IP, 49000);
     
-    log.diag(`Performing login for ${GATEWAY_USER}...`);
+    log.diag(`Attempting login for user: ${GATEWAY_USER}`);
     dev.login(GATEWAY_USER, GATEWAY_PASS);
 
     // 1. Device Info & Uptime
     const deviceInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
-    if (deviceInfo) {
-      const res = await safeCall(deviceInfo, deviceInfo.actions.GetInfo);
-      if (res) {
-        stats.uptime = parseInt(res.NewUpTime || 0);
-        stats.model = res.NewModelName || "Fritz!Box";
-      }
+    const res = await safeCall(deviceInfo, deviceInfo?.actions?.GetInfo, 'GetInfo');
+    if (res) {
+      stats.uptime = parseInt(res.NewUpTime || 0);
+      stats.model = res.NewModelName || "Fritz!Box";
+    } else if (stats.uptime === 0) {
+      log.warn("Could not fetch GetInfo. This is usually due to WRONG CREDENTIALS.");
     }
 
     // 2. DSL Sync Status
     const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
-    if (commonLink) {
-      const res = await safeCall(commonLink, commonLink.actions.GetCommonLinkProperties);
-      if (res) stats.dsl_sync = res.NewPhysicalLinkStatus || "Unknown";
-    }
+    const syncRes = await safeCall(commonLink, commonLink?.actions?.GetCommonLinkProperties, 'GetCommonLinkProperties');
+    if (syncRes) stats.dsl_sync = syncRes.NewPhysicalLinkStatus || "Unknown";
 
     // 3. Traffic Counters
-    if (commonLink) {
-      const rxRes = await safeCall(commonLink, commonLink.actions.GetTotalBytesReceived);
-      const txRes = await safeCall(commonLink, commonLink.actions.GetTotalBytesSent);
+    const rxRes = await safeCall(commonLink, commonLink?.actions?.GetTotalBytesReceived, 'GetTotalBytesReceived');
+    const txRes = await safeCall(commonLink, commonLink?.actions?.GetTotalBytesSent, 'GetTotalBytesSent');
+    
+    if (rxRes && txRes) {
+      const now = Date.now();
+      const rx = parseInt(rxRes.NewTotalBytesReceived || 0);
+      const tx = parseInt(txRes.NewTotalBytesSent || 0);
       
-      if (rxRes && txRes) {
-        const now = Date.now();
-        const rx = parseInt(rxRes.NewTotalBytesReceived || 0);
-        const tx = parseInt(txRes.NewTotalBytesSent || 0);
-        
-        if (prevStats.rx > 0) {
-          const dt = (now - prevStats.time) / 1000;
-          if (dt > 0) {
-            stats.rx_sec = Math.max(0, (rx - prevStats.rx) / 1024 / dt);
-            stats.tx_sec = Math.max(0, (tx - prevStats.tx) / 1024 / dt);
-          }
+      if (prevStats.rx > 0) {
+        const dt = (now - prevStats.time) / 1000;
+        if (dt > 0) {
+          stats.rx_sec = Math.max(0, (rx - prevStats.rx) / 1024 / dt);
+          stats.tx_sec = Math.max(0, (tx - prevStats.tx) / 1024 / dt);
         }
-        prevStats = { rx, tx, time: now };
       }
+      prevStats = { rx, tx, time: now };
     }
 
     // 4. VPN Status
     const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
-    if (vpn) {
-      const res = await safeCall(vpn, vpn.actions.GetVPNInfo);
-      if (res) {
-        const info = JSON.stringify(res);
-        stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
-      }
+    const vpnRes = await safeCall(vpn, vpn?.actions?.GetVPNInfo, 'GetVPNInfo');
+    if (vpnRes) {
+      const info = JSON.stringify(vpnRes);
+      stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
     }
 
     // 5. Gateway Logs
     const config = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
-    if (config) {
-      const res = await safeCall(config, config.actions.GetLogs);
-      if (res) stats.logs = res.NewLogData || "";
-    }
+    const logRes = await safeCall(config, config?.actions?.GetLogs, 'GetLogs');
+    if (logRes) stats.logs = logRes.NewLogData || "";
 
     return stats;
   } catch (err) {
@@ -133,7 +132,7 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       reported_at: new Date().toISOString(),
-      system_info: { model: stats.model, platform: 'fritzbox', version: '5.5.0' },
+      system_info: { model: stats.model, platform: 'fritzbox', version: '5.5.1' },
       stats: {
         cpu: { load: 0, temp: 0 },
         memory: { total: 0, used: 0, percent: 0 },
