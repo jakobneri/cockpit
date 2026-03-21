@@ -1,0 +1,27 @@
+name: Enforce Pull Request Policy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  check-direct-push:
+    name: Block Direct Push to Master
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check if pusher is repository owner
+        env:
+          OWNER: jakobneri
+          PUSHER: ${{ github.actor }}
+        run: |
+          echo "Push to master by: $PUSHER"
+          if [ "$PUSHER" != "$OWNER" ]; then
+            echo "❌ Direct pushes to master are not allowed for '$PUSHER'."
+            echo "Please open a pull request instead."
+            exit 1
+          else
+            echo "✅ Push by repository owner '$PUSHER' is allowed."
+          fi
