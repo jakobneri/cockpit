@@ -1,9 +1,10 @@
 /**
- * COCKPIT GATEWAY CLIENT (Dedicated: 192.168.178.1) v5.4.2
- * Fetches metrics from Fritz!Box via TR-064 library.
+ * COCKPIT GATEWAY CLIENT (Dedicated: 192.168.178.1) v5.4.3
+ * Fetches metrics and logs from Fritz!Box via TR-064 library.
  */
 
 import { createRequire } from 'module';
+import { promisify } from 'util';
 const require = createRequire(import.meta.url);
 const tr064Lib = require('tr-064');
 
@@ -24,7 +25,7 @@ const log = {
   update: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔄 ${msg}`)
 };
 
-log.info(`Cockpit Dedicated Gateway Client starting for ${GATEWAY_IP}`);
+log.info(`Cockpit Dedicated Gateway Client v5.4.3 starting for ${GATEWAY_IP}`);
 const tr064 = new tr064Lib.TR064();
 
 // Global state for delta calculation
@@ -63,7 +64,7 @@ async function getFritzBoxData() {
           commonLink.actions.GetCommonLinkProperties((err, linkResult) => {
             if (!err && linkResult) stats.dsl_sync = linkResult.NewPhysicalLinkStatus || "Unknown";
 
-            // Use Total Bytes delta for reliable speed calculation (v5.3.6)
+            // Use Total Bytes delta for reliable speed calculation
             commonLink.actions.GetTotalBytesReceived((err, rxResult) => {
               commonLink.actions.GetTotalBytesSent((err, txResult) => {
                 const now = Date.now();
@@ -79,12 +80,12 @@ async function getFritzBoxData() {
                 }
                 
                 prevStats = { rx_total, tx_total, time: now };
-                processVPN(dev, stats, resolve);
+                processVPN(dev, stats, (finalStats) => resolve({ stats: finalStats, dev }));
               });
             });
           });
         } else {
-          resolve(stats);
+          resolve({ stats, dev });
         }
       });
     });
@@ -108,8 +109,19 @@ function processVPN(dev, stats, resolve) {
 
 async function report() {
   try {
-    const fbData = await getFritzBoxData();
-    
+    const { stats: fbData, dev } = await getFritzBoxData();
+    const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
+
+    // Collect Logs
+    let fbLogs = "";
+    if (deviceConfig) {
+      try {
+        const getLogs = promisify(deviceConfig.actions.GetLogs);
+        const logRes = await getLogs();
+        fbLogs = logRes.NewLogData || "";
+      } catch (e) {}
+    }
+
     const payload = {
       hostname: HOSTNAME,
       stats: {
@@ -121,14 +133,15 @@ async function report() {
         gateway: {
           dsl_sync: fbData.dsl_sync,
           vpn_active: fbData.vpn_active,
-          model: fbData.model
+          model: fbData.model,
+          logs: fbLogs
         }
       },
       reported_at: new Date().toISOString(),
       system_info: {
         model: fbData.model,
         platform: 'fritzbox',
-        version: '5.4.2 (Dedicated)'
+        version: '5.4.3 (Dedicated)'
       }
     };
 

@@ -4,6 +4,7 @@
  */
 
 import { createRequire } from 'module';
+import { promisify } from 'util';
 const require = createRequire(import.meta.url);
 const tr064Lib = require('tr-064');
 
@@ -79,12 +80,12 @@ async function getFritzBoxData() {
                 }
                 
                 prevStats = { rx_total, tx_total, time: now };
-                processVPN(dev, stats, resolve);
+                processVPN(dev, stats, (finalStats) => resolve({ stats: finalStats, dev }));
               });
             });
           });
         } else {
-          resolve(stats);
+          resolve({ stats, dev });
         }
       });
     });
@@ -108,7 +109,7 @@ function processVPN(dev, stats, resolve) {
 
 async function report() {
   try {
-    const fbData = await getFritzBoxData();
+    const { stats: fbData, dev } = await getFritzBoxData();
     const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
 
     // Collect Logs (v5.3.23)
