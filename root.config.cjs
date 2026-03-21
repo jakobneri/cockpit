@@ -36,6 +36,17 @@ const apps = [
     autorestart: true,
     max_restarts: 10,
     restart_delay: 5000
+  },
+  {
+    name: '192.168.178.1-dedicated-gateway',
+    script: 'client/gateway-178.js',
+    env: {
+      NODE_ENV: 'production',
+      DB_URL: 'http://localhost:3001'
+    },
+    autorestart: true,
+    max_restarts: 10,
+    restart_delay: 5000
   }
 ];
 
