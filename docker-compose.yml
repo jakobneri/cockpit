@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  cockpit-db:
+    image: postgres:15-alpine
+    container_name: cockpit-db
+    restart: always
+    environment:
+      POSTGRES_DB: cockpit
+      POSTGRES_USER: cockpit_user
+      POSTGRES_PASSWORD: cockpit_password # CHANGE THIS
+    ports:
+      - "5432:5432"
+    volumes:
+      - cockpit_db_data:/var/lib/postgresql/data
+
+  # 2. PostgREST (API Layer)
+  cockpit-api:
+    image: postgrest/postgrest:v11.2.0
+    container_name: cockpit-api
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      PGRST_DB_URI: postgres://cockpit_user:cockpit_password@cockpit-db:5432/cockpit
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: cockpit_user
+      PGRST_DB_POOL: 10
+    depends_on:
+      - cockpit-db
+
+volumes:
+  cockpit_db_data:
