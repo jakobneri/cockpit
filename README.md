@@ -99,6 +99,45 @@ Specialized for Fritz!Box. Requires the `tr-064` library.
 
 ---
 
+## ⚡ Standalone Client Setup (No Hub Required locally)
+If you want to monitor a machine that is NOT running the Hub, follow these steps to install only the probe.
+
+### 1. Identify your Hub's Public Address
+You will need the IP address or Domain of the machine where your Cockpit Hub is running (e.g., `http://192.168.188.23:3000`).
+
+### 2. Choose your Agent
+Download only the necessary file to the machine you want to monitor:
+
+#### A. Linux / Raspberry Pi (Recommended)
+1. **Download**: [client.sh](https://raw.githubusercontent.com/jakobneri/cockpit/main/client/client.sh)
+2. **Setup**:
+   ```bash
+   # Make executable
+   chmod +x client.sh
+   # Run with your Hub URL
+   DB_URL="http://YOUR_HUB_IP:3000" ./client.sh
+   ```
+3. **Run in Background**: `pm2 start ./client.sh --name "my-node" --interpreter bash`
+
+#### B. Windows Desktop
+1. **Download**: [client.ps1](https://raw.githubusercontent.com/jakobneri/cockpit/main/client/client.ps1)
+2. **Setup**: 
+   - Open PowerShell as Administrator.
+   - Run: `$env:DB_URL="http://YOUR_HUB_IP:3000"; ./client.ps1`
+
+#### C. Dedicated Fritz!Box Gateway
+1. **Requires Node.js**: `npm install tr-064`
+2. **Setup**:
+   ```bash
+   export GATEWAY_IP="192.168.178.1"
+   export GATEWAY_USER="admin"
+   export GATEWAY_PASS="your_pass"
+   export DB_URL="http://YOUR_HUB_IP:3000"
+   node client/gateway-client.js
+   ```
+
+---
+
 ## 🚀 Manual Configuration Checklist
 
 | Task | File | Detail |
