@@ -1,6 +1,6 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.4.5
- * Bulletproof TR-064 fetcher with silent error suppression for incompatible models.
+ * COCKPIT GATEWAY CLIENT v5.5.0
+ * Bulletproof TR-064 fetcher with silent error suppression and diagnostic logging.
  */
 
 import { createRequire } from 'module';
@@ -17,15 +17,32 @@ const POLL_INTERVAL = 15000;
 
 const log = {
   info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
+  diag: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔍 DIALOG: ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
   warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
   error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
   report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
 };
 
-log.info(`v5.4.5: Initializing for ${GATEWAY_IP}`);
+log.info(`v5.5.0: Diagnostic Mode for ${GATEWAY_IP}`);
+log.diag(`Using credentials for user: ${GATEWAY_USER}`);
 
 let prevStats = { rx: 0, tx: 0, time: Date.now() };
+
+async function safeCall(service, action, params = []) {
+  if (!service) return null;
+  const actionName = action.name || "Unknown";
+  log.diag(`Calling ${actionName}...`);
+  try {
+    const fn = promisify(action.bind(service));
+    const res = await fn(...params);
+    log.success(`${actionName} returned data.`);
+    return res;
+  } catch (err) {
+    log.error(`${actionName} FAILED: ${err.message}`);
+    return null;
+  }
+}
 
 async function fetchStats() {
   const tr064 = new tr064Lib.TR064();
@@ -42,38 +59,35 @@ async function fetchStats() {
   };
 
   try {
+    log.diag(`Initializing connection to ${GATEWAY_IP}...`);
     const dev = await initDevice(GATEWAY_IP, 49000);
+    
+    log.diag(`Performing login for ${GATEWAY_USER}...`);
     dev.login(GATEWAY_USER, GATEWAY_PASS);
 
     // 1. Device Info & Uptime
-    try {
-      const deviceInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
-      if (deviceInfo) {
-        const getInfo = promisify(deviceInfo.actions.GetInfo);
-        const res = await getInfo();
+    const deviceInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
+    if (deviceInfo) {
+      const res = await safeCall(deviceInfo, deviceInfo.actions.GetInfo);
+      if (res) {
         stats.uptime = parseInt(res.NewUpTime || 0);
         stats.model = res.NewModelName || "Fritz!Box";
       }
-    } catch (e) {}
+    }
 
     // 2. DSL Sync Status
-    try {
-      const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
-      if (commonLink) {
-        const getProps = promisify(commonLink.actions.GetCommonLinkProperties);
-        const res = await getProps();
-        stats.dsl_sync = res.NewPhysicalLinkStatus || "Unknown";
-      }
-    } catch (e) {}
+    const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
+    if (commonLink) {
+      const res = await safeCall(commonLink, commonLink.actions.GetCommonLinkProperties);
+      if (res) stats.dsl_sync = res.NewPhysicalLinkStatus || "Unknown";
+    }
 
-    // 3. Traffic Counters & Speed
-    try {
-      const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
-      if (commonLink) {
-        const getRx = promisify(commonLink.actions.GetTotalBytesReceived);
-        const getTx = promisify(commonLink.actions.GetTotalBytesSent);
-        const [rxRes, txRes] = await Promise.all([getRx(), getTx()]);
-        
+    // 3. Traffic Counters
+    if (commonLink) {
+      const rxRes = await safeCall(commonLink, commonLink.actions.GetTotalBytesReceived);
+      const txRes = await safeCall(commonLink, commonLink.actions.GetTotalBytesSent);
+      
+      if (rxRes && txRes) {
         const now = Date.now();
         const rx = parseInt(rxRes.NewTotalBytesReceived || 0);
         const tx = parseInt(txRes.NewTotalBytesSent || 0);
@@ -87,32 +101,28 @@ async function fetchStats() {
         }
         prevStats = { rx, tx, time: now };
       }
-    } catch (e) {}
+    }
 
     // 4. VPN Status
-    try {
-      const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
-      if (vpn) {
-        const getVpn = promisify(vpn.actions.GetVPNInfo);
-        const res = await getVpn();
+    const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
+    if (vpn) {
+      const res = await safeCall(vpn, vpn.actions.GetVPNInfo);
+      if (res) {
         const info = JSON.stringify(res);
         stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
       }
-    } catch (e) {}
+    }
 
     // 5. Gateway Logs
-    try {
-      const config = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
-      if (config) {
-        const getLogs = promisify(config.actions.GetLogs);
-        const res = await getLogs();
-        stats.logs = res.NewLogData || "";
-      }
-    } catch (e) {}
+    const config = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
+    if (config) {
+      const res = await safeCall(config, config.actions.GetLogs);
+      if (res) stats.logs = res.NewLogData || "";
+    }
 
     return stats;
   } catch (err) {
-    throw new Error(`Connection failed: ${err.message}`);
+    throw new Error(`Device Initialization failed: ${err.message}`);
   }
 }
 
@@ -123,7 +133,7 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       reported_at: new Date().toISOString(),
-      system_info: { model: stats.model, platform: 'fritzbox', version: '5.4.5' },
+      system_info: { model: stats.model, platform: 'fritzbox', version: '5.5.0' },
       stats: {
         cpu: { load: 0, temp: 0 },
         memory: { total: 0, used: 0, percent: 0 },
@@ -141,7 +151,7 @@ async function report() {
     });
 
     if (res.ok) {
-      log.report(`Successful | Sync: ${stats.dsl_sync} | Speed: ${stats.rx_sec.toFixed(1)}k/s`);
+      log.report(`Reporting Successful for ${HOSTNAME}`);
     } else {
       log.error(`DB Error: ${res.statusText}`);
     }
@@ -150,7 +160,6 @@ async function report() {
   }
 }
 
-// Initial delay to let PM2 settle
 setTimeout(() => {
   setInterval(report, POLL_INTERVAL);
   report();
