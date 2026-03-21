@@ -22,7 +22,7 @@ const apps = [
     env: {
       NODE_ENV: 'production',
       PORT: 3000,
-      DB_URL: 'http://localhost:3001',
+      DB_URL: 'http://127.0.0.1:3001',
       HUB_TRUSTED_IPS: '127.0.0.1,192.168.188.23'
     }
   },
@@ -50,7 +50,7 @@ config.gateways.forEach(gw => {
       GATEWAY_IP: gw.ip,
       GATEWAY_USER: gw.user,
       GATEWAY_PASS: gw.password,
-      DB_URL: 'http://localhost:3001',
+      DB_URL: 'http://127.0.0.1:3001',
       HOSTNAME: name 
     },
     autorestart: true,
