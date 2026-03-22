@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.5.1
+ * COCKPIT GATEWAY CLIENT v5.6.12
  * Bug fix: Removed crash on undefined actions.
  * Added: Clearer authentication diagnostics.
  */
@@ -147,18 +147,30 @@ async function fetchStats() {
       prevStats = { rx, tx, time: now };
     }
 
-    // 4. VPN Status
+    // 4. VPN Status (v5.6.12: Improved check)
     const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
-    const vpnRes = await safeCall(vpn, vpn?.actions?.GetVPNInfo, 'GetVPNInfo');
-    if (vpnRes) {
-      const info = JSON.stringify(vpnRes);
-      stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
+    if (vpn) {
+      const vpnRes = await safeCall(vpn, vpn?.actions?.GetVPNInfo, 'GetVPNInfo');
+      if (vpnRes) {
+        const info = JSON.stringify(vpnRes);
+        stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
+      }
+    } else {
+      log.diag("VPN service (X_AVM-DE_VPN) not available on this gateway.");
     }
 
-    // 5. Gateway Logs
-    const config = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
-    const logRes = await safeCall(config, config?.actions?.GetLogs, 'GetLogs');
-    if (logRes) stats.logs = logRes.NewLogData || "";
+    // 5. Gateway Logs (v5.6.12: Dual-mode fallback)
+    const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
+    // deviceInfo is already defined on line 117
+    
+    let logRes = await safeCall(deviceConfig, deviceConfig?.actions?.GetLogs, 'GetLogs (Primary)');
+    if (!logRes) {
+      logRes = await safeCall(deviceInfo, deviceInfo?.actions?.GetDeviceLog, 'GetDeviceLog (Fallback)');
+    }
+    
+    if (logRes) {
+      stats.logs = logRes.NewLogData || logRes.NewDeviceLog || "";
+    }
 
     return stats;
   } catch (err) {
