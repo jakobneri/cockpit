@@ -1,4 +1,4 @@
-# 🛡️ Cockpit Hub v5.6.10
+# 🛡️ Cockpit Hub v5.6.11
 ### The Ultimate Fleet Monitoring Dashboard for Raspberry Pi & Home Networks
 
 Cockpit Hub is a distributed monitoring system designed for high-performance home labs. It provides real-time visibility into your Raspberry Pi fleet and network gateway (Fritz!Box) through a beautiful, glassmorphic dashboard.
@@ -193,6 +193,20 @@ To fully enforce this policy, the owner must configure the following in **GitHub
 
 With these settings applied, only `@jakobneri` can push directly or bypass the PR requirement.
 
+### 🛠️ Maintenance & Tips
+
+-   **Manual Update**: Trigger a Hub update (git pull + build + restart) immediately.
+    ```bash
+    # From the Pi (Trusted IP)
+    curl -X POST http://localhost:3000/api/admin/update
+    # From outside (with password)
+    curl -X POST "http://hub_ip:3000/api/admin/update?token=YOUR_PASSWORD"
+    ```
+-   **Debug DB**: Check PostgREST and RPC visibility.
+    ```bash
+    node debug-db.js
+    ```
+
 ---
 Made with ❤️ by Jakob Neri & Antigravity
-**V5.6.10 Final Milestone Release**
+**V5.6.11 Final Milestone Release**
