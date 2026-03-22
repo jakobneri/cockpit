@@ -11,12 +11,21 @@ async function test() {
             console.log('✅ PostgREST is UP.');
             console.log(`Found ${data.length} clients in registry.`);
             
-            // Check for RPC function
-            const rpcRes = await fetch(`${DB_URL}/rpc/report_client_metrics`, { method: 'OPTIONS' });
+            // Check for RPC function (v2: with sample POST)
+            console.log('Testing RPC call...');
+            const rpcRes = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Prefer': 'params=single-object' },
+                body: JSON.stringify({ hostname: 'debug_test', stats: {}, system_info: { model: 'Debug' } })
+            });
+            
             if (rpcRes.ok) {
-                console.log('✅ RPC function report_client_metrics is VISIBLE to PostgREST.');
+                const result = await rpcRes.json();
+                console.log('✅ RPC function is WORKING.', result);
             } else {
-                console.log(`❌ RPC function NOT FOUND or NOT ACCESSIBLE (Status: ${rpcRes.status})`);
+                console.log(`❌ RPC function CALL FAILED (Status: ${rpcRes.status} ${rpcRes.statusText})`);
+                const errText = await rpcRes.text();
+                console.log('Response body:', errText);
             }
         } else {
             console.log(`❌ PostgREST returned error: ${res.status} ${res.statusText}`);
