@@ -98,14 +98,14 @@ EOF
 )
 
     # POST to DB
-    curl -s -f --retry 3 -X POST "$DB_URL/rpc/report_client_metrics" \
+    status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DB_URL/rpc/report_client_metrics" \
         -H "Content-Type: application/json" \
         -H "Prefer: params=single-object" \
-        -d "$json_payload" > /dev/null
+        -d "$json_payload")
 
-    if [ $? -eq 0 ]; then
+    if [ "$status" -eq 200 ] || [ "$status" -eq 204 ] || [ "$status" -eq 201 ]; then
         log "✅ Reported metrics ($cpu_load% CPU, $mem_pct% RAM)"
     else
-        log "❌ Reporting failed"
+        log "❌ Reporting failed (HTTP $status)"
     fi
 done
