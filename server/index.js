@@ -343,19 +343,24 @@ const runAutoUpdate = async (force = false) => {
   if (process.platform === 'win32') return false;
   try {
     hubLog.info('Checking for repository updates...');
-    await execAsync('git remote update');
-    const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
     
-    const count = parseInt(behindCount.trim()) || 0;
-    if (count === 0 && !force) {
-      hubLog.info('System is up to date.');
+    // Ensure git doesn't complain about directory ownership
+    try { await execAsync('git config --global --add safe.directory /home/archimedes/cockpit'); } catch(e) {}
+
+    await execAsync('git fetch origin main');
+    const { stdout: localCommit } = await execAsync('git rev-parse HEAD');
+    const { stdout: remoteCommit } = await execAsync('git rev-parse origin/main');
+    
+    if (localCommit.trim() === remoteCommit.trim() && !force) {
+      hubLog.info(`System is up to date (Commit: ${localCommit.trim().substring(0,7)})`);
       return false;
     }
 
-    hubLog.update(`Update found (${count} commits). Deploying...`);
+    const { stdout: behindCount } = await execAsync('git rev-list HEAD..origin/main --count');
+    const count = parseInt(behindCount.trim()) || 0;
+    hubLog.update(`Update found: ${count} new commits. Local: ${localCommit.trim().substring(0,7)}, Remote: ${remoteCommit.trim().substring(0,7)}`);
     
     // Hard reset to ensure we match origin/main exactly
-    await execAsync('git fetch origin main');
     await execAsync('git reset --hard origin/main');
     hubLog.success('Git Reset Successful. Installing dependencies...');
     
@@ -372,8 +377,6 @@ const runAutoUpdate = async (force = false) => {
     return true;
   } catch (error) { 
     hubLog.error(`Update failed: ${error.message}`);
-    // Desperate reset if caught in a broken state
-    try { await execAsync('git reset --hard origin/main'); } catch(e) {}
     return false;
   }
 };
@@ -397,6 +400,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.9${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.10${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
