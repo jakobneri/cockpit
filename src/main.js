@@ -340,6 +340,7 @@ function renderFleet(servers) {
             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Node'}</span>
           </div>
           <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
+          ${data.gateway ? `<button class="temp-badge cool" style="cursor: pointer; border: none; font-family: inherit; font-size: 0.7rem; margin-top: 4px;" onclick="event.stopPropagation(); window.openGatewayLogs('${hostname}')">Logs</button>` : ''}
         </div>
         <div class="node-metrics">
           ${metricsHtml || '<span style="color: var(--text-secondary); font-size: 0.8rem;">No metrics reported</span>'}
@@ -551,7 +552,7 @@ function renderHistoryTable(history) {
   const allKeys = new Set();
   history.forEach(h => {
     Object.keys(h).forEach(k => {
-      if (!['time', 'recorded_at', 'data'].includes(k)) allKeys.add(k);
+      if (!['time', 'recorded_at', 'data', 'GATEWAY_LOGS'].includes(k)) allKeys.add(k);
     });
   });
   const sortedKeys = Array.from(allKeys).sort();
@@ -622,6 +623,29 @@ window.showOverview = (push = true) => {
   if (statsTimer) clearInterval(statsTimer);
   fetchFleet();
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
+};
+
+window.openGatewayLogs = (hostname) => {
+  const modal = document.getElementById('logs-modal');
+  const title = document.getElementById('modalTitle');
+  const text = document.getElementById('modalLogsText');
+  if (!modal || !text) return;
+
+  title.textContent = `${hostname} Gateway Logs`;
+  text.textContent = 'Fetching latest logs...';
+  modal.style.display = 'flex';
+
+  // We can just fetch the latest stats for this node which includes logs
+  apiFetch(`/api/stats/${hostname}`).then(res => res.json()).then(data => {
+    text.textContent = data.gateway?.logs || 'No logs available.';
+  }).catch(err => {
+    text.textContent = 'Error fetching logs: ' + err.message;
+  });
+};
+
+window.closeLogs = () => {
+  const modal = document.getElementById('logs-modal');
+  if (modal) modal.style.display = 'none';
 };
 
 window.exportData = async () => {

@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.6.12
+ * COCKPIT GATEWAY CLIENT v5.6.13
  * Bug fix: Removed crash on undefined actions.
  * Added: Clearer authentication diagnostics.
  */
