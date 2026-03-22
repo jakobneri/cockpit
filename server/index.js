@@ -333,6 +333,12 @@ app.get('/api/export/:hostname', async (req, res) => {
 
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
+// Compatibility Fallback: Proxy /rpc to PostgREST (v5.6.7)
+app.all('/rpc/*', (req, res) => {
+    hubLog.warn(`[v5.6.7] Legacy /rpc request from ${req.ip} - Redirecting to port 3001`);
+    res.redirect(307, `http://${req.hostname}:3001${req.originalUrl}`);
+});
+
 const runAutoUpdate = async (force = false) => {
   if (process.platform === 'win32') return false;
   try {
@@ -391,6 +397,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.4.2${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.7${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

@@ -1,4 +1,4 @@
-# 🛡️ Cockpit Hub v5.6.0
+# 🛡️ Cockpit Hub v5.6.7
 ### The Ultimate Fleet Monitoring Dashboard for Raspberry Pi & Home Networks
 
 Cockpit Hub is a distributed monitoring system designed for high-performance home labs. It provides real-time visibility into your Raspberry Pi fleet and network gateway (Fritz!Box) through a beautiful, glassmorphic dashboard.
@@ -85,12 +85,12 @@ Agents can be installed on ANY machine in your network (Servers, Desktops, Pis).
 No Node.js required! Uses `curl` and `sysfs`.
 1.  Copy [client/client.sh](./client/client.sh) to the target machine.
 2.  Set `DB_URL` env var and run.
-3.  **Command**: `DB_URL="http://hub_ip:3000" bash client.sh`
+3.  **Command**: `DB_URL="http://hub_ip:3001" bash client.sh`
 
 #### B. Windows (PowerShell)
 Native monitoring for Windows PCs.
 1.  Copy [client/client.ps1](./client/client.ps1) to the target machine.
-2.  **Command**: `$env:DB_URL="http://hub_ip:3000"; ./client.ps1`
+2.  **Command**: `$env:DB_URL="http://hub_ip:3001"; ./client.ps1`
 
 #### C. Gateway Client (Node.js)
 Specialized for Fritz!Box. Requires the `tr-064` library.
@@ -115,7 +115,7 @@ Download only the necessary file to the machine you want to monitor:
    # Make executable
    chmod +x client.sh
    # Run with your Hub URL
-   DB_URL="http://YOUR_HUB_IP:3000" ./client.sh
+   DB_URL="http://YOUR_HUB_IP:3001" ./client.sh
    ```
 3. **Run in Background**: `pm2 start ./client.sh --name "my-node" --interpreter bash`
 
@@ -123,7 +123,7 @@ Download only the necessary file to the machine you want to monitor:
 1. **Download**: [client.ps1](https://raw.githubusercontent.com/jakobneri/cockpit/main/client/client.ps1)
 2. **Setup**: 
    - Open PowerShell as Administrator.
-   - Run: `$env:DB_URL="http://YOUR_HUB_IP:3000"; ./client.ps1`
+   - Run: `$env:DB_URL="http://YOUR_HUB_IP:3001"; ./client.ps1`
 
 #### C. Dedicated Fritz!Box Gateway
 1. **Requires Node.js**: `npm install tr-064`
@@ -132,7 +132,7 @@ Download only the necessary file to the machine you want to monitor:
    export GATEWAY_IP="192.168.178.1"
    export GATEWAY_USER="admin"
    export GATEWAY_PASS="your_pass"
-   export DB_URL="http://YOUR_HUB_IP:3000"
+   export DB_URL="http://YOUR_HUB_IP:3001"
    node client/gateway-client.js
    ```
 
@@ -195,4 +195,4 @@ With these settings applied, only `@jakobneri` can push directly or bypass the P
 
 ---
 Made with ❤️ by Jakob Neri & Antigravity
-**V5.6 Final Milestone Release**
+**V5.6.7 Final Milestone Release**

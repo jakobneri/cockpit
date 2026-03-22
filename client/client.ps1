@@ -1,7 +1,7 @@
 # Cockpit Native Client v5.0.0 (PowerShell Version)
 # Lightweight monitoring for Windows
 
-$DB_URL = if ($env:DB_URL) { $env:DB_URL } else { "http://localhost:3000" }
+$DB_URL = if ($env:DB_URL) { $env:DB_URL } else { "http://localhost:3001" }
 $HOSTNAME = [System.Net.Dns]::GetHostName()
 $INTERVAL = 5
 
@@ -70,7 +70,7 @@ while ($true) {
     $json = $payload | ConvertTo-Json -Compress
 
     try {
-        $resp = Invoke-RestMethod -Uri "$DB_URL/rpc/report_client_metrics" `
+        $null = Invoke-RestMethod -Uri "$DB_URL/rpc/report_client_metrics" `
             -Method Post `
             -ContentType "application/json" `
             -Headers @{ "Prefer" = "params=single-object" } `

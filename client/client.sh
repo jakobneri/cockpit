@@ -3,7 +3,7 @@
 # Cockpit Native Client v4.0.4 (Bash Version)
 # Zero-dependency monitoring for Linux / Raspberry Pi
 
-DB_URL="${DB_URL:-http://localhost:3000}"
+DB_URL="${DB_URL:-http://localhost:3001}"
 HOSTNAME=$(hostname)
 INTERVAL=5
 
@@ -98,7 +98,7 @@ EOF
 )
 
     # POST to DB
-    curl -s -X POST "$DB_URL/rpc/report_client_metrics" \
+    curl -s -f --retry 3 -X POST "$DB_URL/rpc/report_client_metrics" \
         -H "Content-Type: application/json" \
         -H "Prefer: params=single-object" \
         -d "$json_payload" > /dev/null
