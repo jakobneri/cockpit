@@ -334,7 +334,7 @@ app.get('/api/export/:hostname', async (req, res) => {
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
 // Compatibility Fallback: Proxy /rpc to PostgREST (v5.6.7)
-app.all('/rpc/*', (req, res) => {
+app.all('/rpc/(.*)', (req, res) => {
     hubLog.warn(`[v5.6.7] Legacy /rpc request from ${req.ip} - Redirecting to port 3001`);
     res.redirect(307, `http://${req.hostname}:3001${req.originalUrl}`);
 });
