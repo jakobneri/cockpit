@@ -1,4 +1,4 @@
-# 🛡️ Cockpit Hub v5.6.13
+# 🛡️ Cockpit Hub v5.6.15
 ### The Ultimate Fleet Monitoring Dashboard for Raspberry Pi & Home Networks
 
 Cockpit Hub is a distributed monitoring system designed for high-performance home labs. It provides real-time visibility into your Raspberry Pi fleet and network gateway (Fritz!Box) through a beautiful, glassmorphic dashboard.
@@ -15,24 +15,38 @@ Cockpit v5 follows a decoupled **Agent-Hub-Database** model:
 
 ---
 
-## 🛠️ Full Setup Tutorial
-
 ### 1. Database & API Layer (The Engine)
 The core of Cockpit is a **PostgreSQL** database and a **PostgREST** API layer.
 
-#### A. Start with Docker
-We recommend using the provided [docker-compose.yml](./docker-compose.yml) to launch the database stack:
+#### 🚀 Quick Start: Database
+Follow these steps to get the database environment running:
 
-```bash
-docker-compose up -d
-```
+1.  **Start Containers**:
+    ```bash
+    docker-compose up -d
+    ```
+2.  **Verify**: Run `docker ps` to ensure `cockpit-db` and `cockpit-api` are "Up".
+3.  **Initialize Schema**:
+    ```bash
+    cat setup_v3.sql | docker exec -i cockpit-db psql -U cockpit_user -d cockpit
+    ```
 
-#### B. Initialize Schema
-Apply the [setup_v3.sql](./setup_v3.sql) to create the `clients` registry and the metric-reporting functions:
+---
 
-```bash
-cat setup_v3.sql | docker exec -i cockpit-db psql -U cockpit_user -d cockpit
-```
+#### ⚠️ Troubleshooting: Common Issues
+
+**A. Docker containers missing or redownloading?**
+This usually means your external storage (USB stick) is not mounted.
+1.  Check mounts: `lsblk` (look for `sda1` or your USB disk).
+2.  If missing, mount it: `sudo mount /dev/sda1 /mnt/docker-data` (or your config path).
+3.  Restart Docker: `sudo systemctl restart docker`.
+
+**B. Read-only filesystem error?**
+Raspberry Pis sometimes flip to read-only mode if there's a power dip or SD card error.
+1.  Remount as Read-Write: `sudo mount -o remount,rw /`.
+2.  Restart services: `sudo systemctl restart docker`.
+
+---
 
 ---
 
@@ -209,4 +223,4 @@ With these settings applied, only `@jakobneri` can push directly or bypass the P
 
 ---
 Made with ❤️ by Jakob Neri & Antigravity
-**V5.6.13 Final Milestone Release**
+**V5.6.15 Final Milestone Release**

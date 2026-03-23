@@ -30,7 +30,7 @@ const hubLog = {
   report: (msg) => console.log(`${colors.gray}[${new Date().toLocaleTimeString()}]${colors.reset} ${colors.magenta}📡 ${msg}${colors.reset}`),
   update: (msg) => console.log(`${colors.gray}[${new Date().toLocaleTimeString()}]${colors.reset} ${colors.yellow}🔄 ${msg}${colors.reset}`)
 };
-const log = hubLog; // Alias for compatibility
+const log = hubLog; // Global alias for compatibility
 
 const app = express();
 app.set('trust proxy', true); // Support X-Forwarded-For headers
@@ -333,9 +333,9 @@ app.get('/api/export/:hostname', async (req, res) => {
 
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
-// Compatibility Fallback: Proxy /rpc to PostgREST (v5.6.7)
+// Compatibility Fallback: Proxy /rpc to PostgREST (v5.6.15)
 app.use('/rpc', (req, res) => {
-    hubLog.warn(`[v5.6.7] Legacy /rpc request from ${req.ip} - Redirecting to port 3001`);
+    hubLog.warn(`[v5.6.15] Legacy /rpc request from ${req.ip} - Redirecting to port 3001`);
     res.redirect(307, `http://${req.hostname}:3001${req.originalUrl}`);
 });
 
@@ -400,6 +400,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.13${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.15${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });
