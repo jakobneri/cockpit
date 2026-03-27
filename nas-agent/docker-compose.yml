@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  cockpit-nas-agent:
+    build: .
+    container_name: cockpit-nas-agent
+    restart: always
+    network_mode: host
+    environment:
+      - DB_URL=http://YOUR_HUB_IP:3001
+      - HOSTNAME=Synology-NAS
+      - INTERVAL=15
+    volumes:
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+      - /etc/os-release:/etc/os-release:ro
+      - /volume1:/volume1:ro # Optional: Mount main data volume for storage monitoring
