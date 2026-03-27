@@ -1,21 +1,28 @@
 #!/bin/bash
 
-# Cockpit NAS Client v1.0.0
+# Cockpit NAS Client v1.2.0
 # Optimized for Synology NAS (Docker/Container Manager)
 
 DB_URL="${DB_URL:-http://localhost:3001}"
 HOSTNAME="${HOSTNAME:-$(hostname)}"
 INTERVAL="${INTERVAL:-15}"
 
+# Detect Host paths (Synology Fix)
+PROC_PATH="/proc"
+[ -d "/host/proc" ] && PROC_PATH="/host/proc"
+SYS_PATH="/sys"
+[ -d "/host/sys" ] && SYS_PATH="/host/sys"
+
 log() { echo "[$(date +'%H:%M:%S')] $1"; }
 
 log "Starting Cockpit NAS Agent on $HOSTNAME"
 log "Target API: $DB_URL"
+log "Using proc path: $PROC_PATH"
 
 # Detect System Info
 MODEL="Synology NAS"
-if [ -f /proc/device-tree/model ]; then
-    MODEL=$(cat /proc/device-tree/model | tr -d '\0')
+if [ -f "$PROC_PATH/device-tree/model" ]; then
+    MODEL=$(cat "$PROC_PATH/device-tree/model" | tr -d '\0')
 fi
 
 # Auto-detect main network interface
@@ -24,11 +31,11 @@ IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
 log "Monitoring interface: $IFACE"
 
 # Initialize network counters
-read -r rx1 tx1 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
+read -r rx1 tx1 < <(grep "$IFACE" "$PROC_PATH/net/dev" | awk '{print $2, $10}')
 last_time=$(date +%s.%N)
 
 # Initialize CPU counters
-read -r _ u n s i io _ _ _ < /proc/stat
+read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
 
@@ -36,7 +43,7 @@ while true; do
     sleep $INTERVAL
     
     # 1. CPU Load
-    read -r _ u n s i io _ _ _ < /proc/stat
+    read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
     total=$((u+n+s+i+io))
     idle=$((i+io))
     
@@ -48,20 +55,30 @@ while true; do
     }')
     prev_total=$total; prev_idle=$idle
 
-    # 2. Temperature (NAS specific paths vary, but /sys/class/thermal is common)
+    # 2. Temperature
     temp=0
-    if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-        temp=$(($(cat /sys/class/thermal/thermal_zone0/temp) / 1000))
+    if [ -f "$SYS_PATH/class/thermal/thermal_zone0/temp" ]; then
+        temp=$(($(cat "$SYS_PATH/class/thermal/thermal_zone0/temp") / 1000))
     fi
 
     # 3. Memory
-    mem_total=$(grep MemTotal /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
-    mem_avail=$(grep MemAvailable /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
+    mem_total=$(grep MemTotal "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
+    mem_avail=$(grep MemAvailable "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
+    
+    # Fallback if MemAvailable is missing or 0
+    if [ -z "$mem_avail" ] || [ "$mem_avail" -eq 0 ]; then
+        mem_free=$(grep MemFree "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
+        mem_buf=$(grep "^Buffers:" "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
+        mem_cached=$(grep "^Cached:" "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
+        # Available roughly = Free + Buffers + Cached
+        mem_avail=$((mem_free + mem_buf + mem_cached))
+    fi
+
     mem_used=$((mem_total - mem_avail))
     mem_pct=$(echo "$mem_used $mem_total" | awk '{if($2>0) printf "%.1f", 100 * $1 / $2; else print "0.0"}')
 
     # 4. Network usage (kB/s)
-    read -r rx2 tx2 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
+    read -r rx2 tx2 < <(grep "$IFACE" "$PROC_PATH/net/dev" | awk '{print $2, $10}')
     now=$(date +%s.%N)
     diff=$(echo "$now $last_time" | awk '{print $1 - $2}')
     
@@ -74,7 +91,8 @@ while true; do
     MNT_POINT="/"
     [ -d "/volume1" ] && MNT_POINT="/volume1"
     
-    df_out=$(df -B1 "$MNT_POINT" | tail -1)
+    # Use -P for POSIX format to prevent line wrapping and ensure field order
+    df_out=$(df -PB1 "$MNT_POINT" | tail -1)
     st_total=$(echo "$df_out" | awk '{print $2}')
     st_used=$(echo "$df_out" | awk '{print $3}')
     st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
@@ -87,14 +105,14 @@ while true; do
   "system_info": {
     "model": "$MODEL",
     "platform": "synology",
-    "version": "1.0.0"
+    "version": "1.2.0"
   },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },
     "memory": { "total": $mem_total, "used": $mem_used, "percent": $mem_pct },
     "network": { "rx_sec": $rx_sec, "tx_sec": $tx_sec },
     "storage": { "root": { "total": $st_total, "used": $st_used, "percent": $st_pct } },
-    "uptime": $(awk '{print int($1)}' /proc/uptime)
+    "uptime": $(awk '{print int($1)}' "$PROC_PATH/uptime")
   }
 }
 EOF
