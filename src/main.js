@@ -3,11 +3,12 @@ const REFRESH_INTERVAL_FLEET = 5000;
 const REFRESH_INTERVAL_STATS = 5000;
 
 // State
-let currentView = 'overview'; // 'overview' or 'details'
-let detailViewMode = 'chart'; // 'chart' or 'table'
+let currentView = 'overview'; // 'overview', 'details', or 'pi'
+let detailViewMode = 'chart'; // 'chart' or 'raw'
 let selectedHostname = null;
 let statsTimer = null;
 let fleetTimer = null;
+let piTimer = null;
 
 /** ── Auth State Management ── **/
 let hubToken = localStorage.getItem('hub_token') || '';
@@ -161,8 +162,18 @@ function createCharts() {
 
   const createGradient = (ctx, color, alphaTop, alphaBottom) => {
     const grd = ctx.createLinearGradient(0, 0, 0, 150);
-    grd.addColorStop(0, color.replace(')', `, ${alphaTop})`).replace('rgb', 'rgba'));
-    grd.addColorStop(1, color.replace(')', `, ${alphaBottom})`).replace('rgb', 'rgba'));
+    // Fix for the replacement helper: ensure color parsing works for both hex and rgb
+    let baseColor = color;
+    if (color.startsWith('#')) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        baseColor = `rgba(${r}, ${g}, ${b}`;
+    } else {
+        baseColor = color.replace('rgb', 'rgba').replace(')', '');
+    }
+    grd.addColorStop(0, `${baseColor}, ${alphaTop})`);
+    grd.addColorStop(1, `${baseColor}, ${alphaBottom})`);
     return grd;
   };
 
@@ -170,15 +181,6 @@ function createCharts() {
     const canvas = document.getElementById(id);
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
-    
-    // Convert hex to rgb for gradient helper
-    const hexToRgb = (hex) => {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return `rgb(${r}, ${g}, ${b})`;
-    };
-    const rgbColor = hexToRgb(color);
 
     return new Chart(ctx, {
       type: 'line',
@@ -187,7 +189,7 @@ function createCharts() {
         datasets: [{
           data: Array(maxDataPoints).fill(null),
           borderColor: color,
-          backgroundColor: createGradient(ctx, rgbColor, 0.4, 0),
+          backgroundColor: createGradient(ctx, color, 0.15, 0),
           fill: true,
           spanGaps: true
         }]
@@ -196,8 +198,8 @@ function createCharts() {
     });
   };
 
-  cpuChart = createLine('cpuChart', '#3b82f6');
-  ramChart = createLine('ramChart', '#818cf8');
+  cpuChart = createLine('cpuChart', '#007aff');
+  ramChart = createLine('ramChart', '#af52de');
 
   // Network Multi-line Chart
   const netCanvas = document.getElementById('netChart');
@@ -211,8 +213,8 @@ function createCharts() {
           {
             label: 'Download (Rx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#f59e0b',
-            backgroundColor: createGradient(ctx, 'rgb(245, 158, 11)', 0.4, 0),
+            borderColor: '#ff9500',
+            backgroundColor: createGradient(ctx, '#ff9500', 0.15, 0),
             fill: true,
             tension: 0.4,
             borderWidth: 2
@@ -220,8 +222,8 @@ function createCharts() {
           {
             label: 'Upload (Tx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#10b981',
-            backgroundColor: createGradient(ctx, 'rgb(16, 185, 129)', 0.4, 0),
+            borderColor: '#34c759',
+            backgroundColor: createGradient(ctx, '#34c759', 0.15, 0),
             fill: true,
             tension: 0.4,
             borderWidth: 2
@@ -507,11 +509,47 @@ async function fetchNodeStats() {
       gwSection.style.display = 'none';
     }
 
-    // Removed SMB section for v4.0.0
+    // Active Jobs (v6.0.0)
+    renderActiveJobs(data);
 
   } catch (error) {
     console.error('Error fetching node stats:', error);
   }
+}
+
+function renderActiveJobs(data) {
+  const detailSect = document.getElementById('details-charts');
+  if (!detailSect) return;
+
+  let jobsSect = document.getElementById('details-jobs');
+  if (!jobsSect) {
+    const template = document.getElementById('jobs-template');
+    if (template) {
+      detailSect.appendChild(template.content.cloneNode(true));
+      jobsSect = document.getElementById('details-jobs');
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  const container = document.getElementById('jobs-container');
+  if (!container) return;
+
+  const jobs = data.stats?.jobs || data.jobs || [];
+  if (jobs.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-secondary); font-size: 0.9rem; padding: 1rem; text-align: center; background: rgba(0,0,0,0.02); border-radius: 12px;">No active jobs detected.</p>';
+    return;
+  }
+
+  container.innerHTML = jobs.map(j => `
+    <div class="job-card">
+      <i data-lucide="play-circle" class="job-icon"></i>
+      <div class="job-info">
+        <h4>${j.name}</h4>
+        <p>Status: ${j.status} | Since: ${j.started || 'Unknown'}</p>
+      </div>
+    </div>
+  `).join('');
+  if (window.lucide) lucide.createIcons();
 }
 
 // Navigation
@@ -592,8 +630,11 @@ window.openDetails = (hostname, push = true) => {
   selectedHostname = hostname;
   currentView = 'details';
   document.getElementById('view-overview').style.display = 'none';
+  document.getElementById('view-pi').style.display = 'none';
   document.getElementById('view-details').style.display = 'grid';
   
+  updateNavState();
+
   if (push) {
     window.history.pushState({ hostname }, '', `/${hostname}`);
   }
@@ -605,6 +646,7 @@ window.openDetails = (hostname, push = true) => {
   fetchNodeStats();
   
   if (fleetTimer) clearInterval(fleetTimer);
+  if (piTimer) clearInterval(piTimer);
   statsTimer = setInterval(fetchNodeStats, REFRESH_INTERVAL_STATS);
 };
 
@@ -613,7 +655,10 @@ window.showOverview = (push = true) => {
   currentView = 'overview';
   document.getElementById('view-overview').style.display = 'block';
   document.getElementById('view-details').style.display = 'none';
+  document.getElementById('view-pi').style.display = 'none';
   
+  updateNavState();
+
   if (push) {
     window.history.pushState({}, '', '/');
   }
@@ -621,8 +666,91 @@ window.showOverview = (push = true) => {
   // os-info is handled inside fetchFleet for overview
   
   if (statsTimer) clearInterval(statsTimer);
+  if (piTimer) clearInterval(piTimer);
   fetchFleet();
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
+};
+
+/** ── Pi Hub Dashboard Logic (v6.0.0) ── **/
+
+window.showPiDashboard = (push = true) => {
+  selectedHostname = null;
+  currentView = 'pi';
+  document.getElementById('view-overview').style.display = 'none';
+  document.getElementById('view-details').style.display = 'none';
+  document.getElementById('view-pi').style.display = 'block';
+
+  updateNavState();
+
+  if (push) {
+    window.history.pushState({ view: 'pi' }, '', '/hub');
+  }
+
+  if (statsTimer) clearInterval(statsTimer);
+  if (fleetTimer) clearInterval(fleetTimer);
+  fetchPiServices();
+  piTimer = setInterval(fetchPiServices, 10000);
+};
+
+function updateNavState() {
+  const btnFleet = document.getElementById('nav-fleet');
+  const btnPi = document.getElementById('nav-pi');
+  
+  if (btnFleet) btnFleet.className = currentView === 'overview' ? 'btn-pill primary' : 'btn-pill secondary';
+  if (btnPi) btnPi.className = currentView === 'pi' ? 'btn-pill primary' : 'btn-pill secondary';
+}
+
+async function fetchPiServices() {
+  try {
+    const res = await apiFetch('/api/pi/services');
+    const services = await res.json();
+    renderPiServices(services);
+  } catch (err) {
+    console.error('Error fetching pi services:', err);
+  }
+}
+
+function renderPiServices(services) {
+  const container = document.getElementById('pi-services-container');
+  if (!container) return;
+
+  if (services.length === 0) {
+    container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding: 2rem;">No manageable services found.</p>';
+    return;
+  }
+
+  container.innerHTML = services.map(s => `
+    <div class="pi-service-item">
+      <div class="pi-service-info">
+        <div style="color: ${s.status === 'running' ? 'var(--accent-green)' : 'var(--text-secondary)'}">
+          <i data-lucide="${s.status === 'running' ? 'check-circle' : 'stop-circle'}"></i>
+        </div>
+        <div>
+          <div class="pi-service-name">${s.name}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary)">${s.description}</div>
+        </div>
+      </div>
+      <div class="pi-service-actions">
+        ${s.status === 'running' 
+          ? `<button class="btn-pill secondary" onclick="piServiceAction('${s.name}', 'restart')">Restart</button>
+             <button class="btn-pill secondary" style="color: var(--accent-red)" onclick="piServiceAction('${s.name}', 'stop')">Stop</button>`
+          : `<button class="btn-pill primary" onclick="piServiceAction('${s.name}', 'start')">Start</button>`
+        }
+      </div>
+    </div>
+  `).join('');
+  
+  if (window.lucide) lucide.createIcons();
+}
+
+window.piServiceAction = async (name, action) => {
+  if (!confirm(`Are you sure you want to ${action} ${name}?`)) return;
+  try {
+    await apiFetch(`/api/pi/services/${name}/${action}`, { method: 'POST' });
+    await fetchPiServices();
+  } catch (err) {
+    alert('Action failed: ' + err.message);
+  }
 };
 
 window.openGatewayLogs = (hostname) => {

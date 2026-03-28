@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cockpit NAS Client v1.2.0
+# Cockpit NAS Client v6.0.0
 # Optimized for Synology NAS (Docker/Container Manager)
 
 DB_URL="${DB_URL:-http://localhost:3001}"
@@ -38,6 +38,23 @@ last_time=$(date +%s.%N)
 read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
+
+get_active_jobs() {
+    local jobs="[]"
+    # 1. Check for rsync
+    if pgrep -x "rsync" > /dev/null; then
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Rsync Transfer", "status": "Active", "started": "Now"}]')
+    fi
+    # 2. Check for Hyper Backup (Synology)
+    if pgrep -f "synobackup" > /dev/null; then
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Hyper Backup", "status": "Running", "started": "System"}]')
+    fi
+    # 3. Check for Cloud Sync (Synology)
+    if pgrep -f "cloud-sync" > /dev/null; then
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Cloud Sync", "status": "Syncing", "started": "System"}]')
+    fi
+    echo "$jobs"
+}
 
 while true; do
     sleep $INTERVAL
@@ -97,6 +114,9 @@ while true; do
     st_used=$(echo "$df_out" | awk '{print $3}')
     st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
 
+    # 6. Active Jobs (v1.3.0)
+    active_jobs=$(get_active_jobs)
+
     # Construct JSON
     json_payload=$(cat <<EOF
 {
@@ -112,7 +132,8 @@ while true; do
     "memory": { "total": $mem_total, "used": $mem_used, "percent": $mem_pct },
     "network": { "rx_sec": $rx_sec, "tx_sec": $tx_sec },
     "storage": { "root": { "total": $st_total, "used": $st_used, "percent": $st_pct } },
-    "uptime": $(awk '{print int($1)}' "$PROC_PATH/uptime")
+    "uptime": $(awk '{print int($1)}' "$PROC_PATH/uptime"),
+    "jobs": $active_jobs
   }
 }
 EOF

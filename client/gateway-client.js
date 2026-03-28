@@ -1,5 +1,5 @@
 /**
- * COCKPIT GATEWAY CLIENT v5.6.13
+ * COCKPIT GATEWAY CLIENT v6.0.0
  * Bug fix: Removed crash on undefined actions.
  * Added: Clearer authentication diagnostics.
  */
@@ -185,7 +185,7 @@ async function report() {
     const payload = {
       hostname: HOSTNAME,
       reported_at: new Date().toISOString(),
-      system_info: { model: stats.model, platform: 'fritzbox', version: '5.5.1' },
+      system_info: { model: stats.model, platform: 'fritzbox', version: '6.0.0' },
       stats: {
         cpu: { load: 0, temp: 0 },
         memory: { total: 0, used: 0, percent: 0 },

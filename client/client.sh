@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cockpit Native Client v4.0.4 (Bash Version)
+# Cockpit Native Client v6.0.0 (Bash Version)
 # Zero-dependency monitoring for Linux / Raspberry Pi
 
 DB_URL="${DB_URL:-http://localhost:3001}"

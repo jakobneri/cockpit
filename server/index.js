@@ -333,6 +333,55 @@ app.get('/api/export/:hostname', async (req, res) => {
 
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
+// Pi Management API (v6.0.0)
+app.get('/api/pi/services', async (req, res) => {
+  if (process.platform === 'win32') {
+    return res.json([
+      { name: 'cockpit-hub', status: 'running', description: 'Cockpit Hub Management' },
+      { name: 'postgrest', status: 'running', description: 'Data API Service' }
+    ]);
+  }
+  
+  try {
+    // Filter for key services to avoid overwhelming the UI
+    const filter = ['cockpit', 'docker', 'ssh', 'nginx', 'pihole', 'pgrst', 'db'];
+    const { stdout } = await execAsync('systemctl list-units --type=service --all --no-legend');
+    const services = stdout.split('\n')
+      .map(line => {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length < 4) return null;
+        const name = parts[0].replace('.service', '');
+        const active = parts[2];
+        const sub = parts[3];
+        const desc = parts.slice(4).join(' ');
+        return { name, status: active === 'active' ? 'running' : 'stopped', sub, description: desc };
+      })
+      .filter(s => s && filter.some(f => s.name.toLowerCase().includes(f)));
+    
+    res.json(services);
+  } catch (err) {
+    hubLog.error(`Failed to list services: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/pi/services/:name/:action', async (req, res) => {
+  const { name, action } = req.params;
+  const allowedActions = ['start', 'stop', 'restart'];
+  
+  if (!allowedActions.includes(action)) return res.status(400).json({ error: 'Invalid action' });
+  if (process.platform === 'win32') return res.json({ success: true, message: `Simulated ${action} on ${name}` });
+
+  try {
+    hubLog.info(`Service action: ${action} ${name} by ${req.ip}`);
+    await execAsync(`sudo systemctl ${action} ${name}.service`);
+    res.json({ success: true });
+  } catch (err) {
+    hubLog.error(`Service action failed: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Compatibility Fallback: Proxy /rpc to PostgREST (v5.6.15)
 app.use('/rpc', (req, res) => {
     hubLog.warn(`[v5.6.15] Legacy /rpc request from ${req.ip} - Redirecting to port 3001`);
@@ -400,6 +449,6 @@ app.listen(PORT, async () => {
       const data = await res.json();
       nodeCount = data.length || 0;
     } catch (e) {}
-    console.log(`\n${colors.cyan}🚀 cockpit hub v5.6.15${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
+    console.log(`\n${colors.cyan}🚀 cockpit hub v6.0.0${colors.reset} | ${colors.green}🌐 http://localhost:${PORT}${colors.reset} | ${colors.magenta}📊 PostgREST: ${nodeCount} nodes online${colors.reset}\n`);
   } catch (e) {}
 });

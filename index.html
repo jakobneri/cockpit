@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/src/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
   </head>
   <body>
     <div class="background-effects">
@@ -18,7 +19,15 @@
 
     <div class="app-container">
       <header>
-        <h1 id="header-hostname">nerifeige.de hub</h1>
+        <div class="pi-header">
+          <div class="pi-title">
+            <h1 id="header-hostname">nerifeige.de hub</h1>
+          </div>
+          <div class="header-actions">
+            <button class="btn-pill secondary" onclick="showOverview()" id="nav-fleet">🛸 Fleet</button>
+            <button class="btn-pill secondary" onclick="showPiDashboard()" id="nav-pi">🥧 Pi Hub</button>
+          </div>
+        </div>
         <div class="status-container">
           <div class="heartbeat" id="heartbeat-dot"></div>
           <p class="subtitle" id="os-info">Loading System Info...</p>
@@ -155,7 +164,45 @@
           </div>
         </section>
       </main>
+
+      <!-- Pi Dashboard View -->
+      <main id="view-pi" class="view view-container" style="display: none;">
+        <div class="pi-header">
+          <div class="pi-title">
+            <div class="pi-icon-container"><i data-lucide="cpu"></i></div>
+            <div>
+              <h2 style="margin:0;">Pi Management</h2>
+              <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem;">Control Hub Services & Processes</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard">
+          <section class="glass system-card">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+              <i data-lucide="activity" style="color:var(--accent-blue)"></i>
+              <h3 style="margin:0;">Active Services</h3>
+            </div>
+            <div id="pi-services-container" class="pi-services-list">
+              <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
+
+    <!-- Add Active Jobs to Details View -->
+    <template id="jobs-template">
+      <section id="details-jobs" class="card glass" style="margin-top: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+          <i data-lucide="refresh-cw" class="job-icon"></i>
+          <h3 style="margin:0;">Active Jobs / Backups</h3>
+        </div>
+        <div id="jobs-container" class="jobs-grid">
+          <p style="color:var(--text-secondary); font-size: 0.9rem;">No active jobs detected.</p>
+        </div>
+      </section>
+    </template>
 
     <!-- Auth Modal -->
     <div id="auth-modal" class="modal" style="display: none;">
@@ -165,8 +212,8 @@
         </div>
         <div class="modal-body">
           <p style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.5;">Your IP has changed or the session expired. Please enter the Hub Password to continue.</p>
-          <input type="password" id="hub-password-input" placeholder="Enter Password" style="width: 100%; padding: 0.8rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: white; font-size: 1rem; outline: none; transition: border-color 0.3s;" onkeydown="if(event.key === 'Enter') submitPassword()">
-          <button class="toggle-btn active" style="width: 100%; padding: 0.8rem; height: auto; font-size: 1rem;" onclick="submitPassword()">Unlock Dashboard</button>
+          <input type="password" id="hub-password-input" placeholder="Enter Password" style="width: 100%; padding: 0.8rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--bg-color); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color 0.3s;" onkeydown="if(event.key === 'Enter') submitPassword()">
+          <button class="btn-pill primary" style="width: 100%; padding: 0.8rem; height: auto; font-size: 1rem;" onclick="submitPassword()">Unlock Dashboard</button>
         </div>
       </div>
     </div>
@@ -185,9 +232,17 @@
     </div>
 
     <footer>
-      <p>nerifeige.de hub <span class="version-tag">v5.6.15</span></p>
+      <p>nerifeige.de hub <span class="version-tag">v6.0.0</span></p>
     </footer>
 
     <script type="module" src="/src/main.js"></script>
+    <script>
+      // Initialize Lucide icons
+      document.addEventListener('DOMContentLoaded', () => {
+        if (window.lucide) {
+          lucide.createIcons();
+        }
+      });
+    </script>
   </body>
 </html>

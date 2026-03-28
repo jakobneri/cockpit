@@ -1,18 +1,18 @@
 :root {
-  --bg-color: #0f111a;
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --glass-bg: rgba(30, 41, 59, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --bg-color: #fbfbfd;
+  --text-primary: #1d1d1f;
+  --text-secondary: #86868b;
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.82);
+  --glass-shadow: 0 20px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
   
-  --accent-blue: #3b82f6;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --accent-orange: #f59e0b;
-  --accent-purple: #8b5cf6;
+  --accent-blue: #007aff;
+  --accent-green: #34c759;
+  --accent-red: #ff3b30;
+  --accent-orange: #ff9500;
+  --accent-purple: #af52de;
   
-  --bar-bg: rgba(255, 255, 255, 0.1);
+  --bar-bg: rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -50,30 +50,31 @@ body {
 }
 
 .glow-1 {
-  background: var(--accent-purple);
-  width: 400px;
-  height: 400px;
-  top: -10%;
+  background: var(--accent-orange);
+  width: 600px;
+  height: 600px;
+  top: -20%;
   left: -10%;
+  opacity: 0.15;
 }
 
 .glow-2 {
   background: var(--accent-blue);
-  width: 500px;
-  height: 500px;
-  bottom: -20%;
+  width: 700px;
+  height: 700px;
+  bottom: -10%;
   right: -10%;
   animation-delay: -5s;
+  opacity: 0.1;
 }
 
 .glow-3 {
-  background: var(--accent-green);
-  width: 300px;
-  height: 300px;
-  top: 40%;
-  left: 50%;
-  animation-delay: -10s;
-  opacity: 0.15;
+  background: #fdf2f0; /* Beige/Cream glow */
+  width: 500px;
+  height: 500px;
+  top: 30%;
+  left: 20%;
+  opacity: 0.2;
 }
 
 @keyframes float {
@@ -103,14 +104,14 @@ header {
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 700;
-  background: linear-gradient(to right, #ffffff, #94a3b8);
+  background: linear-gradient(to right, #1d1d1f, #86868b);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 0.5rem;
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
 }
 
 .version-tag {
@@ -124,36 +125,37 @@ h1 {
 }
 
 .temp-badge {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.1);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 59, 48, 0.1);
   color: var(--accent-red);
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(255, 59, 48, 0.15);
   margin-left: 0.5rem;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  backdrop-filter: blur(4px);
 }
 
 .temp-badge.cool {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(0, 122, 255, 0.1);
   color: var(--accent-blue);
-  border-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(0, 122, 255, 0.15);
 }
 
 .temp-badge.warm {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(255, 149, 0, 0.1);
   color: var(--accent-orange);
-  border-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(255, 149, 0, 0.15);
 }
 
 .temp-badge.hot {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ff4d4d;
-  border-color: rgba(239, 68, 68, 0.4);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+  background: rgba(255, 59, 48, 0.15);
+  color: var(--accent-red);
+  border-color: rgba(255, 59, 48, 0.25);
+  box-shadow: 0 0 15px rgba(255, 59, 48, 0.1);
 }
 
 .status-container {
@@ -211,8 +213,8 @@ h1 {
 
 .node-hostname {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .node-metrics {
@@ -224,12 +226,12 @@ h1 {
 .back-btn {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  color: #fff;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
   cursor: pointer;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -255,10 +257,11 @@ h1 {
   flex-direction: column;
   gap: 1rem;
   min-height: 280px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.4);
   padding: 1.5rem;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
 }
 
 .metric-header {
@@ -278,8 +281,8 @@ h1 {
 
 .metric-header .value {
   font-size: 2.5rem;
-  font-weight: 700;
-  color: #fff;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .metric-header .unit {
@@ -339,18 +342,18 @@ h1 {
 /* Glassmorphism Cards */
 .glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
-  border-radius: 24px;
+  border-radius: 32px;
   padding: 2rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease;
 }
 
 .glass:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+  transform: scale(1.02);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.12);
 }
 
 h2 {
@@ -592,18 +595,19 @@ h2 {
 
 .services-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
 }
 
 .service-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 20px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
 }
 
 .service-header {
@@ -790,6 +794,128 @@ footer .version-tag {
   vertical-align: middle;
   font-size: 0.8rem;
 }
+
+/* View Transitions */
+.view-container {
+  animation: fadeInSlide 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes fadeInSlide {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Pi Dashboard Specifics */
+.pi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.pi-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pi-icon-container {
+  width: 64px;
+  height: 64px;
+  background: var(--glass-bg);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--glass-shadow);
+  color: var(--accent-red);
+}
+
+.pi-services-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.pi-service-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  transition: all 0.2s ease;
+}
+
+.pi-service-item:hover {
+  transform: translateX(5px);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pi-service-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pi-service-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.btn-pill {
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-pill.primary {
+  background: var(--accent-blue);
+  color: white;
+}
+
+.btn-pill.secondary {
+  background: rgba(0,0,0,0.05);
+  color: var(--text-primary);
+}
+
+.btn-pill:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+/* Active Jobs Section */
+.jobs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.job-card {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(40, 205, 65, 0.05);
+  border: 1px solid rgba(40, 205, 65, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.job-icon { color: var(--accent-green); }
+
+.job-info h4 { margin: 0; font-size: 0.95rem; }
+.job-info p { margin: 0; font-size: 0.8rem; color: var(--text-secondary); }
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 
 /* View Toggle */
 .view-toggle {
