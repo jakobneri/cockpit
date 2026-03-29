@@ -416,7 +416,7 @@ const runAutoUpdate = async (force = false) => {
     await execAsync('npm install');
     hubLog.info('NPM Install Successful. Building frontend...');
     
-    await execAsync('npx vite build');
+    await execAsync('npm run build');
     hubLog.success('Build Successful. Hub will restart in 5 seconds...');
     
     setTimeout(() => {
