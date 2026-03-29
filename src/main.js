@@ -259,10 +259,14 @@ async function fetchFleet() {
       document.title = 'nerifeige.de Cockpit';
       
       const osInfo = document.getElementById('os-info');
-      if (osInfo && data.hubSystem) {
-        osInfo.style.display = 'block';
-        const model = data.hubSystem.model || 'Hub System';
-        osInfo.textContent = `${model} | Running ${data.hubSystem.os || 'Linux'} | Uptime: ${formatUptime(data.hubSystem.uptime)}`;
+      if (data.hubSystem) {
+        if (osInfo) {
+          osInfo.style.display = 'block';
+          const model = data.hubSystem.model || 'Hub System';
+          osInfo.textContent = `${model} | Running ${data.hubSystem.os || 'Linux'} | Uptime: ${formatUptime(data.hubSystem.uptime)}`;
+        }
+        const infoUptime = document.getElementById('info-uptime');
+        if (infoUptime) infoUptime.textContent = formatUptime(data.hubSystem.uptime);
       }
     }
 
@@ -631,6 +635,7 @@ window.openDetails = (hostname, push = true) => {
   currentView = 'details';
   document.getElementById('view-overview').style.display = 'none';
   document.getElementById('view-pi').style.display = 'none';
+  document.getElementById('view-info').style.display = 'none';
   document.getElementById('view-details').style.display = 'grid';
   
   updateNavState();
@@ -656,6 +661,7 @@ window.showOverview = (push = true) => {
   document.getElementById('view-overview').style.display = 'block';
   document.getElementById('view-details').style.display = 'none';
   document.getElementById('view-pi').style.display = 'none';
+  document.getElementById('view-info').style.display = 'none';
   
   updateNavState();
 
@@ -679,6 +685,7 @@ window.showPiDashboard = (push = true) => {
   document.getElementById('view-overview').style.display = 'none';
   document.getElementById('view-details').style.display = 'none';
   document.getElementById('view-pi').style.display = 'block';
+  document.getElementById('view-info').style.display = 'none';
 
   updateNavState();
 
@@ -692,12 +699,37 @@ window.showPiDashboard = (push = true) => {
   piTimer = setInterval(fetchPiServices, 10000);
 };
 
+window.showInfoDashboard = (push = true) => {
+  selectedHostname = null;
+  currentView = 'info';
+  document.getElementById('view-overview').style.display = 'none';
+  document.getElementById('view-details').style.display = 'none';
+  document.getElementById('view-pi').style.display = 'none';
+  document.getElementById('view-info').style.display = 'block';
+
+  updateNavState();
+
+  if (push) {
+    window.history.pushState({ view: 'info' }, '', '/info');
+  }
+
+  if (statsTimer) clearInterval(statsTimer);
+  if (piTimer) clearInterval(piTimer);
+  
+  // Refresh Fleet to ensure uptime is updated, continue fleet timer so uptime ticks
+  fetchFleet();
+  if (fleetTimer) clearInterval(fleetTimer);
+  fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
+};
+
 function updateNavState() {
   const btnFleet = document.getElementById('nav-fleet');
   const btnPi = document.getElementById('nav-pi');
+  const btnInfo = document.getElementById('nav-info');
   
-  if (btnFleet) btnFleet.className = currentView === 'overview' ? 'btn-pill primary' : 'btn-pill secondary';
-  if (btnPi) btnPi.className = currentView === 'pi' ? 'btn-pill primary' : 'btn-pill secondary';
+  if (btnFleet) btnFleet.className = currentView === 'overview' ? 'nav-link active' : 'nav-link';
+  if (btnPi) btnPi.className = currentView === 'pi' ? 'nav-link active' : 'nav-link';
+  if (btnInfo) btnInfo.className = currentView === 'info' ? 'nav-link active' : 'nav-link';
 }
 
 async function fetchPiServices() {

@@ -214,19 +214,28 @@ h1 {
   color: var(--text-secondary);
 }
 
-.nav-segmented {
+.nav-links {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 16px;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
 }
 
-.nav-segmented .btn-pill {
-  width: 100%;
-  justify-content: flex-start;
-  padding: 0.8rem 1rem;
-  border-radius: 10px;
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 1.15rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 /* Responsive adjustment for small screens */
@@ -242,8 +251,9 @@ h1 {
     border-bottom: 1px solid var(--glass-border);
     padding: 1.5rem;
   }
-  .nav-segmented {
+  .nav-links {
     flex-direction: row;
+    gap: 1rem;
   }
   .sidebar-header {
     display: flex;

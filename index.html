@@ -24,9 +24,10 @@
             <h1 id="header-hostname">nerifeige.de<br>hub</h1>
           </div>
           <div class="sidebar-nav">
-            <div class="nav-segmented glass">
-              <button class="btn-pill secondary" onclick="showOverview()" id="nav-fleet">🛸 Fleet</button>
-              <button class="btn-pill secondary" onclick="showPiDashboard()" id="nav-pi">🥧 Pi Hub</button>
+            <div class="nav-links">
+              <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">🛸 Fleet</a>
+              <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" class="nav-link">🥧 Pi Hub</a>
+              <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link">ℹ️ About Hub</a>
             </div>
           </div>
         </div>
@@ -37,7 +38,7 @@
             <p class="subtitle" id="os-info">Loading System Info...</p>
           </div>
           <footer>
-            <p class="version-tag">Version v6.2.0</p>
+            <p class="version-tag">Version v6.3.0</p>
           </footer>
         </div>
       </aside>
@@ -188,7 +189,32 @@
         </div>
 
         <div class="dashboard">
-          <section class="glass system-card" style="margin-bottom: 2rem;">
+          <section>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+              <h3 style="margin:0; margin-left:10px;">Active Services</h3>
+            </div>
+            <div id="pi-services-container" class="nodes-grid">
+              <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- Info Dashboard View -->
+      <main id="view-info" class="view view-container" style="display: none;">
+        <div class="pi-header">
+          <div class="pi-title">
+            <div class="pi-icon-container" style="background: rgba(255,149,0,0.1); color: var(--accent-orange);"><i data-lucide="info"></i></div>
+            <div>
+              <h2 style="margin:0;">Cockpit Information</h2>
+              <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem;">System Details & Software Management</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard">
+          
+          <section class="glass system-card" style="margin-bottom: 1.5rem;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <i data-lucide="server" style="color:var(--accent-purple)"></i>
@@ -201,13 +227,55 @@
             </div>
           </section>
 
-          <section>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-              <h3 style="margin:0; margin-left:10px;">Active Services</h3>
+          <section class="nodes-grid">
+            <div class="node-card card glass" style="cursor: default;">
+              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                  <h3 class="node-name">System Uptime</h3>
+                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Continuous host availability</p>
+                </div>
+                <div class="status-indicator online"></div>
+              </div>
+              <div class="node-metrics" style="margin-top: auto;">
+                <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);" id="info-uptime">Loading...</div>
+              </div>
             </div>
-            <div id="pi-services-container" class="nodes-grid">
-              <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
+
+            <div class="node-card card glass" style="cursor: default;">
+              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                  <h3 class="node-name">Software Details</h3>
+                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Cockpit Hub Monitoring Platform</p>
+                </div>
+              </div>
+              <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-secondary)">Version</span>
+                  <span style="font-weight: 500;">v6.3.0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-secondary)">Author</span>
+                  <span style="font-weight: 500;">Jakob Neri</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--text-secondary)">Theme</span>
+                  <span style="font-weight: 500;">Liquid Glass</span>
+                </div>
+              </div>
             </div>
+
+            <a href="https://github.com/jakobneri/cockpit" target="_blank" style="text-decoration: none; color: inherit;" class="node-card card glass">
+              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+                <div>
+                  <h3 class="node-name">GitHub Repository</h3>
+                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Source code & Documentation (README.md)</p>
+                </div>
+                <div style="color: var(--text-secondary)"><i data-lucide="external-link"></i></div>
+              </div>
+              <div class="node-metrics" style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 1rem; flex-direction: column;">
+                <button class="btn-pill" style="width: 100%; background: rgba(0,0,0,0.2);">View on GitHub</button>
+              </div>
+            </a>
           </section>
         </div>
       </main>
