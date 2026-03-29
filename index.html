@@ -21,13 +21,14 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-title">
-            <h1 id="header-hostname">nerifeige.de<br>hub</h1>
+            <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">nerifeige.de</span>
+            <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" style="text-decoration: none;">
+              <h1 style="margin-bottom: 0; cursor: pointer;" id="header-hostname">hub</h1>
+            </a>
           </div>
           <div class="sidebar-nav">
             <div class="nav-links">
               <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">Fleet</a>
-              <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" class="nav-link">Services</a>
-              <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link">About</a>
             </div>
           </div>
         </div>
@@ -37,15 +38,19 @@
             <div class="heartbeat" id="heartbeat-dot"></div>
             <p class="subtitle" id="os-info">Loading System Info...</p>
           </div>
-          <footer>
-            <p class="version-tag">Version v6.3.2</p>
-          </footer>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
+            <span class="version-tag">v6.4.0</span>
+          </div>
         </div>
       </aside>
 
       <div class="main-content">
 
       <div id="view-overview" class="view">
+        <div id="fleet-summary" class="fleet-summary" style="display: none;">
+          <!-- Populated by JS -->
+        </div>
         <div class="nodes-grid" id="nodes-container">
           <!-- Multi-node cards will appear here -->
         </div>
@@ -241,7 +246,7 @@
               <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.3.2</span>
+                  <span style="font-weight: 500;">v6.4.0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Author</span>

@@ -255,7 +255,7 @@ async function fetchFleet() {
     
     // Update Hub branding in Header if not in details view
     if (currentView === 'overview') {
-      document.getElementById('header-hostname').textContent = 'nerifeige.de hub';
+      document.getElementById('header-hostname').textContent = 'hub';
       document.title = 'nerifeige.de Cockpit';
       
       const osInfo = document.getElementById('os-info');
@@ -270,10 +270,71 @@ async function fetchFleet() {
       }
     }
 
+    renderFleetSummary(data.servers || {});
     renderFleet(data.servers || {});
   } catch (err) {
     console.error('Error fetching fleet:', err);
   }
+}
+
+function renderFleetSummary(servers) {
+  const summary = document.getElementById('fleet-summary');
+  if (!summary) return;
+
+  const entries = Object.entries(servers);
+  if (entries.length === 0) { summary.style.display = 'none'; return; }
+
+  let totalNodes = 0, onlineNodes = 0, gateways = 0;
+  let cpuSum = 0, cpuCount = 0;
+  let ramSum = 0, ramCount = 0;
+  let maxTemp = 0;
+
+  entries.forEach(([hostname, data]) => {
+    const isGateway = data.gateway || (data.model && data.model.toLowerCase().includes('fritz')) || hostname.toLowerCase().includes('gateway');
+    const isOnline = (Date.now() - data.lastReport) < 45000;
+
+    if (isGateway) { gateways++; return; }
+
+    totalNodes++;
+    if (isOnline) onlineNodes++;
+
+    if (data.cpu && data.cpu.load > 0) {
+      cpuSum += data.cpu.load;
+      cpuCount++;
+      if (data.cpu.temp && data.cpu.temp > maxTemp) maxTemp = data.cpu.temp;
+    }
+    if (data.memory && data.memory.percent > 0) {
+      ramSum += data.memory.percent;
+      ramCount++;
+    }
+  });
+
+  const avgCpu = cpuCount > 0 ? (cpuSum / cpuCount).toFixed(1) : '--';
+  const avgRam = ramCount > 0 ? (ramSum / ramCount).toFixed(1) : '--';
+
+  summary.style.display = 'flex';
+  summary.innerHTML = `
+    <div class="fleet-stat">
+      <span class="label">Nodes Online</span>
+      <div class="value">${onlineNodes}<small> / ${totalNodes}</small></div>
+    </div>
+    <div class="fleet-stat">
+      <span class="label">Avg. CPU Load</span>
+      <div class="value">${avgCpu}<small>%</small></div>
+    </div>
+    <div class="fleet-stat">
+      <span class="label">Avg. Memory</span>
+      <div class="value">${avgRam}<small>%</small></div>
+    </div>
+    ${maxTemp > 0 ? `<div class="fleet-stat">
+      <span class="label">Peak Temp</span>
+      <div class="value">${maxTemp}<small>°C</small></div>
+    </div>` : ''}
+    ${gateways > 0 ? `<div class="fleet-stat">
+      <span class="label">Gateways</span>
+      <div class="value">${gateways}</div>
+    </div>` : ''}
+  `;
 }
 
 function renderFleet(servers) {
@@ -724,11 +785,9 @@ window.showInfoDashboard = (push = true) => {
 
 function updateNavState() {
   const btnFleet = document.getElementById('nav-fleet');
-  const btnPi = document.getElementById('nav-pi');
   const btnInfo = document.getElementById('nav-info');
   
   if (btnFleet) btnFleet.className = currentView === 'overview' ? 'nav-link active' : 'nav-link';
-  if (btnPi) btnPi.className = currentView === 'pi' ? 'nav-link active' : 'nav-link';
   if (btnInfo) btnInfo.className = currentView === 'info' ? 'nav-link active' : 'nav-link';
 }
 
