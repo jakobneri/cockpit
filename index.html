@@ -18,23 +18,31 @@
     </div>
 
     <div class="app-container">
-      <header>
-        <div class="pi-header">
-          <div class="pi-title">
-            <h1 id="header-hostname">nerifeige.de hub</h1>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <h1 id="header-hostname">nerifeige.de<br>hub</h1>
           </div>
-          <div class="header-actions">
+          <div class="sidebar-nav">
             <div class="nav-segmented glass">
               <button class="btn-pill secondary" onclick="showOverview()" id="nav-fleet">🛸 Fleet</button>
               <button class="btn-pill secondary" onclick="showPiDashboard()" id="nav-pi">🥧 Pi Hub</button>
             </div>
           </div>
         </div>
-        <div class="status-container">
-          <div class="heartbeat" id="heartbeat-dot"></div>
-          <p class="subtitle" id="os-info">Loading System Info...</p>
+        
+        <div class="sidebar-footer">
+          <div class="status-container">
+            <div class="heartbeat" id="heartbeat-dot"></div>
+            <p class="subtitle" id="os-info">Loading System Info...</p>
+          </div>
+          <footer>
+            <p class="version-tag">Version v6.2.0</p>
+          </footer>
         </div>
-      </header>
+      </aside>
+
+      <div class="main-content">
 
       <div id="view-overview" class="view">
         <div class="nodes-grid" id="nodes-container">
@@ -180,17 +188,30 @@
         </div>
 
         <div class="dashboard">
-          <section class="glass system-card">
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-              <i data-lucide="activity" style="color:var(--accent-blue)"></i>
-              <h3 style="margin:0;">Active Services</h3>
+          <section class="glass system-card" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="server" style="color:var(--accent-purple)"></i>
+                <div>
+                  <h3 style="margin:0;">Hub Management</h3>
+                  <p style="margin:0; font-size: 0.85rem; color: var(--text-secondary);">Force synchronize git codebase</p>
+                </div>
+              </div>
+              <button class="btn-pill" style="background: var(--accent-blue); color: #fff;" onclick="window.confirm('Force system update?') && fetch('/api/admin/update', {method:'POST'}).then(alert('Update triggered! Hub will restart soon.'))">🔄 Force Auto-Update</button>
             </div>
-            <div id="pi-services-container" class="pi-services-list">
+          </section>
+
+          <section>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+              <h3 style="margin:0; margin-left:10px;">Active Services</h3>
+            </div>
+            <div id="pi-services-container" class="nodes-grid">
               <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
             </div>
           </section>
         </div>
       </main>
+      </div> <!-- End main-content -->
     </div>
 
     <!-- Add Active Jobs to Details View -->
@@ -233,9 +254,7 @@
       </div>
     </div>
 
-    <footer>
-      <p>nerifeige.de hub <span class="version-tag">v6.1.2</span></p>
-    </footer>
+
 
     <script type="module" src="/src/main.js"></script>
     <script>

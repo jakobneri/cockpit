@@ -715,27 +715,28 @@ function renderPiServices(services) {
   if (!container) return;
 
   if (services.length === 0) {
-    container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding: 2rem;">No manageable services found.</p>';
+    container.innerHTML = '<p style="text-align:center; color:var(--text-secondary); padding: 2rem; grid-column: 1 / -1;">No manageable services found.</p>';
     return;
   }
 
   container.innerHTML = services.map(s => `
-    <div class="pi-service-item">
-      <div class="pi-service-info">
-        <div style="color: ${s.status === 'running' ? 'var(--accent-green)' : 'var(--text-secondary)'}">
-          <i data-lucide="${s.status === 'running' ? 'check-circle' : 'stop-circle'}"></i>
-        </div>
+    <div class="node-card card glass" style="cursor: default;">
+      <div class="node-header" style="align-items: flex-start; margin-bottom: 0.5rem;">
         <div>
-          <div class="pi-service-name">${s.name}</div>
-          <div style="font-size: 0.75rem; color: var(--text-secondary)">${s.description}</div>
+          <h3 class="node-name">${s.name}</h3>
+          <p class="node-subtitle" style="font-size: 0.8rem; margin-top: 4px;">${s.description}</p>
         </div>
+        <div class="status-indicator ${s.status === 'running' ? 'online' : 'offline'}"></div>
       </div>
-      <div class="pi-service-actions">
-        ${s.status === 'running' 
-          ? `<button class="btn-pill secondary" onclick="piServiceAction('${s.name}', 'restart')">Restart</button>
-             <button class="btn-pill secondary" style="color: var(--accent-red)" onclick="piServiceAction('${s.name}', 'stop')">Stop</button>`
-          : `<button class="btn-pill primary" onclick="piServiceAction('${s.name}', 'start')">Start</button>`
-        }
+      
+      <div class="node-metrics" style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 1rem; flex-direction: column;">
+        <div style="display: flex; gap: 0.5rem; justify-content: space-between; width: 100%;">
+          ${s.status === 'running' 
+            ? `<button class="btn-pill" style="flex:1; background: rgba(0,0,0,0.2); font-size: 0.85rem;" onclick="piServiceAction('${s.name}', 'restart')">🔄 Restart</button>
+               <button class="btn-pill" style="flex:1; background: rgba(255,59,48,0.15); color: var(--accent-red); border: 1px solid rgba(255,59,48,0.2); font-size: 0.85rem;" onclick="piServiceAction('${s.name}', 'stop')">⏹ Stop</button>`
+            : `<button class="btn-pill primary" style="flex:1; font-size: 0.85rem;" onclick="piServiceAction('${s.name}', 'start')">▶ Start</button>`
+          }
+        </div>
       </div>
     </div>
   `).join('');
