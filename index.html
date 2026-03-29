@@ -24,8 +24,10 @@
             <h1 id="header-hostname">nerifeige.de hub</h1>
           </div>
           <div class="header-actions">
-            <button class="btn-pill secondary" onclick="showOverview()" id="nav-fleet">🛸 Fleet</button>
-            <button class="btn-pill secondary" onclick="showPiDashboard()" id="nav-pi">🥧 Pi Hub</button>
+            <div class="nav-segmented glass">
+              <button class="btn-pill secondary" onclick="showOverview()" id="nav-fleet">🛸 Fleet</button>
+              <button class="btn-pill secondary" onclick="showPiDashboard()" id="nav-pi">🥧 Pi Hub</button>
+            </div>
           </div>
         </div>
         <div class="status-container">
@@ -232,7 +234,7 @@
     </div>
 
     <footer>
-      <p>nerifeige.de hub <span class="version-tag">v6.0.0</span></p>
+      <p>nerifeige.de hub <span class="version-tag">v6.1.0</span></p>
     </footer>
 
     <script type="module" src="/src/main.js"></script>

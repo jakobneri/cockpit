@@ -134,7 +134,7 @@ const chartOptions = {
   },
   animation: { duration: 400 },
   elements: {
-    line: { tension: 0.4, borderWidth: 2.5 },
+    line: { tension: 0.6, borderWidth: 3 },
     point: { radius: 0, hoverRadius: 4 }
   },
   layout: { padding: { left: 0, right: 4, top: 4, bottom: 0 } }
@@ -198,8 +198,8 @@ function createCharts() {
     });
   };
 
-  cpuChart = createLine('cpuChart', '#007aff');
-  ramChart = createLine('ramChart', '#af52de');
+  cpuChart = createLine('cpuChart', '#ff9f0a');
+  ramChart = createLine('ramChart', '#bf5af2');
 
   // Network Multi-line Chart
   const netCanvas = document.getElementById('netChart');
@@ -213,20 +213,20 @@ function createCharts() {
           {
             label: 'Download (Rx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#ff9500',
-            backgroundColor: createGradient(ctx, '#ff9500', 0.15, 0),
+            borderColor: '#ffd60a',
+            backgroundColor: createGradient(ctx, '#ffd60a', 0.15, 0),
             fill: true,
-            tension: 0.4,
-            borderWidth: 2
+            tension: 0.6,
+            borderWidth: 3
           },
           {
             label: 'Upload (Tx)',
             data: Array(maxDataPoints).fill(null),
-            borderColor: '#34c759',
-            backgroundColor: createGradient(ctx, '#34c759', 0.15, 0),
+            borderColor: '#32ade6',
+            backgroundColor: createGradient(ctx, '#32ade6', 0.15, 0),
             fill: true,
-            tension: 0.4,
-            borderWidth: 2
+            tension: 0.6,
+            borderWidth: 3
           }
         ]
       },
