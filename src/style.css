@@ -356,18 +356,7 @@ h1 {
   overflow: hidden;
 }
 
-/* Glass Reflection Shine */
-.glass::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  transform: rotate(45deg);
-  pointer-events: none;
-}
+
 
 .glass:hover {
   transform: translateY(-2px);
