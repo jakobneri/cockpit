@@ -1,6 +1,6 @@
 {
   "name": "cockpit",
-  "version": "6.6.1",
+  "version": "6.7.0",
   "description": "Multi-node Raspberry Pi Monitoring Dashboard",
   "main": "server/index.js",
   "scripts": {

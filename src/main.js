@@ -153,7 +153,7 @@ const netChartOptions = {
   }
 };
 
-let cpuChart, ramChart, netChart, hubComputeChart, hubNetChart;
+let cpuChart, ramChart, netChart, hubComputeChart, hubNetChart, hubStorageChart;
 
 function createCharts() {
   if (cpuChart) cpuChart.destroy();
@@ -161,6 +161,7 @@ function createCharts() {
   if (netChart) netChart.destroy();
   if (hubComputeChart) hubComputeChart.destroy();
   if (hubNetChart) hubNetChart.destroy();
+  if (hubStorageChart) hubStorageChart.destroy();
 
   const createGradient = (ctx, color, alphaTop, alphaBottom) => {
     const grd = ctx.createLinearGradient(0, 0, 0, 150);
@@ -318,6 +319,36 @@ function createCharts() {
       }
     });
   }
+
+  const storageCanvas = document.getElementById('hubStorageChart');
+  if (storageCanvas) {
+    const ctx = storageCanvas.getContext('2d');
+    hubStorageChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Used', 'Free'],
+        datasets: [{
+          data: [0, 100],
+          backgroundColor: ['#ff3b30', 'rgba(255,255,255,0.05)'],
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+          legend: { 
+            display: true, 
+            position: 'bottom', 
+            labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 8, padding: 10 } 
+          }
+        }
+      }
+    });
+  }
 }
 
 function updateChart(chart, newValue, label = '') {
@@ -367,6 +398,8 @@ async function fetchFleet() {
         const entries = Object.entries(servers);
         let cpuSum = 0, cpuCount = 0, ramSum = 0, ramCount = 0;
         let rxSum = 0, txSum = 0, netCount = 0;
+        let totalUsed = 0, totalFree = 0;
+        
         entries.forEach(([h, d]) => {
             if (d.gateway) return;
             if (d.cpu && d.cpu.load > 0) { cpuSum += d.cpu.load; cpuCount++; }
@@ -375,6 +408,10 @@ async function fetchFleet() {
                 rxSum += (d.network.rx_sec / 1024);
                 txSum += (d.network.tx_sec / 1024);
                 netCount++;
+            }
+            if (d.storage && d.storage.root) {
+                totalUsed += d.storage.root.used;
+                totalFree += (d.storage.root.total - d.storage.root.used);
             }
         });
         const avgCpu = cpuCount > 0 ? (cpuSum / cpuCount) : 0;
@@ -411,6 +448,12 @@ async function fetchFleet() {
             netLabels.shift();
         }
         hubNetChart.update('none');
+
+        // Storage Pie
+        if (hubStorageChart && (totalUsed > 0 || totalFree > 0)) {
+            hubStorageChart.data.datasets[0].data = [totalUsed, totalFree];
+            hubStorageChart.update('none');
+        }
     }
   } catch (err) {
     console.error('Error fetching fleet:', err);

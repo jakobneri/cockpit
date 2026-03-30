@@ -35,12 +35,12 @@
         </div>
         
         <div class="sidebar-footer">
-          <div class="status-container">
-            <div class="heartbeat" id="heartbeat-dot"></div>
-          </div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
-            <span class="version-tag">v6.6.1</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div class="heartbeat" id="heartbeat-dot"></div>
+              <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
+            </div>
+            <span class="version-tag">v6.7.0</span>
           </div>
         </div>
       </aside>
@@ -189,14 +189,18 @@
           <!-- Populated by JS -->
         </div>
 
-        <div class="card glass" style="margin-bottom: 2rem; padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
-          <div>
-            <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Fleet Performance (CPU/RAM %)</h3>
-            <div class="chart-container" style="height: 200px;"><canvas id="hubComputeChart"></canvas></div>
+        <div class="card glass" style="margin-bottom: 2rem; padding: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 3rem;">
+          <div style="flex: 1;">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Compute Activity</h3>
+            <div class="chart-container" style="height: 250px;"><canvas id="hubComputeChart"></canvas></div>
           </div>
-          <div>
-            <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Fleet Network (TX/RX KB/s)</h3>
-            <div class="chart-container" style="height: 200px;"><canvas id="hubNetChart"></canvas></div>
+          <div style="flex: 1;">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Network Throughput</h3>
+            <div class="chart-container" style="height: 250px;"><canvas id="hubNetChart"></canvas></div>
+          </div>
+          <div style="flex: 1; max-width: 320px; margin: 0 auto;">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Fleet Storage</h3>
+            <div class="chart-container" style="height: 250px;"><canvas id="hubStorageChart"></canvas></div>
           </div>
         </div>
 
@@ -262,7 +266,7 @@
               <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.6.1</span>
+                  <span style="font-weight: 500;">v6.7.0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Author</span>
