@@ -134,10 +134,10 @@ const chartOptions = {
   },
   animation: { duration: 400 },
   elements: {
-    line: { tension: 0.6, borderWidth: 3 },
-    point: { radius: 0, hoverRadius: 4 }
+    line: { tension: 0.4, borderWidth: 4 },
+    point: { radius: 0, hoverRadius: 6 }
   },
-  layout: { padding: { left: 0, right: 4, top: 4, bottom: 0 } }
+  layout: { padding: { left: 0, right: 10, top: 10, bottom: 0 } }
 };
 
 const netChartOptions = {
@@ -266,14 +266,18 @@ function createCharts() {
       },
       options: {
         ...chartOptions,
+        plugins: {
+          ...chartOptions.plugins,
+          legend: { display: true, position: 'top', labels: { color: 'rgba(255,255,255,0.7)', font: { size: 10 }, usePointStyle: true, boxWidth: 6, boxHeight: 6 } }
+        },
         scales: {
-            x: { display: false },
-            y: {
-                min: 0, max: 100, display: true,
-                ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3 },
-                grid: { color: 'rgba(255,255,255,0.03)' },
-                border: { display: false }
-            }
+          x: { display: false },
+          y: {
+            min: 0, max: 100, display: true,
+            ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3 },
+            grid: { color: 'rgba(255,255,255,0.03)' },
+            border: { display: false }
+          }
         }
       }
     });
@@ -307,6 +311,10 @@ function createCharts() {
       },
       options: {
         ...netChartOptions,
+        plugins: {
+          ...netChartOptions.plugins,
+          legend: { display: true, position: 'top', labels: { color: 'rgba(255,255,255,0.7)', font: { size: 10 }, usePointStyle: true, boxWidth: 6, boxHeight: 6 } }
+        },
         scales: {
             x: { display: false },
             y: {
@@ -326,27 +334,56 @@ function createCharts() {
     hubStorageChart = new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Used', 'Free'],
+        labels: [],
         datasets: [{
-          data: [0, 100],
-          backgroundColor: ['#ff3b30', 'rgba(255,255,255,0.05)'],
-          borderColor: 'rgba(255,255,255,0.1)',
-          borderWidth: 1,
-          hoverOffset: 10
+          data: [],
+          backgroundColor: [
+            '#ff9f0a', '#bf5af2', '#32ade6', '#ffd60a', '#30d158', '#ff3b30'
+          ],
+          borderColor: 'rgba(0,0,0,0.5)',
+          borderWidth: 2,
+          hoverOffset: 15
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: '75%',
+        cutout: '65%',
         plugins: {
-          legend: { 
-            display: true, 
-            position: 'bottom', 
-            labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 8, padding: 10 } 
+          legend: { display: false }, // Will be on hover
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const node = ctx.chart.data.nodeDetails[ctx.dataIndex];
+                return [` Host: ${node.hostname}`, ` Used: ${node.used} / ${node.total}`, ` Usage: ${node.percent}%`];
+              }
+            }
           }
         }
-      }
+      },
+      plugins: [{
+        id: 'centerText',
+        beforeDraw: (chart) => {
+          const { width, height } = chart;
+          const ctx = chart.ctx;
+          ctx.restore();
+          const fontSize = (height / 250).toFixed(2);
+          ctx.font = `bold ${fontSize}em sans-serif`;
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "white";
+          const text = chart.data.centerText || '0 GB';
+          const textX = Math.round((width - ctx.measureText(text).width) / 2);
+          const textY = height / 2 + 10;
+          ctx.fillText(text, textX, textY);
+          
+          ctx.font = `500 ${(fontSize * 0.4).toFixed(2)}em sans-serif`;
+          ctx.fillStyle = "#94a3b8";
+          const subtext = "TOTAL FLEET";
+          const subtextX = Math.round((width - ctx.measureText(subtext).width) / 2);
+          ctx.fillText(subtext, subtextX, textY - 25);
+          ctx.save();
+        }
+      }]
     });
   }
 }
@@ -449,9 +486,33 @@ async function fetchFleet() {
         }
         hubNetChart.update('none');
 
-        // Storage Pie
-        if (hubStorageChart && (totalUsed > 0 || totalFree > 0)) {
-            hubStorageChart.data.datasets[0].data = [totalUsed, totalFree];
+        // Storage Per-Node Breakdown
+        if (hubStorageChart) {
+            const labels = [];
+            const data = [];
+            const nodeDetails = [];
+            let aggregateCapacity = 0;
+            
+            entries.forEach(([hostname, node]) => {
+                if (node.storage && node.storage.root) {
+                    const total = node.storage.root.total;
+                    const used = node.storage.root.used;
+                    labels.push(hostname);
+                    data.push(total);
+                    aggregateCapacity += total;
+                    nodeDetails.push({
+                        hostname,
+                        used: formatBytes(used),
+                        total: formatBytes(total),
+                        percent: node.storage.root.percent
+                    });
+                }
+            });
+            
+            hubStorageChart.data.labels = labels;
+            hubStorageChart.data.datasets[0].data = data;
+            hubStorageChart.data.nodeDetails = nodeDetails; // Custom property for tooltip
+            hubStorageChart.data.centerText = formatBytes(aggregateCapacity);
             hubStorageChart.update('none');
         }
     }
