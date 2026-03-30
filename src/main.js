@@ -153,12 +153,14 @@ const netChartOptions = {
   }
 };
 
-let cpuChart, ramChart, netChart;
+let cpuChart, ramChart, netChart, hubComputeChart, hubNetChart;
 
 function createCharts() {
   if (cpuChart) cpuChart.destroy();
   if (ramChart) ramChart.destroy();
   if (netChart) netChart.destroy();
+  if (hubComputeChart) hubComputeChart.destroy();
+  if (hubNetChart) hubNetChart.destroy();
 
   const createGradient = (ctx, color, alphaTop, alphaBottom) => {
     const grd = ctx.createLinearGradient(0, 0, 0, 150);
@@ -185,9 +187,9 @@ function createCharts() {
     return new Chart(ctx, {
       type: 'line',
       data: {
-        labels: Array(maxDataPoints).fill(''),
+        labels: [],
         datasets: [{
-          data: Array(maxDataPoints).fill(null),
+          data: [],
           borderColor: color,
           backgroundColor: createGradient(ctx, color, 0.15, 0),
           fill: true,
@@ -208,11 +210,11 @@ function createCharts() {
     netChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: Array(maxDataPoints).fill(''),
+        labels: [],
         datasets: [
           {
             label: 'Download (Rx)',
-            data: Array(maxDataPoints).fill(null),
+            data: [],
             borderColor: '#ffd60a',
             backgroundColor: createGradient(ctx, '#ffd60a', 0.15, 0),
             fill: true,
@@ -221,7 +223,7 @@ function createCharts() {
           },
           {
             label: 'Upload (Tx)',
-            data: Array(maxDataPoints).fill(null),
+            data: [],
             borderColor: '#32ade6',
             backgroundColor: createGradient(ctx, '#32ade6', 0.15, 0),
             fill: true,
@@ -233,6 +235,89 @@ function createCharts() {
       options: netChartOptions
     });
   }
+
+  // Hub Page Compute Chart
+  const hubCanvas = document.getElementById('hubComputeChart');
+  if (hubCanvas) {
+    const ctx = hubCanvas.getContext('2d');
+    hubComputeChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Avg Fleet CPU',
+            data: [],
+            borderColor: '#ff9f0a',
+            backgroundColor: createGradient(ctx, '#ff9f0a', 0.1, 0),
+            fill: true,
+            borderWidth: 2
+          },
+          {
+            label: 'Avg Fleet RAM',
+            data: [],
+            borderColor: '#bf5af2',
+            backgroundColor: createGradient(ctx, '#bf5af2', 0.1, 0),
+            fill: true,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        ...chartOptions,
+        scales: {
+            x: { display: false },
+            y: {
+                min: 0, max: 100, display: true,
+                ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3 },
+                grid: { color: 'rgba(255,255,255,0.03)' },
+                border: { display: false }
+            }
+        }
+      }
+    });
+  }
+
+  const hubNetCanvas = document.getElementById('hubNetChart');
+  if (hubNetCanvas) {
+    const ctx = hubNetCanvas.getContext('2d');
+    hubNetChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Avg RX (KB/s)',
+            data: [],
+            borderColor: '#ffd60a',
+            backgroundColor: createGradient(ctx, '#ffd60a', 0.1, 0),
+            fill: true,
+            borderWidth: 2
+          },
+          {
+            label: 'Avg TX (KB/s)',
+            data: [],
+            borderColor: '#32ade6',
+            backgroundColor: createGradient(ctx, '#32ade6', 0.1, 0),
+            fill: true,
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        ...netChartOptions,
+        scales: {
+            x: { display: false },
+            y: {
+                min: 0, display: true, beginAtZero: true,
+                ticks: { display: true, color: 'rgba(148,163,184,0.4)', font: { size: 9 }, maxTicksLimit: 3 },
+                grid: { color: 'rgba(255,255,255,0.03)' },
+                border: { display: false }
+            }
+        }
+      }
+    });
+  }
 }
 
 function updateChart(chart, newValue, label = '') {
@@ -240,9 +325,12 @@ function updateChart(chart, newValue, label = '') {
   const data = chart.data.datasets[0].data;
   const labels = chart.data.labels;
   data.push(newValue);
-  data.shift();
   labels.push(label);
-  labels.shift();
+  
+  if (data.length > maxDataPoints) {
+    data.shift();
+    labels.shift();
+  }
   chart.update('none');
 }
 
@@ -272,6 +360,58 @@ async function fetchFleet() {
 
     renderFleetSummary(data.servers || {});
     renderFleet(data.servers || {});
+    
+    // Update Compute Charts if on Hub View
+    if (currentView === 'pi' && hubComputeChart && hubNetChart) {
+        const servers = data.servers || {};
+        const entries = Object.entries(servers);
+        let cpuSum = 0, cpuCount = 0, ramSum = 0, ramCount = 0;
+        let rxSum = 0, txSum = 0, netCount = 0;
+        entries.forEach(([h, d]) => {
+            if (d.gateway) return;
+            if (d.cpu && d.cpu.load > 0) { cpuSum += d.cpu.load; cpuCount++; }
+            if (d.memory && d.memory.percent > 0) { ramSum += d.memory.percent; ramCount++; }
+            if (d.network && d.network.rx_sec !== undefined) {
+                rxSum += (d.network.rx_sec / 1024);
+                txSum += (d.network.tx_sec / 1024);
+                netCount++;
+            }
+        });
+        const avgCpu = cpuCount > 0 ? (cpuSum / cpuCount) : 0;
+        const avgRam = ramCount > 0 ? (ramSum / ramCount) : 0;
+        const avgRx = netCount > 0 ? (rxSum / netCount) : 0;
+        const avgTx = netCount > 0 ? (txSum / netCount) : 0;
+        
+        const time = new Date().toLocaleTimeString();
+        
+        // Compute Chart
+        hubComputeChart.data.labels.push(time);
+        hubComputeChart.data.datasets[0].data.push(avgCpu);
+        hubComputeChart.data.datasets[1].data.push(avgRam);
+        
+        if (hubComputeChart.data.labels.length > maxDataPoints) {
+            hubComputeChart.data.labels.shift();
+            hubComputeChart.data.datasets[0].data.shift();
+            hubComputeChart.data.datasets[1].data.shift();
+        }
+        hubComputeChart.update('none');
+
+        // Net Chart
+        const rxData = hubNetChart.data.datasets[0].data;
+        const txData = hubNetChart.data.datasets[1].data;
+        const netLabels = hubNetChart.data.labels;
+        
+        rxData.push(parseFloat(avgRx));
+        txData.push(parseFloat(avgTx));
+        netLabels.push(time);
+        
+        if (rxData.length > maxDataPoints) {
+            rxData.shift();
+            txData.shift();
+            netLabels.shift();
+        }
+        hubNetChart.update('none');
+    }
   } catch (err) {
     console.error('Error fetching fleet:', err);
   }
@@ -424,7 +564,7 @@ async function fetchNodeStats() {
   try {
     const res = await apiFetch(`/api/stats/${selectedHostname}`);
     const data = await res.json();
-    console.log('[Cockpit] Received node stats:', data);
+
 
     // Heartbeat
     const heartbeat = document.getElementById('heartbeat-dot');
@@ -443,7 +583,7 @@ async function fetchNodeStats() {
                       (data.model && data.model.toLowerCase().includes('fritz')) ||
                       data.hostname.toLowerCase().includes('gateway');
                       
-    console.log(`[Cockpit] isGateway: ${isGateway} | model: ${data.model} | os: ${data.os}`);
+
     document.getElementById('gateway-info').style.display = isGateway ? 'block' : 'none';
     
     // Hide standard server bars for gateways (v5.3.10)
@@ -470,23 +610,34 @@ async function fetchNodeStats() {
     updateElement('os-info', `${data.model || 'Unknown'} | Running ${data.os || 'Linux'} | Uptime: ${formatUptime(data.uptime)}`);
     
     // Populate initial history if charts are fresh
-    if (data.history && cpuChart?.data.datasets[0].data.every(v => v === null)) {
+    // Populate initial history
+    if (data.history && (cpuChart?.data.datasets[0].data.length === 0)) {
       const hist = data.history.slice(-maxDataPoints);
-      console.log(`[Cockpit] Injecting ${hist.length} history points into charts`);
+
+      
+      // Clear datasets
+      [cpuChart, ramChart, netChart].forEach(c => {
+        if (!c) return;
+        c.data.labels = [];
+        c.data.datasets.forEach(ds => ds.data = []);
+      });
+
       hist.forEach(h => {
-        const time = new Date(h.recorded_at).toLocaleTimeString();
-        cpuChart.data.labels.push(time);
-        cpuChart.data.datasets[0].data.push(h.cpu || 0);
-        ramChart.data.labels.push(time);
-        ramChart.data.datasets[0].data.push(h.ram || 0);
+        const timeVal = h.time;
+        const time = timeVal ? new Date(timeVal).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+        
+        cpuChart?.data.labels.push(time);
+        cpuChart?.data.datasets[0].data.push(h.cpu || 0);
+        ramChart?.data.labels.push(time);
+        ramChart?.data.datasets[0].data.push(h.ram || 0);
         if (netChart) {
           netChart.data.labels.push(time);
           netChart.data.datasets[0].data.push(h.rx || 0);
           netChart.data.datasets[1].data.push(h.tx || 0);
         }
       });
-      cpuChart.update('none');
-      ramChart.update('none');
+      cpuChart?.update('none');
+      ramChart?.update('none');
       netChart?.update('none');
     }
 
@@ -501,7 +652,7 @@ async function fetchNodeStats() {
     const hasCpu = data.cpu && data.cpu.load !== undefined;
     const hasRam = data.memory && data.memory.percent !== undefined;
     
-    console.log(`[Cockpit] Metrics Load Checked: hasCpu=${hasCpu}, hasRam=${hasRam}`);
+
 
     const cpuBox = document.getElementById('cpu-metric-box');
     const ramBox = document.getElementById('ram-metric-box');
@@ -510,7 +661,7 @@ async function fetchNodeStats() {
     if (ramBox) ramBox.style.display = (hasRam && !isGateway) ? 'block' : 'none';
 
     if (hasCpu) {
-      console.log(`[Cockpit] Updating CPU Load: ${data.cpu.load}%`);
+
       updateElement('cpu-load', data.cpu.load);
       updateChart(cpuChart, data.cpu.load, timeLabel);
       
@@ -527,7 +678,7 @@ async function fetchNodeStats() {
     }
 
     if (hasRam) {
-      console.log(`[Cockpit] Updating RAM Usage: ${data.memory.percent}%`);
+
       updateElement('ram-usage', data.memory.percent);
       updateChart(ramChart, data.memory.percent, timeLabel);
       updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
@@ -548,9 +699,11 @@ async function fetchNodeStats() {
       txData.push(parseFloat(txKB));
       netLabels.push(timeLabel);
       
-      rxData.shift();
-      txData.shift();
-      netLabels.shift();
+      if (rxData.length > maxDataPoints) {
+        rxData.shift();
+        txData.shift();
+        netLabels.shift();
+      }
       
       netChart.update('none');
     }
@@ -756,7 +909,12 @@ window.showPiDashboard = (push = true) => {
 
   if (statsTimer) clearInterval(statsTimer);
   if (fleetTimer) clearInterval(fleetTimer);
+  
+  createCharts(); // Init compute chart
+  fetchFleet();
   fetchPiServices();
+  
+  fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
   piTimer = setInterval(fetchPiServices, 10000);
 };
 

@@ -26,6 +26,7 @@
               <h1 style="margin-bottom: 0; cursor: pointer;" id="header-hostname">hub</h1>
             </a>
           </div>
+          <div class="sidebar-separator"></div>
           <div class="sidebar-nav">
             <div class="nav-links">
               <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">Fleet</a>
@@ -40,7 +41,7 @@
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
-            <span class="version-tag">v6.4.0</span>
+            <span class="version-tag">v6.5.0</span>
           </div>
         </div>
       </aside>
@@ -48,9 +49,6 @@
       <div class="main-content">
 
       <div id="view-overview" class="view">
-        <div id="fleet-summary" class="fleet-summary" style="display: none;">
-          <!-- Populated by JS -->
-        </div>
         <div class="nodes-grid" id="nodes-container">
           <!-- Multi-node cards will appear here -->
         </div>
@@ -184,15 +182,32 @@
       <!-- Pi Dashboard View -->
       <main id="view-pi" class="view view-container" style="display: none;">
         <div style="margin-bottom: 2rem;">
+          <h2 style="margin:0;">Compute</h2>
+          <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Fleet-wide Resource Overview</p>
+        </div>
+
+        <div id="fleet-summary" class="fleet-summary" style="display: none; margin-bottom: 1.5rem;">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="card glass" style="margin-bottom: 2rem; padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+          <div>
+            <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Fleet Performance (CPU/RAM %)</h3>
+            <div class="chart-container" style="height: 200px;"><canvas id="hubComputeChart"></canvas></div>
+          </div>
+          <div>
+            <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Fleet Network (TX/RX KB/s)</h3>
+            <div class="chart-container" style="height: 200px;"><canvas id="hubNetChart"></canvas></div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 2rem;">
           <h2 style="margin:0;">Services</h2>
           <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Control Hub Services & Processes</p>
         </div>
 
         <div class="dashboard">
-          <section>
-            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
-              <h3 style="margin:0; margin-left:10px;">Active Services</h3>
-            </div>
+          <section style="grid-column: 1 / -1;">
             <div id="pi-services-container" class="nodes-grid">
               <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
             </div>
@@ -246,7 +261,7 @@
               <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.4.0</span>
+                  <span style="font-weight: 500;">v6.5.0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Author</span>
