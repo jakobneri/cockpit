@@ -409,20 +409,25 @@ const runAutoUpdate = async (force = false) => {
     const count = parseInt(behindCount.trim()) || 0;
     hubLog.update(`Update found: ${count} new commits. Local: ${localCommit.trim().substring(0,7)}, Remote: ${remoteCommit.trim().substring(0,7)}`);
     
-    // Hard reset to ensure we match origin/main exactly
-    await execAsync('git reset --hard origin/main');
-    hubLog.success('Git Reset Successful. Installing dependencies...');
+    // Execute requested update sequence
+    hubLog.info('Executing update sequence: git pull && npx vite build && pm2 restart all');
+    await execAsync('git pull origin main');
+    hubLog.success('Git Pull Successful.');
     
-    await execAsync('npm install');
+    await execAsync('npm install'); // Keep this to be safe for dependencies
     hubLog.info('NPM Install Successful. Building frontend...');
     
-    await execAsync('npm run build');
-    hubLog.success('Build Successful. Hub will restart in 5 seconds...');
+    await execAsync('npx vite build');
+    hubLog.success('Build Successful. Restarting all processes with PM2...');
     
-    setTimeout(() => {
-        hubLog.info('PM2 Restarting Process...');
-        process.exit(0); 
-    }, 5000);
+    setTimeout(async () => {
+        try {
+          await execAsync('pm2 restart all');
+        } catch (e) {
+          hubLog.error(`PM2 Restart failed: ${e.message}. Exiting for manual restart.`);
+          process.exit(0);
+        }
+    }, 2000);
     return true;
   } catch (error) { 
     hubLog.error(`Update failed: ${error.message}`);

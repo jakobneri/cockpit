@@ -346,15 +346,15 @@ async function fetchFleet() {
       document.getElementById('header-hostname').textContent = 'hub';
       document.title = 'nerifeige.de Cockpit';
       
-      const osInfo = document.getElementById('os-info');
       if (data.hubSystem) {
-        if (osInfo) {
-          osInfo.style.display = 'block';
-          const model = data.hubSystem.model || 'Hub System';
-          osInfo.textContent = `${model} | Running ${data.hubSystem.os || 'Linux'} | Uptime: ${formatUptime(data.hubSystem.uptime)}`;
-        }
         const infoUptime = document.getElementById('info-uptime');
         if (infoUptime) infoUptime.textContent = formatUptime(data.hubSystem.uptime);
+        
+        const infoModel = document.getElementById('info-model');
+        if (infoModel) infoModel.textContent = `Model: ${data.hubSystem.model || 'Unknown'}`;
+        
+        const infoOs = document.getElementById('info-os');
+        if (infoOs) infoOs.textContent = `OS: ${data.hubSystem.os || 'Linux'}`;
       }
     }
 

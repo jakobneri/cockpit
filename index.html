@@ -37,11 +37,10 @@
         <div class="sidebar-footer">
           <div class="status-container">
             <div class="heartbeat" id="heartbeat-dot"></div>
-            <p class="subtitle" id="os-info">Loading System Info...</p>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
-            <span class="version-tag">v6.5.0</span>
+            <span class="version-tag">v6.6.0</span>
           </div>
         </div>
       </aside>
@@ -233,7 +232,7 @@
                   <p style="margin:0; font-size: 0.85rem; color: var(--text-secondary);">Force synchronize git codebase</p>
                 </div>
               </div>
-              <button class="btn-pill" style="background: var(--accent-blue); color: #fff;" onclick="window.confirm('Force system update?') && fetch('/api/admin/update', {method:'POST'}).then(alert('Update triggered! Hub will restart soon.'))">🔄 Force Auto-Update</button>
+              <button class="btn-pill" style="background: var(--accent-blue); color: #fff;" onclick="window.confirm('Trigger system update?') && fetch('/api/admin/update', {method:'POST'}).then(alert('Update command sent!'))">🔄 Update</button>
             </div>
           </section>
 
@@ -246,8 +245,10 @@
                 </div>
                 <div class="status-indicator online"></div>
               </div>
-              <div class="node-metrics" style="margin-top: auto;">
+              <div class="node-metrics" style="margin-top: auto; flex-direction: column; gap: 0.25rem;">
                 <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);" id="info-uptime">Loading...</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);" id="info-model">Model: Loading...</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);" id="info-os">OS: Loading...</div>
               </div>
             </div>
 
@@ -261,7 +262,7 @@
               <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.5.0</span>
+                  <span style="font-weight: 500;">v6.6.0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Author</span>
