@@ -409,15 +409,15 @@ const runAutoUpdate = async (force = false) => {
     const count = parseInt(behindCount.trim()) || 0;
     hubLog.update(`Update found: ${count} new commits. Local: ${localCommit.trim().substring(0,7)}, Remote: ${remoteCommit.trim().substring(0,7)}`);
     
-    // Execute requested update sequence
-    hubLog.info('Executing update sequence: git pull && npx vite build && pm2 restart all');
+    // Use specified update sequence (with npm run build for local version support)
+    hubLog.info('Executing update sequence: git pull && npm run build && pm2 restart all');
     await execAsync('git pull origin main');
     hubLog.success('Git Pull Successful.');
     
-    await execAsync('npm install'); // Keep this to be safe for dependencies
+    await execAsync('npm install');
     hubLog.info('NPM Install Successful. Building frontend...');
     
-    await execAsync('npx vite build');
+    await execAsync('npm run build');
     hubLog.success('Build Successful. Restarting all processes with PM2...');
     
     setTimeout(async () => {
