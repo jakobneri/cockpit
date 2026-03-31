@@ -10,6 +10,12 @@ let statsTimer = null;
 let fleetTimer = null;
 let piTimer = null;
 
+function clearAllTimers() {
+  if (fleetTimer) { clearInterval(fleetTimer); fleetTimer = null; }
+  if (statsTimer) { clearInterval(statsTimer); statsTimer = null; }
+  if (piTimer) { clearInterval(piTimer); piTimer = null; }
+}
+
 /** ── Auth State Management ── **/
 let hubToken = localStorage.getItem('hub_token') || '';
 
@@ -486,31 +492,54 @@ async function fetchFleet() {
         }
         hubNetChart.update('none');
 
-        // Storage Per-Node Breakdown
+        // Storage Node-by-Node Used vs Free Breakdown
         if (hubStorageChart) {
             const labels = [];
             const data = [];
+            const bgColors = [];
             const nodeDetails = [];
             let aggregateCapacity = 0;
+            const baseColors = ['#ff9f0a', '#bf5af2', '#32ade6', '#ffd60a', '#30d158', '#ff3b30'];
             
+            const hexToRgba = (hex, alpha) => {
+                if(!hex.startsWith('#')) return hex;
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+            
+            let colorIdx = 0;
             entries.forEach(([hostname, node]) => {
                 if (node.storage && node.storage.root) {
                     const total = node.storage.root.total;
                     const used = node.storage.root.used;
-                    labels.push(hostname);
-                    data.push(total);
+                    let free = total - used;
+                    if (free < 0) free = 0;
+                    
+                    const baseColor = baseColors[colorIdx % baseColors.length];
+                    const freeColor = hexToRgba(baseColor, 0.15); // Transparent version
+                    
+                    // Used Slice
+                    labels.push(`${hostname} (Used)`);
+                    data.push(used);
+                    bgColors.push(baseColor);
+                    nodeDetails.push({ hostname: hostname, used: formatBytes(used), total: formatBytes(total), percent: node.storage.root.percent });
+                    
+                    // Free Slice
+                    labels.push(`${hostname} (Free)`);
+                    data.push(free);
+                    bgColors.push(freeColor);
+                    nodeDetails.push({ hostname: hostname, used: formatBytes(used), total: formatBytes(total), percent: node.storage.root.percent });
+                    
                     aggregateCapacity += total;
-                    nodeDetails.push({
-                        hostname,
-                        used: formatBytes(used),
-                        total: formatBytes(total),
-                        percent: node.storage.root.percent
-                    });
+                    colorIdx++;
                 }
             });
             
             hubStorageChart.data.labels = labels;
             hubStorageChart.data.datasets[0].data = data;
+            hubStorageChart.data.datasets[0].backgroundColor = bgColors;
             hubStorageChart.data.nodeDetails = nodeDetails; // Custom property for tooltip
             hubStorageChart.data.centerText = formatBytes(aggregateCapacity);
             hubStorageChart.update('none');
@@ -912,7 +941,7 @@ function renderHistoryTable(history) {
   const allKeys = new Set();
   history.forEach(h => {
     Object.keys(h).forEach(k => {
-      if (!['time', 'recorded_at', 'data', 'GATEWAY_LOGS'].includes(k)) allKeys.add(k);
+      if (!['time', 'recorded_at', 'data', 'GATEWAY_LOGS', 'cpu', 'ram', 'rx', 'tx'].includes(k)) allKeys.add(k);
     });
   });
   const sortedKeys = Array.from(allKeys).sort();
@@ -936,8 +965,14 @@ function renderHistoryTable(history) {
         ${sortedKeys.map(k => {
           let val = h[k];
           // Format based on key (v5.3.15)
-          if (k.includes('PERCENT') || k === 'CPU' || k === 'RAM') val = typeof val === 'number' ? `${val.toFixed(1)}%` : val;
-          else if (k.includes('BYTES') || k === 'TX' || k === 'RX') val = typeof val === 'number' ? formatBytes(val) : val;
+          const kUp = k.toUpperCase();
+          if (kUp.includes('PERCENT') || kUp === 'CPU' || kUp === 'RAM') {
+            val = typeof val === 'number' ? `${val.toFixed(1)}%` : val;
+          } else if (kUp.includes('RX_SEC') || kUp.includes('TX_SEC') || kUp === 'TX' || kUp === 'RX') {
+            val = typeof val === 'number' ? `${val.toFixed(1)} KB/s` : val;
+          } else if (kUp.includes('BYTES')) {
+            val = typeof val === 'number' ? formatBytes(val) : val;
+          }
           
           return `<td style="font-family: monospace; font-size: 0.85rem; min-width: 140px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; vertical-align: top;">
             ${val !== undefined ? val : '-'}
@@ -968,8 +1003,7 @@ window.openDetails = (hostname, push = true) => {
   createCharts(); // Re-init charts for this node
   fetchNodeStats();
   
-  if (fleetTimer) clearInterval(fleetTimer);
-  if (piTimer) clearInterval(piTimer);
+  clearAllTimers();
   statsTimer = setInterval(fetchNodeStats, REFRESH_INTERVAL_STATS);
 };
 
@@ -989,8 +1023,7 @@ window.showOverview = (push = true) => {
 
   // os-info is handled inside fetchFleet for overview
   
-  if (statsTimer) clearInterval(statsTimer);
-  if (piTimer) clearInterval(piTimer);
+  clearAllTimers();
   fetchFleet();
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
 };
@@ -1011,8 +1044,7 @@ window.showPiDashboard = (push = true) => {
     window.history.pushState({ view: 'pi' }, '', '/hub');
   }
 
-  if (statsTimer) clearInterval(statsTimer);
-  if (fleetTimer) clearInterval(fleetTimer);
+  clearAllTimers();
   
   createCharts(); // Init compute chart
   fetchFleet();
@@ -1036,12 +1068,10 @@ window.showInfoDashboard = (push = true) => {
     window.history.pushState({ view: 'info' }, '', '/info');
   }
 
-  if (statsTimer) clearInterval(statsTimer);
-  if (piTimer) clearInterval(piTimer);
+  clearAllTimers();
   
   // Refresh Fleet to ensure uptime is updated, continue fleet timer so uptime ticks
   fetchFleet();
-  if (fleetTimer) clearInterval(fleetTimer);
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
 };
 

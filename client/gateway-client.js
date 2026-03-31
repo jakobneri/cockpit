@@ -170,6 +170,26 @@ async function fetchStats() {
     
     if (logRes) {
       stats.logs = logRes.NewLogData || logRes.NewDeviceLog || "";
+      
+      // Fallback: Check logs for WireGuard or IPsec establishment (since TR-064 X_AVM-DE_VPN lacks WireGuard)
+      if (!stats.vpn_active && stats.logs) {
+        const logLines = stats.logs.split('\\n');
+        for (const line of logLines) {
+          const lower = line.toLowerCase();
+          if (lower.includes('vpn') || lower.includes('wireguard')) {
+            // Check for established connection
+            if (lower.includes('erfolgreich hergestellt') || lower.includes('aufgebaut') || lower.includes('established') || lower.includes('connected')) {
+              stats.vpn_active = true;
+              break;
+            }
+            // Check for disconnection
+            if (lower.includes('getrennt') || lower.includes('abgebaut') || lower.includes('disconnected') || lower.includes('cleared')) {
+              stats.vpn_active = false;
+              break;
+            }
+          }
+        }
+      }
     }
 
     return stats;
