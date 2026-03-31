@@ -862,6 +862,9 @@ async function fetchNodeStats() {
 
     // Active Jobs (v6.0.0)
     renderActiveJobs(data);
+    
+    // Physical Drives
+    renderActiveDrives(data);
 
   } catch (error) {
     console.error('Error fetching node stats:', error);
@@ -900,6 +903,66 @@ function renderActiveJobs(data) {
       </div>
     </div>
   `).join('');
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderActiveDrives(data) {
+  const detailSect = document.getElementById('details-charts');
+  if (!detailSect) return;
+
+  let drivesSect = document.getElementById('details-drives');
+  if (!drivesSect) {
+    const template = document.getElementById('drives-template');
+    if (template) {
+      detailSect.appendChild(template.content.cloneNode(true));
+      drivesSect = document.getElementById('details-drives');
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  const container = document.getElementById('drives-container');
+  const summary = document.getElementById('drives-status-summary');
+  if (!container) return;
+
+  const drives = data.stats?.drives || data.drives || [];
+  if (drives.length === 0) {
+    if (drivesSect) drivesSect.style.display = 'none';
+    return;
+  }
+  
+  if (drivesSect) drivesSect.style.display = 'block';
+
+  let failing = 0;
+  
+  container.innerHTML = drives.map(d => {
+    if (d.status === 'Failing') failing++;
+    const isHealthy = d.status === 'Healthy';
+    const bg = isHealthy ? 'rgba(48, 209, 88, 0.05)' : 'rgba(255, 59, 48, 0.1)';
+    const border = isHealthy ? 'rgba(48, 209, 88, 0.2)' : 'rgba(255, 59, 48, 0.4)';
+    
+    return `
+      <div class="metric-item" style="display: flex; flex-direction: column; gap: 8px; border: 1px solid ${border}; background: ${bg}; align-items: flex-start; padding: 1rem; border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+          <span style="font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 6px;"><i data-lucide="hard-drive" style="width: 16px; height: 16px;"></i> ${d.name.toUpperCase()}</span>
+          <span class="status-badge ${isHealthy ? 'online' : 'offline'}">${d.status}</span>
+        </div>
+        <div style="color: var(--text-secondary); font-size: 0.85rem; display: flex; flex-direction: column; gap: 4px; width: 100%; margin-top: 4px;">
+          <div style="display: flex; justify-content: space-between;"><span>Model:</span> <span style="color: #fff;">${d.model}</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>Size:</span> <span style="color: #fff;">${formatBytes(d.size)}</span></div>
+          <div style="display: flex; justify-content: space-between;"><span>State:</span> <span style="color: #fff;">${d.state}</span></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  if (summary) {
+    if (failing > 0) {
+      summary.innerHTML = `<span style="color: var(--accent-red); padding: 4px 8px; background: rgba(255,59,48,0.1); border-radius: 6px;">${failing} Drive(s) Warning/Failing!</span>`;
+    } else {
+      summary.innerHTML = `<span style="color: var(--accent-green); padding: 4px 8px; background: rgba(48,209,88,0.1); border-radius: 6px;">All ${drives.length} Drives Healthy</span>`;
+    }
+  }
+  
   if (window.lucide) lucide.createIcons();
 }
 

@@ -310,6 +310,22 @@
       </section>
     </template>
 
+    <!-- Add Active Drives to Details View -->
+    <template id="drives-template">
+      <section id="details-drives" class="card glass" style="margin-top: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="hard-drive" class="job-icon"></i>
+            <h3 style="margin:0;">Physical Drives</h3>
+          </div>
+          <div id="drives-status-summary" style="font-size: 0.9rem; font-weight: 500;"></div>
+        </div>
+        <div id="drives-container" class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+          <p style="color:var(--text-secondary); font-size: 0.9rem; padding: 1rem; width: 100%; text-align: center; background: rgba(0,0,0,0.02); border-radius: 12px;">No drives detected.</p>
+        </div>
+      </section>
+    </template>
+
     <!-- Auth Modal -->
     <div id="auth-modal" class="modal" style="display: none;">
       <div class="modal-content glass" style="max-width: 400px; min-height: auto;">

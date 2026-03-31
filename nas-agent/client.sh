@@ -39,6 +39,9 @@ read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
 
+# Initialize Update Timer
+LAST_UPDATE=$(date +%s)
+
 get_active_jobs() {
     local jobs="[]"
     # 1. Check for rsync
@@ -56,8 +59,37 @@ get_active_jobs() {
     echo "$jobs"
 }
 
+get_drives_info() {
+    local drives="[]"
+    for disk in "$SYS_PATH"/block/sata* "$SYS_PATH"/block/sd* "$SYS_PATH"/block/nvme*; do
+        if [ -d "$disk" ]; then
+            local name=$(basename "$disk" 2>/dev/null)
+            local state=$(cat "$disk/device/state" 2>/dev/null || echo "unknown")
+            local size_kb=$(cat "$disk/size" 2>/dev/null || echo "0")
+            local size=$((size_kb * 512))
+            local model=$(cat "$disk/device/model" 2>/dev/null | tr -d ' ' || echo "Disk")
+            local status="Healthy"
+            if [ "$state" != "running" ]; then status="Failing"; fi
+            
+            if [[ "$name" == sata* ]] || [[ "$name" == sd* ]] || [[ "$name" == nvme* ]]; then
+               drives=$(echo "$drives" | jq -c ". += [{\"name\": \"$name\", \"model\": \"$model\", \"state\": \"$state\", \"status\": \"$status\", \"size\": $size}]")
+            fi
+        fi
+    done
+    echo "$drives"
+}
+
 while true; do
     sleep $INTERVAL
+    
+    # Self-Update Check (8 hours = 28800 seconds)
+    if [ $(($(date +%s) - LAST_UPDATE)) -gt 28800 ]; then
+        log "Pulling Git Updates..."
+        git pull origin main || true
+        LAST_UPDATE=$(date +%s)
+        # Restart agent to apply updates
+        exec "$0" "$@"
+    fi
     
     # 1. CPU Load
     read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
@@ -116,6 +148,9 @@ while true; do
 
     # 6. Active Jobs (v1.3.0)
     active_jobs=$(get_active_jobs)
+    
+    # 7. Physical Drives
+    sys_drives=$(get_drives_info)
 
     # Construct JSON
     json_payload=$(cat <<EOF
@@ -133,7 +168,8 @@ while true; do
     "network": { "rx_sec": $rx_sec, "tx_sec": $tx_sec },
     "storage": { "root": { "total": $st_total, "used": $st_used, "percent": $st_pct } },
     "uptime": $(awk '{print int($1)}' "$PROC_PATH/uptime"),
-    "jobs": $active_jobs
+    "jobs": $active_jobs,
+    "drives": $sys_drives
   }
 }
 EOF
