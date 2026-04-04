@@ -550,12 +550,55 @@ async function fetchFleet() {
   }
 }
 
-function renderFleetSummary(servers) {
-  const summary = document.getElementById('fleet-summary');
-  if (!summary) return;
+// Hub aggregate chart state
+let hubCpuChart = null, hubRamChart = null;
+const hubCpuHistory = Array(30).fill(null);
+const hubRamHistory = Array(30).fill(null);
 
+function createHubSparkline(canvasId, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  const grd = ctx.createLinearGradient(0, 0, 0, 80);
+  let baseColor;
+  if (color.startsWith('#')) {
+    const r = parseInt(color.slice(1, 3), 16);
+    const g = parseInt(color.slice(3, 5), 16);
+    const b = parseInt(color.slice(5, 7), 16);
+    baseColor = `${r}, ${g}, ${b}`;
+  }
+  grd.addColorStop(0, `rgba(${baseColor}, 0.3)`);
+  grd.addColorStop(1, `rgba(${baseColor}, 0)`);
+  
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: Array(30).fill(''),
+      datasets: [{
+        data: Array(30).fill(null),
+        borderColor: color,
+        backgroundColor: grd,
+        fill: true,
+        tension: 0.5,
+        borderWidth: 2,
+        pointRadius: 0,
+        spanGaps: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { x: { display: false }, y: { display: false, min: 0, max: 100 } },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      animation: { duration: 300 },
+      layout: { padding: 0 }
+    }
+  });
+}
+
+function renderFleetSummary(servers) {
   const entries = Object.entries(servers);
-  if (entries.length === 0) { summary.style.display = 'none'; return; }
+  if (entries.length === 0) return;
 
   let totalNodes = 0, onlineNodes = 0, gateways = 0;
   let cpuSum = 0, cpuCount = 0;
@@ -582,32 +625,46 @@ function renderFleetSummary(servers) {
     }
   });
 
-  const avgCpu = cpuCount > 0 ? (cpuSum / cpuCount).toFixed(1) : '--';
-  const avgRam = ramCount > 0 ? (ramSum / ramCount).toFixed(1) : '--';
+  const avgCpu = cpuCount > 0 ? (cpuSum / cpuCount).toFixed(1) : null;
+  const avgRam = ramCount > 0 ? (ramSum / ramCount).toFixed(1) : null;
 
-  summary.style.display = 'flex';
-  summary.innerHTML = `
-    <div class="fleet-stat">
-      <span class="label">Nodes Online</span>
-      <div class="value">${onlineNodes}<small> / ${totalNodes}</small></div>
-    </div>
-    <div class="fleet-stat">
-      <span class="label">Avg. CPU Load</span>
-      <div class="value">${avgCpu}<small>%</small></div>
-    </div>
-    <div class="fleet-stat">
-      <span class="label">Avg. Memory</span>
-      <div class="value">${avgRam}<small>%</small></div>
-    </div>
-    ${maxTemp > 0 ? `<div class="fleet-stat">
-      <span class="label">Peak Temp</span>
-      <div class="value">${maxTemp}<small>°C</small></div>
-    </div>` : ''}
-    ${gateways > 0 ? `<div class="fleet-stat">
-      <span class="label">Gateways</span>
-      <div class="value">${gateways}</div>
-    </div>` : ''}
-  `;
+  // Update text
+  const cpuEl = document.getElementById('hub-avg-cpu');
+  const ramEl = document.getElementById('hub-avg-ram');
+  if (cpuEl) cpuEl.innerHTML = `${avgCpu || '--'}<small style="font-size:1rem; color:var(--text-secondary)">%</small>`;
+  if (ramEl) ramEl.innerHTML = `${avgRam || '--'}<small style="font-size:1rem; color:var(--text-secondary)">%</small>`;
+
+  // Update Fleet Status card
+  const statusEl = document.getElementById('hub-fleet-status');
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <div class="mini-metric"><span class="label">Nodes</span><span class="val">${onlineNodes} / ${totalNodes} online</span></div>
+      ${gateways > 0 ? `<div class="mini-metric"><span class="label">Gateways</span><span class="val">${gateways} connected</span></div>` : ''}
+      ${maxTemp > 0 ? `<div class="mini-metric"><span class="label">Peak Temp</span><span class="val"><span class="temp-badge ${getTempClass(maxTemp)}">${maxTemp}°C</span></span></div>` : ''}
+    `;
+  }
+
+  // Sparkline charts (only create/update if Hub view is visible)
+  if (avgCpu !== null) {
+    hubCpuHistory.push(parseFloat(avgCpu));
+    hubCpuHistory.shift();
+  }
+  if (avgRam !== null) {
+    hubRamHistory.push(parseFloat(avgRam));
+    hubRamHistory.shift();
+  }
+
+  if (!hubCpuChart) hubCpuChart = createHubSparkline('hubCpuChart', '#ff9f0a');
+  if (!hubRamChart) hubRamChart = createHubSparkline('hubRamChart', '#bf5af2');
+
+  if (hubCpuChart) {
+    hubCpuChart.data.datasets[0].data = [...hubCpuHistory];
+    hubCpuChart.update('none');
+  }
+  if (hubRamChart) {
+    hubRamChart.data.datasets[0].data = [...hubRamHistory];
+    hubRamChart.update('none');
+  }
 }
 
 function renderFleet(servers) {
@@ -847,6 +904,9 @@ async function fetchNodeStats() {
       updateProgress('root-bar', data.storage.root.percent);
       updateElement('root-detail', `${formatBytes(data.storage.root.used)} / ${formatBytes(data.storage.root.total)}`);
     }
+    
+    // Drive Health (v6.0.0)
+    renderDriveHealth(data);
 
     // Gateway Section
     const gwSection = document.getElementById('gateway-stats-section');
@@ -869,6 +929,28 @@ async function fetchNodeStats() {
   } catch (error) {
     console.error('Error fetching node stats:', error);
   }
+}
+
+function renderDriveHealth(data) {
+  const container = document.getElementById('drives-container');
+  if (!container) return;
+
+  const drives = data.storage?.drives || [];
+  if (drives.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = drives.map(d => `
+    <div class="job-card drive-card" style="background: rgba(0,0,0,0.03); border: 1px solid var(--glass-border);">
+      <i data-lucide="hard-drive" class="job-icon" style="color: var(--accent-blue);"></i>
+      <div class="job-info">
+        <h4 style="font-size: 0.95rem;">Disk: ${d.device}</h4>
+        <p style="font-size: 0.8rem;">Status: <span class="status-badge ${d.status === 'Healthy' ? 'online' : 'offline'}" style="padding: 2px 8px; font-size: 0.75rem;">${d.status}</span></p>
+      </div>
+    </div>
+  `).join('');
+  if (window.lucide) lucide.createIcons();
 }
 
 function renderActiveJobs(data) {
@@ -1038,7 +1120,7 @@ function renderHistoryTable(history) {
           }
           
           return `<td style="font-family: monospace; font-size: 0.85rem; min-width: 140px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: left; vertical-align: top;">
-            ${val !== undefined ? val : '-'}
+            ${val !== undefined ? (typeof val === 'object' ? `<pre style="margin:0; font-size: 0.75rem;">${JSON.stringify(val, null, 2)}</pre>` : val) : '-'}
           </td>`;
         }).join('')}
       </tr>
@@ -1108,11 +1190,10 @@ window.showPiDashboard = (push = true) => {
   }
 
   clearAllTimers();
-  
+
   createCharts(); // Init compute chart
   fetchFleet();
   fetchPiServices();
-  
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
   piTimer = setInterval(fetchPiServices, 10000);
 };

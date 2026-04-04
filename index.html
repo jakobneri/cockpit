@@ -40,7 +40,7 @@
               <div class="heartbeat" id="heartbeat-dot"></div>
               <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
             </div>
-            <span class="version-tag">v6.8.0</span>
+            <span class="version-tag">v6.8.1</span>
           </div>
         </div>
       </aside>
@@ -141,10 +141,12 @@
                   <div id="root-detail" class="storage-footer">-- / -- GB</div>
                 </div>
               </div>
+              <!-- Integration our Drive Monitoring container (v6.8.1 Fix) -->
+              <div id="drives-container" class="jobs-grid" style="margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;"></div>
             </section>
         </section>
 
-        <!-- Raw Data View (Hidden by default) -->
+        <!-- Raw Data View -->
         <section id="details-raw" style="display: none; margin-top: 1.5rem;">
             <div class="card glass">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -166,7 +168,7 @@
                 <thead>
                   <tr>
                     <th>Timestamp</th>
-                    <!-- Dynamic Headers v5.3.13 -->
+                    <!-- Dynamic Headers -->
                   </tr>
                 </thead>
                 <tbody id="history-table-body">
@@ -178,7 +180,7 @@
         </section>
       </main>
 
-      <!-- Pi Dashboard View -->
+      <!-- Pi Dashboard View (Hub v6.8.0) -->
       <main id="view-pi" class="view view-container" style="display: none;">
         <div style="margin-bottom: 2rem;">
           <h2 style="margin:0;">Compute</h2>
@@ -266,7 +268,7 @@
               <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.8.0</span>
+                  <span style="font-weight: 500;">v6.8.1</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                   <span style="color: var(--text-secondary)">Author</span>
@@ -297,7 +299,7 @@
       </div> <!-- End main-content -->
     </div>
 
-    <!-- Add Active Jobs to Details View -->
+    <!-- Templates (v6.8.1 Integration) -->
     <template id="jobs-template">
       <section id="details-jobs" class="card glass" style="margin-top: 1.5rem;">
         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
@@ -310,7 +312,6 @@
       </section>
     </template>
 
-    <!-- Add Active Drives to Details View -->
     <template id="drives-template">
       <section id="details-drives" class="card glass" style="margin-top: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
@@ -326,7 +327,7 @@
       </section>
     </template>
 
-    <!-- Auth Modal -->
+    <!-- Modals -->
     <div id="auth-modal" class="modal" style="display: none;">
       <div class="modal-content glass" style="max-width: 400px; min-height: auto;">
         <div class="modal-header">
@@ -340,7 +341,6 @@
       </div>
     </div>
 
-    <!-- Logs Modal -->
     <div id="logs-modal" class="modal">
       <div class="modal-content glass">
         <div class="modal-header">
@@ -353,11 +353,8 @@
       </div>
     </div>
 
-
-
     <script type="module" src="/src/main.js"></script>
     <script>
-      // Initialize Lucide icons
       document.addEventListener('DOMContentLoaded', () => {
         if (window.lucide) {
           lucide.createIcons();

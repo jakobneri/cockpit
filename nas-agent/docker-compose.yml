@@ -16,4 +16,6 @@ services:
     volumes:
       - /proc:/host/proc:ro
       - /sys:/sys:ro
+      - /dev:/dev:ro
+      - /var/run/synostorage:/var/run/synostorage:ro
       - /volume1:/volume1:ro

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Cockpit NAS Client v6.0.0
+# Cockpit NAS Client v6.8.1
 # Optimized for Synology NAS (Docker/Container Manager)
 
 DB_URL="${DB_URL:-http://localhost:3001}"
 HOSTNAME="${HOSTNAME:-$(hostname)}"
-INTERVAL="${INTERVAL:-15}"
+INTERVAL="${INTERVAL:-60}"
 
 # Detect Host paths (Synology Fix)
 PROC_PATH="/proc"
@@ -39,41 +39,59 @@ read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
 
-# Initialize Update Timer
+# Initialize Update Timer (v6.8.0 feature)
 LAST_UPDATE=$(date +%s)
 
 get_active_jobs() {
     local jobs="[]"
     # 1. Check for rsync
     if pgrep -x "rsync" > /dev/null; then
-        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Rsync Transfer", "status": "Active", "started": "Now"}]')
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Rsync Transfer", "status": "Active"}]')
     fi
     # 2. Check for Hyper Backup (Synology)
     if pgrep -f "synobackup" > /dev/null; then
-        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Hyper Backup", "status": "Running", "started": "System"}]')
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Hyper Backup", "status": "Running"}]')
     fi
     # 3. Check for Cloud Sync (Synology)
     if pgrep -f "cloud-sync" > /dev/null; then
-        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Cloud Sync", "status": "Syncing", "started": "System"}]')
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "Cloud Sync", "status": "Syncing"}]')
+    fi
+    # 4. Check for Synology RAID Scrubbing/Consistency check
+    if [ -f "/proc/mdstat" ] && grep -q "resync=" /proc/mdstat; then
+        jobs=$(echo "$jobs" | jq -c '. += [{"name": "RAID Resync", "status": "Repairing"}]')
     fi
     echo "$jobs"
 }
 
-get_drives_info() {
+get_drive_monitoring() {
     local drives="[]"
+    # Detect all block devices
+    # remote use: "$SYS_PATH"/block/sata* "$SYS_PATH"/block/sd* "$SYS_PATH"/block/nvme*
     for disk in "$SYS_PATH"/block/sata* "$SYS_PATH"/block/sd* "$SYS_PATH"/block/nvme*; do
         if [ -d "$disk" ]; then
             local name=$(basename "$disk" 2>/dev/null)
+            # Skip loop and ram devices if they got mixed in
+            [[ "$name" == loop* ]] && continue
+            [[ "$name" == ram* ]] && continue
+
             local state=$(cat "$disk/device/state" 2>/dev/null || echo "unknown")
             local size_kb=$(cat "$disk/size" 2>/dev/null || echo "0")
             local size=$((size_kb * 512))
             local model=$(cat "$disk/device/model" 2>/dev/null | tr -d ' ' || echo "Disk")
-            local status="Healthy"
-            if [ "$state" != "running" ]; then status="Failing"; fi
             
-            if [[ "$name" == sata* ]] || [[ "$name" == sd* ]] || [[ "$name" == nvme* ]]; then
-               drives=$(echo "$drives" | jq -c ". += [{\"name\": \"$name\", \"model\": \"$model\", \"state\": \"$state\", \"status\": \"$status\", \"size\": $size}]")
+            # SMART Health Check (Our v6.0.0 feature)
+            local status="Healthy"
+            local dev_node="/dev/$name"
+            if [ -e "$dev_node" ]; then
+                if smartctl -H "$dev_node" | grep -q "FAILED"; then
+                    status="Critical"
+                elif ! smartctl -H "$dev_node" | grep -q "PASSED"; then
+                    # Fallback to system state if smartctl fails or is inconclusive
+                    [ "$state" != "running" ] && [ "$state" != "unknown" ] && status="Failing"
+                fi
             fi
+            
+            drives=$(echo "$drives" | jq -c ". += [{\"device\": \"$name\", \"model\": \"$model\", \"status\": \"$status\", \"size\": $size, \"state\": \"$state\"}]")
         fi
     done
     echo "$drives"
@@ -82,15 +100,15 @@ get_drives_info() {
 while true; do
     sleep $INTERVAL
     
-    # Self-Update Check (8 hours = 28800 seconds)
+    # Self-Update Check (v6.8.0 feature)
     if [ $(($(date +%s) - LAST_UPDATE)) -gt 28800 ]; then
-        log "Pulling Git Updates..."
+        log "Checking for Git Updates..."
         git pull origin main || true
         LAST_UPDATE=$(date +%s)
         # Restart agent to apply updates
         exec "$0" "$@"
     fi
-    
+
     # 1. CPU Load
     read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
     total=$((u+n+s+i+io))
@@ -114,12 +132,10 @@ while true; do
     mem_total=$(grep MemTotal "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
     mem_avail=$(grep MemAvailable "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
     
-    # Fallback if MemAvailable is missing or 0
     if [ -z "$mem_avail" ] || [ "$mem_avail" -eq 0 ]; then
         mem_free=$(grep MemFree "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
         mem_buf=$(grep "^Buffers:" "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
         mem_cached=$(grep "^Cached:" "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
-        # Available roughly = Free + Buffers + Cached
         mem_avail=$((mem_free + mem_buf + mem_cached))
     fi
 
@@ -140,17 +156,14 @@ while true; do
     MNT_POINT="/"
     [ -d "/volume1" ] && MNT_POINT="/volume1"
     
-    # Use -P for POSIX format to prevent line wrapping and ensure field order
     df_out=$(df -PB1 "$MNT_POINT" | tail -1)
     st_total=$(echo "$df_out" | awk '{print $2}')
     st_used=$(echo "$df_out" | awk '{print $3}')
     st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
 
-    # 6. Active Jobs (v1.3.0)
+    # 6. Hybrid Monitoring (Merge v6.0 and v6.8.0)
     active_jobs=$(get_active_jobs)
-    
-    # 7. Physical Drives
-    sys_drives=$(get_drives_info)
+    drive_monitoring=$(get_drive_monitoring)
 
     # Construct JSON
     json_payload=$(cat <<EOF
@@ -160,16 +173,18 @@ while true; do
   "system_info": {
     "model": "$MODEL",
     "platform": "synology",
-    "version": "1.2.0"
+    "version": "6.8.1"
   },
   "stats": {
     "cpu": { "load": $cpu_load, "temp": $temp },
     "memory": { "total": $mem_total, "used": $mem_used, "percent": $mem_pct },
     "network": { "rx_sec": $rx_sec, "tx_sec": $tx_sec },
-    "storage": { "root": { "total": $st_total, "used": $st_used, "percent": $st_pct } },
+    "storage": { 
+        "root": { "total": $st_total, "used": $st_used, "percent": $st_pct },
+        "drives": $drive_monitoring
+    },
     "uptime": $(awk '{print int($1)}' "$PROC_PATH/uptime"),
-    "jobs": $active_jobs,
-    "drives": $sys_drives
+    "jobs": $active_jobs
   }
 }
 EOF
