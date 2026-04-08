@@ -21,24 +21,22 @@
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-title">
-            <span style="font-size: 1rem; color: var(--text-secondary); font-weight: 400;">nerifeige.de</span>
-            <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" style="text-decoration: none;">
-              <h1 style="margin-bottom: 0; cursor: pointer;" id="header-hostname">hub</h1>
-            </a>
+            <small>nerifeige.de</small>
+            <h1 id="header-hostname" onclick="showOverview()">hub</h1>
           </div>
           <div class="sidebar-separator"></div>
-          <div class="sidebar-nav">
-            <div class="nav-links">
-              <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">Fleet</a>
-            </div>
+          <div class="nav-links">
+            <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">Fleet</a>
+            <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" class="nav-link">Compute</a>
+            <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link">About</a>
           </div>
         </div>
-        
+
         <div class="sidebar-footer">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <div class="heartbeat" id="heartbeat-dot"></div>
-              <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link" style="font-size: 0.85rem;">About</a>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Live</span>
             </div>
             <span class="version-tag">v6.8.1</span>
           </div>
@@ -54,14 +52,33 @@
       </div>
 
       <main id="view-details" class="view" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <button class="back-btn" onclick="showOverview()" style="margin-bottom: 0;">
-            <span>←</span> Back to Fleet
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+          <button class="back-btn" onclick="showOverview()">
+            <span>←</span> Fleet
           </button>
-          
-          <div class="view-toggle glass">
-            <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">📈 Charts</button>
-            <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">📄 Raw Data</button>
+          <div class="view-toggle">
+            <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">Charts</button>
+            <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">Raw Data</button>
+          </div>
+        </div>
+
+        <!-- Stat Strip -->
+        <div class="stat-strip" id="detail-stat-strip">
+          <div class="stat-item">
+            <span class="stat-label">CPU</span>
+            <span class="stat-value"><span id="cpu-load">--</span><span style="font-size:1rem;color:var(--text-secondary)">%</span></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Memory</span>
+            <span class="stat-value"><span id="ram-usage">--</span><span style="font-size:1rem;color:var(--text-secondary)">%</span></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Temp</span>
+            <span class="stat-value" id="strip-temp" style="font-size:1.4rem;">--°C</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Uptime</span>
+            <span class="stat-value" id="strip-uptime" style="font-size:1.1rem; padding-top:6px;">--</span>
           </div>
         </div>
 
@@ -72,23 +89,20 @@
               <div id="cpu-metric-box" class="big-metric card glass">
                 <div class="metric-top">
                   <div class="metric-info">
-                    <span class="label">CPU USAGE</span>
-                    <h2><span id="cpu-load">--</span><small>%</small> <span id="cpu-temp-details" class="temp-badge">--°C</span></h2>
+                    <span class="label">CPU Usage</span>
                   </div>
-                  <div class="metric-icon cpu"></div>
+                  <span id="cpu-temp-details" class="temp-badge" style="display:none;">--°C</span>
                 </div>
                 <div class="chart-container"><canvas id="cpuChart"></canvas></div>
-                <div class="metric-footer">System Load</div>
+                <div class="metric-footer">System Load · 10m history</div>
               </div>
 
               <!-- Memory -->
               <div id="ram-metric-box" class="big-metric card glass">
                 <div class="metric-top">
                   <div class="metric-info">
-                    <span class="label">MEMORY</span>
-                    <h2><span id="ram-usage">--</span><small>%</small></h2>
+                    <span class="label">Memory</span>
                   </div>
-                  <div class="metric-icon ram"></div>
                 </div>
                 <div class="chart-container"><canvas id="ramChart"></canvas></div>
                 <div class="metric-footer"><span id="ram-detail">-- / -- GB</span></div>
@@ -98,11 +112,15 @@
               <div id="net-metric-box" class="big-metric card glass">
                 <div class="metric-top">
                   <div class="metric-info">
-                    <span class="label">NETWORK ACTIVITY <small>(DOWNLOAD RX: <span id="net-rx" style="color: var(--accent-orange);">0</span> / UPLOAD TX: <span id="net-tx" style="color: var(--accent-green);">0</span> KB/S)</small></span>
+                    <span class="label">Network</span>
+                  </div>
+                  <div class="net-speeds">
+                    <span class="net-val">↓ <span id="net-rx">0.0</span><small>KB/s</small></span>
+                    <span class="net-val up">↑ <span id="net-tx">0.0</span><small>KB/s</small></span>
                   </div>
                 </div>
                 <div class="chart-container"><canvas id="netChart"></canvas></div>
-                <div class="metric-footer">Realtime Traffic (10m History)</div>
+                <div class="metric-footer">Realtime traffic · 10m history</div>
               </div>
             </div>
           

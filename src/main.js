@@ -851,28 +851,28 @@ async function fetchNodeStats() {
     if (ramBox) ramBox.style.display = (hasRam && !isGateway) ? 'block' : 'none';
 
     if (hasCpu) {
-
       updateElement('cpu-load', data.cpu.load);
       updateChart(cpuChart, data.cpu.load, timeLabel);
-      
+
       const tempEl = document.getElementById('cpu-temp-details');
-      if (tempEl) {
-        if (data.cpu.temp) {
-          tempEl.textContent = `${data.cpu.temp}°C`;
-          tempEl.className = `temp-badge ${getTempClass(data.cpu.temp)}`;
-          tempEl.style.display = 'inline-flex';
-        } else {
-          tempEl.style.display = 'none';
-        }
+      const stripTemp = document.getElementById('strip-temp');
+      if (data.cpu.temp) {
+        if (tempEl) { tempEl.textContent = `${data.cpu.temp}°C`; tempEl.className = `temp-badge ${getTempClass(data.cpu.temp)}`; tempEl.style.display = 'inline-flex'; }
+        if (stripTemp) { stripTemp.textContent = `${data.cpu.temp}°C`; stripTemp.className = `stat-value temp-badge ${getTempClass(data.cpu.temp)}`; }
+      } else {
+        if (tempEl) tempEl.style.display = 'none';
+        if (stripTemp) stripTemp.textContent = '--';
       }
     }
 
     if (hasRam) {
-
       updateElement('ram-usage', data.memory.percent);
       updateChart(ramChart, data.memory.percent, timeLabel);
       updateElement('ram-detail', `${formatBytes(data.memory.used)} / ${formatBytes(data.memory.total)}`);
     }
+
+    // Stat strip uptime
+    if (data.uptime) updateElement('strip-uptime', formatUptime(data.uptime));
 
     if (data.network && netChart) {
       const txKB = (data.network.tx_sec / 1024).toFixed(1);
@@ -1220,11 +1220,13 @@ window.showInfoDashboard = (push = true) => {
 };
 
 function updateNavState() {
-  const btnFleet = document.getElementById('nav-fleet');
-  const btnInfo = document.getElementById('nav-info');
-  
+  const btnFleet   = document.getElementById('nav-fleet');
+  const btnPi      = document.getElementById('nav-pi');
+  const btnInfo    = document.getElementById('nav-info');
+
   if (btnFleet) btnFleet.className = currentView === 'overview' ? 'nav-link active' : 'nav-link';
-  if (btnInfo) btnInfo.className = currentView === 'info' ? 'nav-link active' : 'nav-link';
+  if (btnPi)    btnPi.className    = currentView === 'pi'       ? 'nav-link active' : 'nav-link';
+  if (btnInfo)  btnInfo.className  = currentView === 'info'     ? 'nav-link active' : 'nav-link';
 }
 
 async function fetchPiServices() {
