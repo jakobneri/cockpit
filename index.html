@@ -11,86 +11,86 @@
     <script src="https://unpkg.com/lucide@latest"></script>
   </head>
   <body>
-    <div class="background-effects">
-      <div class="glow glow-1"></div>
-      <div class="glow glow-2"></div>
-      <div class="glow glow-3"></div>
-    </div>
+    <!-- removed .background-effects / .glow — killed in CSS -->
 
     <div class="app-container">
+
+      <!-- ── Sidebar ─────────────────────────────────────────── -->
       <aside class="sidebar">
         <div class="sidebar-header">
           <div class="sidebar-title">
             <small>nerifeige.de</small>
-            <h1 id="header-hostname" onclick="showOverview()">hub</h1>
+            <h1 id="header-hostname" onclick="showOverview()">cockpit</h1>
           </div>
           <div class="sidebar-separator"></div>
-          <div class="nav-links">
-            <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link">Fleet</a>
+          <nav class="nav-links">
+            <a href="#" onclick="showOverview(); return false;" id="nav-fleet" class="nav-link active">Fleet</a>
             <a href="#" onclick="showPiDashboard(); return false;" id="nav-pi" class="nav-link">Compute</a>
             <a href="#" onclick="showInfoDashboard(); return false;" id="nav-info" class="nav-link">About</a>
-          </div>
+          </nav>
         </div>
 
         <div class="sidebar-footer">
-          <div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <div class="heartbeat" id="heartbeat-dot"></div>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Live</span>
-            </div>
-            <span class="version-tag">v6.8.1</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="heartbeat" id="heartbeat-dot"></div>
+            <span style="font-size:11px;color:var(--text-muted);">Live</span>
           </div>
+          <span class="version-tag">v6.8.1</span>
         </div>
       </aside>
 
+      <!-- ── Main ───────────────────────────────────────────── -->
       <div class="main-content">
 
-      <div id="view-overview" class="view">
-        <div class="nodes-grid" id="nodes-container">
-          <!-- Multi-node cards will appear here -->
-        </div>
-      </div>
-
-      <main id="view-details" class="view" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-          <button class="back-btn" onclick="showOverview()">
-            <span>←</span> Fleet
-          </button>
-          <div class="view-toggle">
-            <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">Charts</button>
-            <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">Raw Data</button>
-          </div>
+        <!-- Overview / Fleet -->
+        <div id="view-overview" class="view">
+          <div class="nodes-grid" id="nodes-container"></div>
         </div>
 
-        <!-- Stat Strip -->
-        <div class="stat-strip" id="detail-stat-strip">
-          <div class="stat-item">
-            <span class="stat-label">CPU</span>
-            <span class="stat-value"><span id="cpu-load">--</span><span style="font-size:1rem;color:var(--text-secondary)">%</span></span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Memory</span>
-            <span class="stat-value"><span id="ram-usage">--</span><span style="font-size:1rem;color:var(--text-secondary)">%</span></span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Temp</span>
-            <span class="stat-value" id="strip-temp" style="font-size:1.4rem;">--°C</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Uptime</span>
-            <span class="stat-value" id="strip-uptime" style="font-size:1.1rem; padding-top:6px;">--</span>
-          </div>
-        </div>
+        <!-- Detail view -->
+        <main id="view-details" class="view" style="display:none;">
 
-        <!-- Charts View (Includes Storage) -->
-        <section id="details-charts">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <button class="back-btn" onclick="showOverview()">← Fleet</button>
+            <div class="view-toggle">
+              <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">Charts</button>
+              <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">Raw Data</button>
+            </div>
+          </div>
+
+          <!-- Stat strip -->
+          <div class="stat-strip" id="detail-stat-strip">
+            <div class="stat-item">
+              <span class="stat-label">CPU</span>
+              <span class="stat-value">
+                <span id="cpu-load">--</span><span style="font-size:14px;color:var(--text-secondary)">%</span>
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Memory</span>
+              <span class="stat-value">
+                <span id="ram-usage">--</span><span style="font-size:14px;color:var(--text-secondary)">%</span>
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Temp</span>
+              <span class="stat-value" id="strip-temp" style="font-size:20px;">--°C</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Uptime</span>
+              <span class="stat-value" id="strip-uptime" style="font-size:15px;padding-top:4px;">--</span>
+            </div>
+          </div>
+
+          <!-- Charts section -->
+          <section id="details-charts">
+
             <div class="metrics-big-box">
+
               <!-- CPU -->
               <div id="cpu-metric-box" class="big-metric card glass">
                 <div class="metric-top">
-                  <div class="metric-info">
-                    <span class="label">CPU Usage</span>
-                  </div>
+                  <div class="metric-info"><span class="label">CPU Usage</span></div>
                   <span id="cpu-temp-details" class="temp-badge" style="display:none;">--°C</span>
                 </div>
                 <div class="chart-container"><canvas id="cpuChart"></canvas></div>
@@ -100,9 +100,7 @@
               <!-- Memory -->
               <div id="ram-metric-box" class="big-metric card glass">
                 <div class="metric-top">
-                  <div class="metric-info">
-                    <span class="label">Memory</span>
-                  </div>
+                  <div class="metric-info"><span class="label">Memory</span></div>
                 </div>
                 <div class="chart-container"><canvas id="ramChart"></canvas></div>
                 <div class="metric-footer"><span id="ram-detail">-- / -- GB</span></div>
@@ -111,40 +109,39 @@
               <!-- Network -->
               <div id="net-metric-box" class="big-metric card glass">
                 <div class="metric-top">
-                  <div class="metric-info">
-                    <span class="label">Network</span>
-                  </div>
+                  <div class="metric-info"><span class="label">Network</span></div>
                   <div class="net-speeds">
-                    <span class="net-val">↓ <span id="net-rx">0.0</span><small>KB/s</small></span>
-                    <span class="net-val up">↑ <span id="net-tx">0.0</span><small>KB/s</small></span>
+                    <span class="net-val">↓ <span id="net-rx">0.0</span> <small style="opacity:.6">KB/s</small></span>
+                    <span class="net-val up">↑ <span id="net-tx">0.0</span> <small style="opacity:.6">KB/s</small></span>
                   </div>
                 </div>
                 <div class="chart-container"><canvas id="netChart"></canvas></div>
                 <div class="metric-footer">Realtime traffic · 10m history</div>
               </div>
+
             </div>
-          
-            <!-- Gateway Specific Stats (Router Mode) -->
-            <div id="gateway-info" class="card glass" style="display: none; grid-column: 1 / -1; margin-bottom: 1.5rem;">
-              <h3 style="margin-bottom: 1.5rem;"><span class="icon">🔌</span> Gateway Connection</h3>
-              <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+
+            <!-- Gateway info -->
+            <div id="gateway-info" class="card glass" style="display:none;margin-bottom:10px;">
+              <h3 style="margin-bottom:14px;">Gateway Connection</h3>
+              <div class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
                 <div class="metric-item">
-                  <span class="metric-label">DSL SYNC</span>
+                  <span class="metric-label">DSL Sync</span>
                   <div class="metric-value" id="gw-dsl-sync">--</div>
                 </div>
                 <div class="metric-item">
-                  <span class="metric-label">VPN STATUS</span>
+                  <span class="metric-label">VPN Status</span>
                   <div class="metric-value"><span id="gw-vpn-status" class="temp-badge cool">--</span></div>
                 </div>
                 <div class="metric-item">
-                  <span class="metric-label">EXT. IP</span>
-                  <div class="metric-value" style="font-size: 1.1rem; color: var(--accent);" id="gw-ext-ip">--</div>
+                  <span class="metric-label">Ext. IP</span>
+                  <div class="metric-value" style="font-size:14px;color:var(--accent);" id="gw-ext-ip">--</div>
                 </div>
               </div>
             </div>
 
-            <!-- Node Storage (Only in charts view) -->
-            <section id="details-storage" class="card glass" style="margin-top: 1.5rem;">
+            <!-- Storage -->
+            <section id="details-storage" class="card glass" style="margin-top:10px;">
               <div class="storage-grid">
                 <div class="storage-item">
                   <div class="storage-header">
@@ -159,208 +156,202 @@
                   <div id="root-detail" class="storage-footer">-- / -- GB</div>
                 </div>
               </div>
-              <!-- Integration our Drive Monitoring container (v6.8.1 Fix) -->
-              <div id="drives-container" class="jobs-grid" style="margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;"></div>
+              <div id="drives-container" class="jobs-grid" style="margin-top:14px;border-top:1px solid var(--b);padding-top:14px;"></div>
             </section>
-        </section>
 
-        <!-- Raw Data View -->
-        <section id="details-raw" style="display: none; margin-top: 1.5rem;">
-            <div class="card glass">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-              <h3 style="margin-bottom: 0;"><span class="icon">📜</span> Raw History (Last 200 Logs)</h3>
-              
-              <div class="export-controls" style="display: flex; gap: 0.5rem; align-items: center;">
-                <select id="export-timeframe" class="toggle-btn" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 6px 12px;">
-                  <option value="hour">Last Hour</option>
-                  <option value="day">Last Day</option>
-                  <option value="week">Last Week</option>
-                  <option value="year">Last Year</option>
-                  <option value="all" selected>All Time</option>
-                </select>
-                <button class="toggle-btn active" onclick="exportData()" style="padding: 6px 16px;">📥 Export XML</button>
-              </div>
-            </div>
-            <div class="history-table-container" style="overflow-x: auto;">
-              <table class="technical-table history-table" style="width: 100%; min-width: 800px; border-collapse: collapse;">
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <!-- Dynamic Headers -->
-                  </tr>
-                </thead>
-                <tbody id="history-table-body">
-                  <!-- Rows will appear here -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <!-- Pi Dashboard View (Hub v6.8.0) -->
-      <main id="view-pi" class="view view-container" style="display: none;">
-        <div style="margin-bottom: 2rem;">
-          <h2 style="margin:0;">Compute</h2>
-          <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Fleet-wide Resource Overview</p>
-        </div>
-
-        <div id="fleet-summary" class="fleet-summary" style="display: none; margin-bottom: 1.5rem;">
-          <!-- Populated by JS -->
-        </div>
-
-        <div class="card glass" style="margin-bottom: 2rem; padding: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 3rem;">
-          <div style="flex: 1;">
-            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Compute Activity (CPU & RAM)</h3>
-            <div class="chart-container" style="height: 250px;"><canvas id="hubComputeChart"></canvas></div>
-          </div>
-          <div style="flex: 1;">
-            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Network Load (TX & RX)</h3>
-            <div class="chart-container" style="height: 250px;"><canvas id="hubNetChart"></canvas></div>
-          </div>
-          <div style="flex: 1; max-width: 320px; margin: 0 auto;">
-            <h3 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Storage (Per Node Breakdown)</h3>
-            <div class="chart-container" style="height: 250px;"><canvas id="hubStorageChart"></canvas></div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 2rem;">
-          <h2 style="margin:0;">Services</h2>
-          <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">Control Hub Services & Processes</p>
-        </div>
-
-        <div class="dashboard">
-          <section style="grid-column: 1 / -1;">
-            <div id="pi-services-container" class="nodes-grid">
-              <p style="text-align:center; color:var(--text-secondary); padding: 2rem;">Loading services...</p>
-            </div>
           </section>
-        </div>
-      </main>
 
-      <!-- Info Dashboard View -->
-      <main id="view-info" class="view view-container" style="display: none;">
-        <div style="margin-bottom: 2rem;">
-          <h2 style="margin:0;">About</h2>
-          <p style="margin:0; color:var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">System Details & Software Management</p>
-        </div>
-
-        <div class="dashboard">
-          
-          <section class="glass system-card" style="margin-bottom: 1.5rem;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <i data-lucide="server" style="color:var(--accent-purple)"></i>
-                <div>
-                  <h3 style="margin:0;">Hub Management</h3>
-                  <p style="margin:0; font-size: 0.85rem; color: var(--text-secondary);">Force synchronize git codebase</p>
+          <!-- Raw data section -->
+          <section id="details-raw" style="display:none;margin-top:10px;">
+            <div class="card glass">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <h3>Raw History — Last 200 Logs</h3>
+                <div class="export-controls">
+                  <select id="export-timeframe">
+                    <option value="hour">Last Hour</option>
+                    <option value="day">Last Day</option>
+                    <option value="week">Last Week</option>
+                    <option value="year">Last Year</option>
+                    <option value="all" selected>All Time</option>
+                  </select>
+                  <button class="btn-pill" onclick="exportData()">Export XML</button>
                 </div>
               </div>
-              <button class="btn-pill" style="background: var(--accent-blue); color: #fff;" onclick="window.confirm('Trigger system update?') && fetch('/api/admin/update', {method:'POST'}).then(alert('Update command sent!'))">🔄 Update</button>
+              <div class="history-table-container">
+                <table class="technical-table history-table" style="min-width:800px;">
+                  <thead>
+                    <tr><th>Timestamp</th></tr>
+                  </thead>
+                  <tbody id="history-table-body"></tbody>
+                </table>
+              </div>
             </div>
           </section>
 
-          <section class="nodes-grid">
-            <div class="node-card card glass" style="cursor: default;">
-              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+        </main>
+
+        <!-- Compute / Pi view -->
+        <main id="view-pi" class="view view-container" style="display:none;">
+
+          <div style="margin-bottom:18px;">
+            <h2>Compute</h2>
+            <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">Fleet-wide resource overview</p>
+          </div>
+
+          <div id="fleet-summary" class="fleet-summary" style="display:none;margin-bottom:16px;"></div>
+
+          <div class="card glass" style="margin-bottom:16px;padding:18px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px;">
+            <div>
+              <p style="font-size:10px;font-weight:600;letter-spacing:.09em;color:var(--text-secondary);text-transform:uppercase;margin-bottom:12px;">Compute Activity (CPU &amp; RAM)</p>
+              <div class="chart-container" style="height:220px;"><canvas id="hubComputeChart"></canvas></div>
+            </div>
+            <div>
+              <p style="font-size:10px;font-weight:600;letter-spacing:.09em;color:var(--text-secondary);text-transform:uppercase;margin-bottom:12px;">Network Load (TX &amp; RX)</p>
+              <div class="chart-container" style="height:220px;"><canvas id="hubNetChart"></canvas></div>
+            </div>
+            <div style="max-width:280px;margin:0 auto;width:100%;">
+              <p style="font-size:10px;font-weight:600;letter-spacing:.09em;color:var(--text-secondary);text-transform:uppercase;margin-bottom:12px;">Storage — Per Node</p>
+              <div class="chart-container" style="height:220px;"><canvas id="hubStorageChart"></canvas></div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <h2>Services</h2>
+            <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">Hub services &amp; processes</p>
+          </div>
+
+          <div class="nodes-grid" id="pi-services-container">
+            <p style="color:var(--text-secondary);padding:2rem;">Loading services...</p>
+          </div>
+
+        </main>
+
+        <!-- About / Info view -->
+        <main id="view-info" class="view view-container" style="display:none;">
+
+          <div style="margin-bottom:18px;">
+            <h2>About</h2>
+            <p style="color:var(--text-secondary);font-size:13px;margin-top:3px;">System details &amp; hub management</p>
+          </div>
+
+          <div class="card glass system-card" style="margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <i data-lucide="server" style="color:var(--accent-purple);width:16px;height:16px;"></i>
                 <div>
-                  <h3 class="node-name">System Uptime</h3>
-                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Continuous host availability</p>
+                  <h3>Hub Management</h3>
+                  <p style="font-size:12px;color:var(--text-secondary);margin-top:1px;">Force synchronize git codebase</p>
+                </div>
+              </div>
+              <button class="btn-pill primary" onclick="window.confirm('Trigger system update?') && fetch('/api/admin/update',{method:'POST'}).then(()=>alert('Update command sent!'))">Update</button>
+            </div>
+          </div>
+
+          <div class="nodes-grid">
+
+            <div class="node-card" style="cursor:default;">
+              <div class="node-header">
+                <div>
+                  <div class="node-name">System Uptime</div>
+                  <div class="node-subtitle" style="font-size:12px;margin-top:2px;">Continuous host availability</div>
                 </div>
                 <div class="status-indicator online"></div>
               </div>
-              <div class="node-metrics" style="margin-top: auto; flex-direction: column; gap: 0.25rem;">
-                <div style="font-size: 2rem; font-weight: 700; color: var(--text-primary);" id="info-uptime">Loading...</div>
-                <div style="font-size: 0.85rem; color: var(--text-secondary);" id="info-model">Model: Loading...</div>
-                <div style="font-size: 0.85rem; color: var(--text-secondary);" id="info-os">OS: Loading...</div>
+              <div style="margin-top:auto;">
+                <div style="font-size:22px;font-weight:700;font-family:monospace;" id="info-uptime">Loading...</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;" id="info-model">Model: Loading...</div>
+                <div style="font-size:12px;color:var(--text-secondary);" id="info-os">OS: Loading...</div>
               </div>
             </div>
 
-            <div class="node-card card glass" style="cursor: default;">
-              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+            <div class="node-card" style="cursor:default;">
+              <div class="node-header">
                 <div>
-                  <h3 class="node-name">Software Details</h3>
-                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Cockpit Hub Monitoring Platform</p>
+                  <div class="node-name">Software Details</div>
+                  <div class="node-subtitle" style="font-size:12px;margin-top:2px;">Cockpit Hub Monitoring Platform</div>
                 </div>
               </div>
-              <div class="node-metrics" style="flex-direction: column; gap: 0.5rem; margin-top: auto;">
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: var(--text-secondary)">Version</span>
-                  <span style="font-weight: 500;">v6.8.1</span>
+              <div style="display:flex;flex-direction:column;gap:7px;margin-top:auto;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-secondary)">Version</span>
+                  <span style="font-family:monospace;font-weight:600;">v6.8.1</span>
                 </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: var(--text-secondary)">Author</span>
-                  <span style="font-weight: 500;">Jakob Neri</span>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-secondary)">Author</span>
+                  <span style="font-weight:600;">Jakob Neri</span>
                 </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: var(--text-secondary)">Theme</span>
-                  <span style="font-weight: 500;">Liquid Glass</span>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--text-secondary)">Design</span>
+                  <span style="font-weight:600;">Control v8</span>
                 </div>
               </div>
             </div>
 
-            <a href="https://github.com/jakobneri/cockpit" target="_blank" style="text-decoration: none; color: inherit;" class="node-card card glass">
-              <div class="node-header" style="align-items: flex-start; margin-bottom: 1rem;">
+            <a href="https://github.com/jakobneri/cockpit" target="_blank" class="node-card" style="text-decoration:none;color:inherit;display:block;">
+              <div class="node-header">
                 <div>
-                  <h3 class="node-name">GitHub Repository</h3>
-                  <p class="node-subtitle" style="font-size: 0.85rem; margin-top: 4px;">Source code & Documentation (README.md)</p>
+                  <div class="node-name">GitHub Repository</div>
+                  <div class="node-subtitle" style="font-size:12px;margin-top:2px;">Source code &amp; documentation</div>
                 </div>
-                <div style="color: var(--text-secondary)"><i data-lucide="external-link"></i></div>
+                <i data-lucide="external-link" style="color:var(--text-secondary);width:14px;height:14px;"></i>
               </div>
-              <div class="node-metrics" style="margin-top: auto; border-top: 1px solid var(--glass-border); padding-top: 1rem; flex-direction: column;">
-                <button class="btn-pill" style="width: 100%; background: rgba(0,0,0,0.2);">View on GitHub</button>
+              <div style="border-top:1px solid var(--b);padding-top:10px;margin-top:auto;">
+                <div class="btn-pill" style="width:100%;justify-content:center;">View on GitHub</div>
               </div>
             </a>
-          </section>
-        </div>
-      </main>
-      </div> <!-- End main-content -->
-    </div>
 
-    <!-- Templates (v6.8.1 Integration) -->
+          </div>
+
+        </main>
+
+      </div><!-- end .main-content -->
+    </div><!-- end .app-container -->
+
+    <!-- Templates -->
     <template id="jobs-template">
-      <section id="details-jobs" class="card glass" style="margin-top: 1.5rem;">
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem;">
+      <section id="details-jobs" class="card glass" style="margin-top:10px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
           <i data-lucide="refresh-cw" class="job-icon"></i>
-          <h3 style="margin:0;">Active Jobs / Backups</h3>
+          <h3>Active Jobs / Backups</h3>
         </div>
         <div id="jobs-container" class="jobs-grid">
-          <p style="color:var(--text-secondary); font-size: 0.9rem;">No active jobs detected.</p>
+          <p style="color:var(--text-secondary);font-size:13px;">No active jobs detected.</p>
         </div>
       </section>
     </template>
 
     <template id="drives-template">
-      <section id="details-drives" class="card glass" style="margin-top: 1.5rem;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+      <section id="details-drives" class="card glass" style="margin-top:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">
             <i data-lucide="hard-drive" class="job-icon"></i>
-            <h3 style="margin:0;">Physical Drives</h3>
+            <h3>Physical Drives</h3>
           </div>
-          <div id="drives-status-summary" style="font-size: 0.9rem; font-weight: 500;"></div>
+          <div id="drives-status-summary" style="font-size:13px;font-weight:500;"></div>
         </div>
-        <div id="drives-container" class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-          <p style="color:var(--text-secondary); font-size: 0.9rem; padding: 1rem; width: 100%; text-align: center; background: rgba(0,0,0,0.02); border-radius: 12px;">No drives detected.</p>
+        <div id="drives-container" class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+          <p style="color:var(--text-secondary);font-size:13px;padding:1rem;width:100%;text-align:center;">No drives detected.</p>
         </div>
       </section>
     </template>
 
-    <!-- Modals -->
-    <div id="auth-modal" class="modal" style="display: none;">
-      <div class="modal-content glass" style="max-width: 400px; min-height: auto;">
+    <!-- Auth modal -->
+    <div id="auth-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width:380px;">
         <div class="modal-header">
           <h2>Authentication Required</h2>
         </div>
         <div class="modal-body">
-          <p style="margin-bottom: 1.5rem; color: var(--text-secondary); line-height: 1.5;">Your IP has changed or the session expired. Please enter the Hub Password to continue.</p>
-          <input type="password" id="hub-password-input" placeholder="Enter Password" style="width: 100%; padding: 0.8rem 1rem; margin-bottom: 1rem; border-radius: 12px; border: 1px solid var(--glass-border); background: var(--bg-color); color: var(--text-primary); font-size: 1rem; outline: none; transition: border-color 0.3s;" onkeydown="if(event.key === 'Enter') submitPassword()">
-          <button class="btn-pill primary" style="width: 100%; padding: 0.8rem; height: auto; font-size: 1rem;" onclick="submitPassword()">Unlock Dashboard</button>
+          <p style="margin-bottom:14px;color:var(--text-secondary);font-size:13px;line-height:1.6;">Session expired or IP changed. Enter the hub password to continue.</p>
+          <input type="password" id="hub-password-input" placeholder="Password" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')submitPassword()">
+          <button class="btn-pill primary" style="width:100%;padding:9px;" onclick="submitPassword()">Unlock</button>
         </div>
       </div>
     </div>
 
+    <!-- Logs modal -->
     <div id="logs-modal" class="modal">
-      <div class="modal-content glass">
+      <div class="modal-content">
         <div class="modal-header">
           <h2 id="modalTitle">Service Logs</h2>
           <span class="close-btn" onclick="closeLogs()">&times;</span>
@@ -374,9 +365,7 @@
     <script type="module" src="/src/main.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        if (window.lucide) {
-          lucide.createIcons();
-        }
+        if (window.lucide) lucide.createIcons();
       });
     </script>
   </body>

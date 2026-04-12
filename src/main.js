@@ -672,78 +672,90 @@ function renderFleet(servers) {
   if (!container) return;
 
   if (Object.keys(servers).length === 0) {
-    container.innerHTML = '<div class="glass" style="grid-column: 1/-1; text-align: center; padding: 4rem;"><h3>Waiting for first reports...</h3><p>Ensure your agents are running and pointing to this Hub IP.</p></div>';
+    container.innerHTML = '<div class="card" style="grid-column:1/-1;text-align:center;padding:3rem;"><p style="color:var(--text-secondary)">Waiting for first reports... Ensure agents are running and pointing to this Hub IP.</p></div>';
     return;
   }
 
   container.innerHTML = Object.entries(servers).map(([hostname, data]) => {
     const isOnline = (Date.now() - data.lastReport) < 45000;
-    
-    // Build dynamic metrics
-    let metricsHtml = '';
-    
-    // 1. Gateway Metrics
+    const uptime = data.uptime ? formatUptime(data.uptime) : '';
+
+    // ── Gateway node ──
     if (data.gateway) {
-      if (data.gateway.dsl_sync) {
-        metricsHtml += `
-          <div class="mini-metric">
-            <span class="label">DSL Sync</span>
-            <span class="status-badge ${data.gateway.dsl_sync === 'Up' ? 'online' : 'offline'}">${data.gateway.dsl_sync}</span>
-          </div>`;
-      }
-      if (data.gateway.vpn_active !== undefined) {
-        metricsHtml += `
-          <div class="mini-metric">
-            <span class="label">VPN Bridge</span>
-            <span class="status-badge ${data.gateway.vpn_active ? 'online' : 'offline'}">${data.gateway.vpn_active ? 'Active' : 'Down'}</span>
-          </div>`;
-      }
-    }
-
-    // 2. Client Metrics (CPU/RAM)
-    if (data.cpu && data.cpu.load !== undefined && data.cpu.load > 0) {
-      const tempHtml = data.cpu.temp ? `<span class="temp-badge ${getTempClass(data.cpu.temp)}">${data.cpu.temp}°C</span>` : '';
-      metricsHtml += `
-        <div class="mini-metric">
-          <span class="label">CPU</span>
-          <span class="val">${data.cpu.load}% ${tempHtml}</span>
-        </div>
-        <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.cpu.load}%;"></div></div>`;
-    }
-
-    if (data.memory && data.memory.percent !== undefined && data.memory.percent > 0) {
-      metricsHtml += `
-        <div class="mini-metric">
-          <span class="label">RAM</span>
-          <span class="val">${data.memory.percent}%</span>
-        </div>
-        <div class="progress-bar" style="height: 4px;"><div class="progress-fill" style="width: ${data.memory.percent}%; background-color: var(--accent-purple);"></div></div>`;
-    }
-
-    // 3. Uptime (Always have space for it if present)
-    if (data.uptime) {
-      metricsHtml += `
-        <div class="mini-metric" style="margin-top: 0.5rem;">
-          <span class="label">Uptime</span>
-          <span class="val" style="color: var(--text-secondary); font-size: 0.8rem;">${formatUptime(data.uptime)}</span>
+      const dsl = data.gateway.dsl_sync;
+      const vpn = data.gateway.vpn_active;
+      const logsBtn = `<button class="nc-logs-btn" onclick="event.stopPropagation();window.openGatewayLogs('${hostname}')">Logs</button>`;
+      return `
+        <div class="node-card" onclick="openDetails('${hostname}')">
+          <div class="nc-header">
+            <div class="nc-identity">
+              <div class="nc-top-row">
+                <span class="nc-dot ${isOnline ? 'online' : 'offline'}"></span>
+                <span class="nc-hostname">${hostname}</span>
+              </div>
+              <span class="nc-model">${data.model || 'Gateway'}</span>
+            </div>
+            <div class="nc-meta">
+              ${logsBtn}
+              ${uptime ? `<span class="nc-uptime">${uptime}</span>` : ''}
+            </div>
+          </div>
+          <div class="nc-metrics">
+            ${dsl ? `<div class="nc-bar-row"><span class="nc-blabel">DSL</span><span class="nc-status-badge ${dsl === 'Up' ? 'ok' : 'bad'}">${dsl}</span><span></span><span></span></div>` : ''}
+            ${vpn !== undefined ? `<div class="nc-bar-row"><span class="nc-blabel">VPN</span><span class="nc-status-badge ${vpn ? 'ok' : 'bad'}">${vpn ? 'Active' : 'Down'}</span><span></span><span></span></div>` : ''}
+          </div>
         </div>`;
     }
 
+    // ── Compute node ──
+    const cpu    = data.cpu    || {};
+    const mem    = data.memory || {};
+    const net    = data.network || {};
+
+    const cpuPct = cpu.load    !== undefined ? cpu.load    : 0;
+    const memPct = mem.percent !== undefined ? mem.percent : 0;
+    const temp   = cpu.temp;
+    const rx     = net.rx_sec  !== undefined ? (net.rx_sec / 1024).toFixed(1) : '0.0';
+    const tx     = net.tx_sec  !== undefined ? (net.tx_sec / 1024).toFixed(1) : '0.0';
+
+    const cpuCls  = cpuPct > 85 ? 'hot' : cpuPct > 65 ? 'warm' : '';
+    const tempCls = temp ? getTempClass(temp) : '';
+
     return `
-      <div class="card glass node-card" onclick="openDetails('${hostname}')">
-        <div class="node-header" style="align-items: flex-start;">
-          <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span class="node-hostname">${hostname}</span>
-            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">${data.model || 'Node'}</span>
+      <div class="node-card" onclick="openDetails('${hostname}')">
+        <div class="nc-header">
+          <div class="nc-identity">
+            <div class="nc-top-row">
+              <span class="nc-dot ${isOnline ? 'online' : 'offline'}"></span>
+              <span class="nc-hostname">${hostname}</span>
+            </div>
+            <span class="nc-model">${data.model || 'Node'}</span>
           </div>
-          <div class="heartbeat ${isOnline ? 'active' : 'error'}" style="margin-top: 6px;"></div>
-          ${data.gateway ? `<button class="temp-badge cool" style="cursor: pointer; border: none; font-family: inherit; font-size: 0.7rem; margin-top: 4px;" onclick="event.stopPropagation(); window.openGatewayLogs('${hostname}')">Logs</button>` : ''}
+          <div class="nc-meta">
+            ${uptime ? `<span class="nc-uptime">${uptime}</span>` : ''}
+          </div>
         </div>
-        <div class="node-metrics">
-          ${metricsHtml || '<span style="color: var(--text-secondary); font-size: 0.8rem;">No metrics reported</span>'}
+        <div class="nc-metrics">
+          <div class="nc-bar-row">
+            <span class="nc-blabel">CPU</span>
+            <div class="nc-track"><div class="nc-fill ${cpuCls}" style="width:${cpuPct}%"></div></div>
+            <span class="nc-bval">${cpuPct}%</span>
+            <span class="nc-temp ${tempCls}">${temp ? temp + '°' : ''}</span>
+          </div>
+          <div class="nc-bar-row">
+            <span class="nc-blabel">MEM</span>
+            <div class="nc-track"><div class="nc-fill ram" style="width:${memPct}%"></div></div>
+            <span class="nc-bval">${memPct}%</span>
+            <span></span>
+          </div>
+          <div class="nc-net-row">
+            <span class="nc-blabel">NET</span>
+            <span class="nc-net-val">↓ ${rx}</span>
+            <span class="nc-net-val tx">↑ ${tx}</span>
+            <span class="nc-blabel">KB/s</span>
+          </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join('');
 }
 
