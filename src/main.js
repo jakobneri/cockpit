@@ -1,6 +1,6 @@
 // Configuration
-const REFRESH_INTERVAL_FLEET = 5000;
-const REFRESH_INTERVAL_STATS = 5000;
+const REFRESH_INTERVAL_FLEET = 15000;
+const REFRESH_INTERVAL_STATS = 15000;
 
 // State
 let currentView = 'main';
@@ -1038,8 +1038,8 @@ document.addEventListener('DOMContentLoaded', () => {
   fleetTimer = setInterval(fetchFleet, REFRESH_INTERVAL_FLEET);
 
   fetchPiServices();
-  piTimer = setInterval(fetchPiServices, 10000);
+  piTimer = setInterval(fetchPiServices, 30000);
 
-  setInterval(sendActiveHeartbeat, 10000);
+  setInterval(sendActiveHeartbeat, 30000);
   sendActiveHeartbeat();
 });

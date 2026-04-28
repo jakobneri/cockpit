@@ -1,47 +1,63 @@
 #!/bin/bash
+# =============================================================================
+# Cockpit NAS Agent — Synology (Docker/Container Manager)
+# =============================================================================
+# Monitoring agent optimised for Synology NAS devices running inside a Docker
+# container. Reads host metrics via /host/proc and /host/sys bind-mounts,
+# monitors active backup/sync jobs, checks drive health with smartctl, and
+# POSTs a JSON snapshot to the Cockpit PostgREST endpoint every INTERVAL
+# seconds. Self-updates from git every 8 hours.
+#
+# Environment variables:
+#   DB_URL    — PostgREST base URL          (default: http://localhost:3001)
+#   HOSTNAME  — Override reported hostname
+#   INTERVAL  — Reporting interval (seconds) (default: 60)
+# =============================================================================
 
-# Cockpit NAS Client v6.8.1
-# Optimized for Synology NAS (Docker/Container Manager)
-
+# ── Configuration ─────────────────────────────────────────────────────────────
 DB_URL="${DB_URL:-http://localhost:3001}"
 HOSTNAME="${HOSTNAME:-$(hostname)}"
 INTERVAL="${INTERVAL:-60}"
 
-# Detect Host paths (Synology Fix)
+# ── Path Detection ────────────────────────────────────────────────────────────
+# When running inside a container with bind-mounts, host /proc and /sys are
+# available under /host/. Fall back to container-local paths otherwise.
 PROC_PATH="/proc"
 [ -d "/host/proc" ] && PROC_PATH="/host/proc"
 SYS_PATH="/sys"
 [ -d "/host/sys" ] && SYS_PATH="/host/sys"
 
+# ── Logging ───────────────────────────────────────────────────────────────────
 log() { echo "[$(date +'%H:%M:%S')] $1"; }
 
 log "Starting Cockpit NAS Agent on $HOSTNAME"
-log "Target API: $DB_URL"
-log "Using proc path: $PROC_PATH"
+log "Target API: $DB_URL | Interval: ${INTERVAL}s | proc: $PROC_PATH"
 
-# Detect System Info
+# ── System Info Detection ─────────────────────────────────────────────────────
 MODEL="Synology NAS"
 if [ -f "$PROC_PATH/device-tree/model" ]; then
     MODEL=$(cat "$PROC_PATH/device-tree/model" | tr -d '\0')
 fi
 
-# Auto-detect main network interface
+# ── Initialization ────────────────────────────────────────────────────────────
+# Detect primary network interface from the default route.
 IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
 [ -z "$IFACE" ] && IFACE="eth0"
 log "Monitoring interface: $IFACE"
 
-# Initialize network counters
+# Seed network and CPU counters for the first delta calculation.
 read -r rx1 tx1 < <(grep "$IFACE" "$PROC_PATH/net/dev" | awk '{print $2, $10}')
 last_time=$(date +%s.%N)
 
-# Initialize CPU counters
 read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
 
-# Initialize Update Timer (v6.8.0 feature)
+# Timestamp of the last self-update check.
 LAST_UPDATE=$(date +%s)
 
+# ── Job Detection ─────────────────────────────────────────────────────────────
+# Returns a JSON array of currently running Synology backup/sync processes.
 get_active_jobs() {
     local jobs="[]"
     # 1. Check for rsync
@@ -63,6 +79,8 @@ get_active_jobs() {
     echo "$jobs"
 }
 
+# ── Drive Monitoring ──────────────────────────────────────────────────────────
+# Returns a JSON array of block devices with model, size, state, and SMART health.
 get_drive_monitoring() {
     local drives="[]"
     # Detect all block devices
@@ -97,10 +115,11 @@ get_drive_monitoring() {
     echo "$drives"
 }
 
+# ── Main Loop ─────────────────────────────────────────────────────────────────
 while true; do
     sleep $INTERVAL
-    
-    # Self-Update Check (v6.8.0 feature)
+
+    # Self-update every 8 hours — restarts the agent to pick up new code.
     if [ $(($(date +%s) - LAST_UPDATE)) -gt 28800 ]; then
         log "Checking for Git Updates..."
         git pull origin main || true
@@ -109,7 +128,8 @@ while true; do
         exec "$0" "$@"
     fi
 
-    # 1. CPU Load
+    # ── Metrics Collection ────────────────────────────────────────────────────
+    # CPU — percentage used since the last sample
     read -r _ u n s i io _ _ _ < "$PROC_PATH/stat"
     total=$((u+n+s+i+io))
     idle=$((i+io))
@@ -122,13 +142,13 @@ while true; do
     }')
     prev_total=$total; prev_idle=$idle
 
-    # 2. Temperature
+    # Temperature — thermal_zone0 in °C (0 if unavailable)
     temp=0
     if [ -f "$SYS_PATH/class/thermal/thermal_zone0/temp" ]; then
         temp=$(($(cat "$SYS_PATH/class/thermal/thermal_zone0/temp") / 1000))
     fi
 
-    # 3. Memory
+    # Memory — bytes total / used / percent (MemAvailable fallback for DSM)
     mem_total=$(grep MemTotal "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
     mem_avail=$(grep MemAvailable "$PROC_PATH/meminfo" | awk '{printf "%.0f", $2 * 1024}')
     
@@ -142,7 +162,7 @@ while true; do
     mem_used=$((mem_total - mem_avail))
     mem_pct=$(echo "$mem_used $mem_total" | awk '{if($2>0) printf "%.1f", 100 * $1 / $2; else print "0.0"}')
 
-    # 4. Network usage (kB/s)
+    # Network — kB/s delta since last sample
     read -r rx2 tx2 < <(grep "$IFACE" "$PROC_PATH/net/dev" | awk '{print $2, $10}')
     now=$(date +%s.%N)
     diff=$(echo "$now $last_time" | awk '{print $1 - $2}')
@@ -152,7 +172,7 @@ while true; do
     
     rx1=$rx2; tx1=$tx2; last_time=$now
 
-    # 5. Storage (Root /volume1 is common on Synology)
+    # Storage — /volume1 preferred on Synology, falls back to root
     MNT_POINT="/"
     [ -d "/volume1" ] && MNT_POINT="/volume1"
     
@@ -161,11 +181,11 @@ while true; do
     st_used=$(echo "$df_out" | awk '{print $3}')
     st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
 
-    # 6. Hybrid Monitoring (Merge v6.0 and v6.8.0)
+    # Jobs and drive health (NAS-specific)
     active_jobs=$(get_active_jobs)
     drive_monitoring=$(get_drive_monitoring)
 
-    # Construct JSON
+    # ── Build and POST payload ────────────────────────────────────────────────
     json_payload=$(cat <<EOF
 {
   "hostname": "$HOSTNAME",

@@ -1,15 +1,26 @@
 #!/bin/bash
+# =============================================================================
+# Cockpit Native Client — Linux / Raspberry Pi Agent
+# =============================================================================
+# Zero-dependency monitoring agent. Reads system metrics from /proc and /sys,
+# then POSTs a JSON snapshot to the Cockpit PostgREST endpoint every INTERVAL
+# seconds. All configuration is via environment variables.
+#
+# Environment variables:
+#   DB_URL    — PostgREST base URL          (default: http://localhost:3001)
+#   INTERVAL  — Reporting interval (seconds) (default: 30)
+# =============================================================================
 
-# Cockpit Native Client v6.0.0 (Bash Version)
-# Zero-dependency monitoring for Linux / Raspberry Pi
-
+# ── Configuration ─────────────────────────────────────────────────────────────
 DB_URL="${DB_URL:-http://localhost:3001}"
 HOSTNAME=$(hostname)
-INTERVAL=5
+INTERVAL="${INTERVAL:-30}"
 
+# ── Logging ───────────────────────────────────────────────────────────────────
 log() { echo "[$(date +'%H:%M:%S')] $1"; }
 
-# Auto-detect System Info
+# ── System Info Detection ─────────────────────────────────────────────────────
+# Prefer device-tree model (Raspberry Pi), fall back to DMI product name.
 MODEL="Linux Node"
 if [ -f /proc/device-tree/model ]; then
     MODEL=$(cat /proc/device-tree/model | tr -d '\0')
@@ -18,28 +29,30 @@ elif [ -f /sys/class/dmi/id/product_name ]; then
 fi
 
 log "Starting Cockpit Bash Client on $HOSTNAME ($MODEL)"
-log "DB URL: $DB_URL"
+log "DB URL: $DB_URL | Interval: ${INTERVAL}s"
 
-# Initialize network counters
+# ── Initialization ────────────────────────────────────────────────────────────
+# Detect primary network interface from the default route.
 IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
 [ -z "$IFACE" ] && IFACE="eth0"
 
+# Seed network counters for the first delta calculation.
 read -r rx1 tx1 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
 last_time=$(date +%s.%N)
 
-# Initialize CPU counters
+# Seed CPU counters for the first delta calculation.
 read -r _ u n s i io _ _ _ < /proc/stat
 prev_total=$((u+n+s+i+io))
 prev_idle=$((i+io))
 
+# ── Main Loop ─────────────────────────────────────────────────────────────────
 while true; do
     sleep $INTERVAL
-    
-    # 1. CPU Load (Delta over INTERVAL)
+
+    # CPU — percentage used since the last sample
     read -r _ u n s i io _ _ _ < /proc/stat
     total=$((u+n+s+i+io))
     idle=$((i+io))
-    
     cpu_load=$(echo "$total $prev_total $idle $prev_idle" | awk '{
         diff_total = $1 - $2;
         diff_idle = $3 - $4;
@@ -48,35 +61,33 @@ while true; do
     }')
     prev_total=$total; prev_idle=$idle
 
-    # 2. Temperature
+    # Temperature — thermal_zone0 in °C (0 if unavailable)
     temp=0
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
         temp=$(($(cat /sys/class/thermal/thermal_zone0/temp) / 1000))
     fi
 
-    # 3. Memory
+    # Memory — bytes total / used / percent
     mem_total=$(grep MemTotal /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
     mem_avail=$(grep MemAvailable /proc/meminfo | awk '{printf "%.0f", $2 * 1024}')
     mem_used=$((mem_total - mem_avail))
     mem_pct=$(echo "$mem_used $mem_total" | awk '{if($2>0) printf "%.1f", 100 * $1 / $2; else print "0.0"}')
 
-    # 4. Network usage (kB/s)
+    # Network — kB/s delta since last sample
     read -r rx2 tx2 < <(grep "$IFACE" /proc/net/dev | awk '{print $2, $10}')
     now=$(date +%s.%N)
     diff=$(echo "$now $last_time" | awk '{print $1 - $2}')
-    
     rx_sec=$(echo "$rx2 $rx1 $diff" | awk '{if($3>0) printf "%.1f", ($1 - $2) / 1024 / $3; else print "0.0"}')
     tx_sec=$(echo "$tx2 $tx1 $diff" | awk '{if($3>0) printf "%.1f", ($1 - $2) / 1024 / $3; else print "0.0"}')
-    
     rx1=$rx2; tx1=$tx2; last_time=$now
 
-    # 5. Storage (Root)
+    # Storage — root filesystem (bytes)
     df_out=$(df -B1 / | tail -1)
     st_total=$(echo "$df_out" | awk '{print $2}')
     st_used=$(echo "$df_out" | awk '{print $3}')
     st_pct=$(echo "$df_out" | awk '{if($2>0) printf "%.1f", 100 * $3 / $2; else print "0.0"}')
 
-    # Construct JSON
+    # ── Build and POST payload ────────────────────────────────────────────────
     json_payload=$(cat <<EOF
 {
   "hostname": "$HOSTNAME",
@@ -97,7 +108,6 @@ while true; do
 EOF
 )
 
-    # POST to DB
     status=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DB_URL/rpc/report_client_metrics" \
         -H "Content-Type: application/json" \
         -H "Prefer: params=single-object" \

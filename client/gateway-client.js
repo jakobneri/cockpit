@@ -1,7 +1,21 @@
 /**
- * COCKPIT GATEWAY CLIENT v6.0.0
- * Bug fix: Removed crash on undefined actions.
- * Added: Clearer authentication diagnostics.
+ * =============================================================================
+ * Cockpit Gateway Client
+ * =============================================================================
+ * Monitoring agent for Fritz!Box routers via the TR-064 UPnP protocol.
+ * Collects DSL sync status, WAN traffic, VPN state, uptime, and device logs,
+ * then POSTs a JSON snapshot to the Cockpit PostgREST endpoint every
+ * POLL_INTERVAL milliseconds.
+ *
+ * Configuration resolution order: ENV vars → config.json → built-in defaults.
+ *
+ * Environment variables:
+ *   GATEWAY_IP    — Fritz!Box IP address      (default: 192.168.188.1)
+ *   GATEWAY_USER  — TR-064 username           (default: admin)
+ *   GATEWAY_PASS  — TR-064 password           (default: "")
+ *   DB_URL        — PostgREST base URL        (default: http://127.0.0.1:3001)
+ *   HOSTNAME      — Override reported hostname
+ * =============================================================================
  */
 
 import { createRequire } from 'module';
@@ -14,129 +28,154 @@ const require = createRequire(import.meta.url);
 const tr064Lib = require('tr-064');
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// 1. CONFIG RESOLUTION (ENV > cockpit.config.json > Defaults)
-let GATEWAY_IP = process.env.GATEWAY_IP;
+// ── Configuration ─────────────────────────────────────────────────────────────
+
+let GATEWAY_IP   = process.env.GATEWAY_IP;
 let GATEWAY_USER = process.env.GATEWAY_USER;
 let GATEWAY_PASS = process.env.GATEWAY_PASS;
-let DB_URL = process.env.DB_URL || 'http://127.0.0.1:3001';
+let DB_URL       = process.env.DB_URL || 'http://127.0.0.1:3001';
 
-// Try to read config if variables are missing
+// Merge config.json for any variables not set by the environment.
 try {
   const configPath = path.join(__dirname, '../config.json');
   if (fs.existsSync(configPath)) {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    
-    // Support custom DB_URL from config for remote clients
+
     if (!process.env.DB_URL && config.db_url) {
-      log.info(`Using DB_URL from config: ${config.db_url}`);
       DB_URL = config.db_url;
     }
 
     const gateways = config.gateways || [];
-    
-    // Find either the matching IP or just pick the first one if ENV is empty
-    const match = GATEWAY_IP 
-      ? gateways.find(g => g.ip === GATEWAY_IP) 
+    const match = GATEWAY_IP
+      ? gateways.find(g => g.ip === GATEWAY_IP)
       : gateways[0];
 
     if (match) {
-      if (!GATEWAY_IP) GATEWAY_IP = match.ip;
+      if (!GATEWAY_IP)   GATEWAY_IP   = match.ip;
       if (!GATEWAY_USER) GATEWAY_USER = match.user;
       if (!GATEWAY_PASS) GATEWAY_PASS = match.password;
     }
   }
-} catch (e) {
-  // Silent fail, use ENVs or defaults
+} catch (_) {
+  // Silent — fall through to built-in defaults below.
 }
 
-// Final defaults
-GATEWAY_IP = GATEWAY_IP || '192.168.188.1';
+GATEWAY_IP   = GATEWAY_IP   || '192.168.188.1';
 GATEWAY_USER = GATEWAY_USER || 'admin';
 GATEWAY_PASS = GATEWAY_PASS || '';
 
-const HOSTNAME = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
-const POLL_INTERVAL = 15000;
+const HOSTNAME      = process.env.HOSTNAME || `${GATEWAY_IP}-gateway-client`;
+const POLL_INTERVAL = 30000; // ms — how often to query the Fritz!Box
+
+// ── Logging ───────────────────────────────────────────────────────────────────
 
 const log = {
-  info: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
-  diag: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔍 DIALOG: ${msg}`),
+  info:    (msg) => console.log(`[${new Date().toLocaleTimeString()}] ℹ️  ${msg}`),
+  diag:    (msg) => console.log(`[${new Date().toLocaleTimeString()}] 🔍 ${msg}`),
   success: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ✅ ${msg}`),
-  warn: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
-  error: (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
-  report: (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
+  warn:    (msg) => console.log(`[${new Date().toLocaleTimeString()}] ⚠️  ${msg}`),
+  error:   (msg) => console.log(`[${new Date().toLocaleTimeString()}] ❌ ${msg}`),
+  report:  (msg) => console.log(`[${new Date().toLocaleTimeString()}] 📤 ${msg}`)
 };
 
-log.info(`v5.6.3: Initializing for ${GATEWAY_IP}`);
+log.info(`Gateway client starting — target: ${GATEWAY_IP}, host: ${HOSTNAME}`);
 
+// ── State ─────────────────────────────────────────────────────────────────────
+
+// Previous traffic counters for computing per-second deltas.
 let prevStats = { rx: 0, tx: 0, time: Date.now() };
 
-async function safeCall(service, action, actionName = "Unknown") {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Calls a TR-064 service action and returns the result, or null on failure.
+ * Logs authentication errors distinctly so misconfigured credentials are obvious.
+ *
+ * @param {object} service    - TR-064 service object from tr-064 library.
+ * @param {Function} action   - Bound action method on the service.
+ * @param {string} actionName - Human-readable name used in log messages.
+ * @returns {Promise<object|null>} Parsed response object, or null on any error.
+ */
+async function safeCall(service, action, actionName = 'Unknown') {
   if (!service || !action) {
-    log.diag(`Skipping ${actionName} (Service/Action not found)`);
+    log.diag(`Skipping ${actionName} — service/action not available on this device`);
     return null;
   }
-  
-  log.diag(`Calling ${actionName}...`);
+
+  log.diag(`Calling ${actionName}…`);
   try {
     const fn = promisify(action.bind(service));
     const res = await fn();
-    log.success(`${actionName} successful.`);
+    log.success(`${actionName} OK`);
     return res;
   } catch (err) {
     if (err.message.includes('401')) {
-      log.error(`${actionName} FAILED with 401 CUSTOMER: Check your PASSWORD or if this action is restricted!`);
+      log.error(`${actionName} → 401 Unauthorized. Check GATEWAY_USER / GATEWAY_PASS.`);
     } else {
-      log.error(`${actionName} FAILED: ${err.message}`);
+      log.error(`${actionName} failed: ${err.message}`);
     }
     return null;
   }
 }
 
+// ── Data Collection ───────────────────────────────────────────────────────────
+
+/**
+ * Connects to the Fritz!Box via TR-064 and collects all gateway metrics.
+ * Individual failures are non-fatal — each section degrades gracefully and
+ * leaves its field at the default value in the returned stats object.
+ *
+ * @returns {Promise<{
+ *   uptime: number,
+ *   model: string,
+ *   dsl_sync: string,
+ *   vpn_active: boolean,
+ *   rx_sec: number,
+ *   tx_sec: number,
+ *   logs: string
+ * }>}
+ */
 async function fetchStats() {
-  const tr064 = new tr064Lib.TR064();
+  const tr064      = new tr064Lib.TR064();
   const initDevice = promisify(tr064.initTR064Device.bind(tr064));
-  
+
   const stats = {
-    uptime: 0,
-    model: "Fritz!Box",
-    dsl_sync: "Unknown",
+    uptime:     0,
+    model:      'Fritz!Box',
+    dsl_sync:   'Unknown',
     vpn_active: false,
-    rx_sec: 0,
-    tx_sec: 0,
-    logs: ""
+    rx_sec:     0,
+    tx_sec:     0,
+    logs:       ''
   };
 
   try {
-    log.diag(`Connecting to ${GATEWAY_IP}...`);
+    log.diag(`Connecting to ${GATEWAY_IP}…`);
     const dev = await initDevice(GATEWAY_IP, 49000);
-    
-    log.diag(`Attempting login for user: ${GATEWAY_USER}`);
     dev.login(GATEWAY_USER, GATEWAY_PASS);
 
-    // 1. Device Info & Uptime
+    // Device info and uptime
     const deviceInfo = dev.services['urn:dslforum-org:service:DeviceInfo:1'];
-    const res = await safeCall(deviceInfo, deviceInfo?.actions?.GetInfo, 'GetInfo');
-    if (res) {
-      stats.uptime = parseInt(res.NewUpTime || 0);
-      stats.model = res.NewModelName || "Fritz!Box";
-    } else if (stats.uptime === 0) {
-      log.warn("Could not fetch GetInfo. This is usually due to WRONG CREDENTIALS.");
+    const infoRes = await safeCall(deviceInfo, deviceInfo?.actions?.GetInfo, 'GetInfo');
+    if (infoRes) {
+      stats.uptime = parseInt(infoRes.NewUpTime || 0);
+      stats.model  = infoRes.NewModelName || 'Fritz!Box';
+    } else {
+      log.warn('GetInfo failed — credentials may be incorrect.');
     }
 
-    // 2. DSL Sync Status
+    // DSL sync status
     const commonLink = dev.services['urn:dslforum-org:service:WANCommonInterfaceConfig:1'];
     const syncRes = await safeCall(commonLink, commonLink?.actions?.GetCommonLinkProperties, 'GetCommonLinkProperties');
-    if (syncRes) stats.dsl_sync = syncRes.NewPhysicalLinkStatus || "Unknown";
+    if (syncRes) stats.dsl_sync = syncRes.NewPhysicalLinkStatus || 'Unknown';
 
-    // 3. Traffic Counters
+    // WAN traffic counters — compute kB/s delta from previous sample
     const rxRes = await safeCall(commonLink, commonLink?.actions?.GetTotalBytesReceived, 'GetTotalBytesReceived');
-    const txRes = await safeCall(commonLink, commonLink?.actions?.GetTotalBytesSent, 'GetTotalBytesSent');
-    
+    const txRes = await safeCall(commonLink, commonLink?.actions?.GetTotalBytesSent,     'GetTotalBytesSent');
     if (rxRes && txRes) {
       const now = Date.now();
-      const rx = parseInt(rxRes.NewTotalBytesReceived || 0);
-      const tx = parseInt(txRes.NewTotalBytesSent || 0);
-      
+      const rx  = parseInt(rxRes.NewTotalBytesReceived || 0);
+      const tx  = parseInt(txRes.NewTotalBytesSent     || 0);
       if (prevStats.rx > 0) {
         const dt = (now - prevStats.time) / 1000;
         if (dt > 0) {
@@ -147,7 +186,7 @@ async function fetchStats() {
       prevStats = { rx, tx, time: now };
     }
 
-    // 4. VPN Status (v5.6.12: Improved check)
+    // VPN status — try X_AVM-DE_VPN service first
     const vpn = dev.services['urn:dslforum-org:service:X_AVM-DE_VPN:1'];
     if (vpn) {
       const vpnRes = await safeCall(vpn, vpn?.actions?.GetVPNInfo, 'GetVPNInfo');
@@ -156,34 +195,31 @@ async function fetchStats() {
         stats.vpn_active = info.includes('Connected') || info.includes('"1"') || info.includes('true');
       }
     } else {
-      log.diag("VPN service (X_AVM-DE_VPN) not available on this gateway.");
+      log.diag('X_AVM-DE_VPN service not present — will fall back to log scan.');
     }
 
-    // 5. Gateway Logs (v5.6.12: Dual-mode fallback)
+    // Device logs — DeviceConfig primary, DeviceInfo fallback
     const deviceConfig = dev.services['urn:dslforum-org:service:DeviceConfig:1'];
-    // deviceInfo is already defined on line 117
-    
-    let logRes = await safeCall(deviceConfig, deviceConfig?.actions?.GetLogs, 'GetLogs (Primary)');
+    let logRes = await safeCall(deviceConfig, deviceConfig?.actions?.GetLogs,         'GetLogs');
     if (!logRes) {
-      logRes = await safeCall(deviceInfo, deviceInfo?.actions?.GetDeviceLog, 'GetDeviceLog (Fallback)');
+      logRes   = await safeCall(deviceInfo,   deviceInfo?.actions?.GetDeviceLog,      'GetDeviceLog');
     }
-    
     if (logRes) {
-      stats.logs = logRes.NewLogData || logRes.NewDeviceLog || "";
-      
-      // Fallback: Check logs for WireGuard or IPsec establishment (since TR-064 X_AVM-DE_VPN lacks WireGuard)
+      stats.logs = logRes.NewLogData || logRes.NewDeviceLog || '';
+
+      // Scan logs for WireGuard/VPN events when the TR-064 VPN service is absent
+      // (e.g. WireGuard tunnels don't expose state via X_AVM-DE_VPN).
       if (!stats.vpn_active && stats.logs) {
-        const logLines = stats.logs.split('\\n');
-        for (const line of logLines) {
-          const lower = line.toLowerCase();
-          if (lower.includes('vpn') || lower.includes('wireguard')) {
-            // Check for established connection
-            if (lower.includes('erfolgreich hergestellt') || lower.includes('aufgebaut') || lower.includes('established') || lower.includes('connected')) {
+        for (const line of stats.logs.split('\\n')) {
+          const l = line.toLowerCase();
+          if (l.includes('vpn') || l.includes('wireguard')) {
+            if (l.includes('erfolgreich hergestellt') || l.includes('aufgebaut') ||
+                l.includes('established')             || l.includes('connected')) {
               stats.vpn_active = true;
               break;
             }
-            // Check for disconnection
-            if (lower.includes('getrennt') || lower.includes('abgebaut') || lower.includes('disconnected') || lower.includes('cleared')) {
+            if (l.includes('getrennt') || l.includes('abgebaut') ||
+                l.includes('disconnected') || l.includes('cleared')) {
               stats.vpn_active = false;
               break;
             }
@@ -194,45 +230,58 @@ async function fetchStats() {
 
     return stats;
   } catch (err) {
-    throw new Error(`Device Initialization failed: ${err.message}`);
+    throw new Error(`Device initialization failed: ${err.message}`);
   }
 }
 
+// ── Reporting ─────────────────────────────────────────────────────────────────
+
+/**
+ * Collects a fresh stats snapshot and POSTs it to the PostgREST endpoint.
+ * Errors are caught and logged without crashing the poll loop.
+ */
 async function report() {
   try {
     const stats = await fetchStats();
-    
+
     const payload = {
-      hostname: HOSTNAME,
+      hostname:    HOSTNAME,
       reported_at: new Date().toISOString(),
       system_info: { model: stats.model, platform: 'fritzbox', version: '6.0.0' },
       stats: {
-        cpu: { load: 0, temp: 0 },
-        memory: { total: 0, used: 0, percent: 0 },
+        cpu:     { load: 0, temp: 0 },
+        memory:  { total: 0, used: 0, percent: 0 },
         network: { tx_sec: stats.tx_sec, rx_sec: stats.rx_sec },
         storage: { root: { total: 0, used: 0, percent: 0 } },
-        uptime: stats.uptime,
-        gateway: { dsl_sync: stats.dsl_sync, vpn_active: stats.vpn_active, model: stats.model, logs: stats.logs }
+        uptime:  stats.uptime,
+        gateway: {
+          dsl_sync:   stats.dsl_sync,
+          vpn_active: stats.vpn_active,
+          model:      stats.model,
+          logs:       stats.logs
+        }
       }
     };
 
     const res = await fetch(`${DB_URL}/rpc/report_client_metrics`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json', 'Prefer': 'params=single-object' },
-      body: JSON.stringify(payload)
+      body:    JSON.stringify(payload)
     });
 
     if (res.ok) {
-      log.report(`Reporting Successful for ${HOSTNAME}`);
+      log.report(`Reported successfully for ${HOSTNAME}`);
     } else {
-      log.error(`DB Error: ${res.statusText}`);
+      log.error(`DB error: ${res.statusText}`);
     }
   } catch (err) {
-    log.error(`Cycle failed: ${err.message}`);
+    log.error(`Reporting cycle failed: ${err.message}`);
   }
 }
 
+// ── Start ─────────────────────────────────────────────────────────────────────
+// Small initial delay lets the network stack settle before the first TR-064 call.
 setTimeout(() => {
-  setInterval(report, POLL_INTERVAL);
   report();
+  setInterval(report, POLL_INTERVAL);
 }, 2000);
