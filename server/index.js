@@ -410,22 +410,28 @@ const runAutoUpdate = async (force = false) => {
     hubLog.update(`Update found: ${count} new commits. Local: ${localCommit.trim().substring(0,7)}, Remote: ${remoteCommit.trim().substring(0,7)}`);
     
     // Use specified update sequence (with npm run build for local version support)
-    hubLog.info('Executing update sequence: git pull && npm run build && pm2 restart all');
+    hubLog.info('Executing update sequence: git pull && npm run build && restart');
     await execAsync('git pull origin main');
     hubLog.success('Git Pull Successful.');
-    
+
     await execAsync('npm install');
     hubLog.info('NPM Install Successful. Building frontend...');
-    
+
     await execAsync('npm run build');
-    hubLog.success('Build Successful. Restarting all processes with PM2...');
-    
+    hubLog.success('Build Successful. Restarting...');
+
     setTimeout(async () => {
         try {
           await execAsync('pm2 restart all');
+          hubLog.success('PM2 restart successful.');
         } catch (e) {
-          hubLog.error(`PM2 Restart failed: ${e.message}. Exiting for manual restart.`);
-          process.exit(0);
+          hubLog.warn(`PM2 not available (${e.message}), attempting graceful reload...`);
+          try {
+            await execAsync('systemctl restart cockpit-hub 2>/dev/null || true');
+            hubLog.success('systemctl restart sent.');
+          } catch (_) {}
+          // Signal the process to reload gracefully rather than hard-exit
+          process.emit('SIGUSR2');
         }
     }, 2000);
     return true;
