@@ -544,13 +544,159 @@ h3 { font-size: 14px; font-weight: 600; }
 .view-container { max-width: 1200px; }
 .system-card { padding: 14px 18px; }
 
+/* ══════════════════════════════════════════════════════════════════════
+   AUTH SCREENS  (login / totp)
+   ══════════════════════════════════════════════════════════════════════ */
+
+.auth-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%; max-width: 360px;
+  background: var(--s1);
+  border: 1px solid var(--bm);
+  border-radius: var(--r);
+  padding: 32px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.9);
+}
+
+.auth-brand { display: flex; align-items: center; gap: 7px; margin-bottom: 28px; }
+.auth-title { font-size: 20px; font-weight: 700; letter-spacing: -.03em; margin-bottom: 20px; }
+.auth-subtitle { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+.auth-hint { font-size: 11px; color: var(--text-muted); margin-top: 16px; text-align: center; line-height: 1.5; }
+
+.auth-error {
+  background: rgba(255,69,96,.08); border: 1px solid rgba(255,69,96,.25);
+  color: var(--accent-red); border-radius: var(--r-sm);
+  padding: 8px 12px; font-size: 12px; margin-bottom: 10px; line-height: 1.5;
+}
+
+.auth-submit { width: 100%; padding: 10px; font-size: 13px; margin-top: 4px; }
+.auth-back   { width: 100%; padding: 8px; font-size: 12px; margin-top: 8px; text-align: center; }
+
+.form-group { margin-bottom: 12px; }
+.form-label {
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: .08em; color: var(--text-secondary);
+  text-transform: uppercase; margin-bottom: 5px;
+}
+
+.totp-input {
+  text-align: center; font-size: 28px; font-family: monospace;
+  font-weight: 700; letter-spacing: .35em; padding: 14px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   TOP BAR — nav tabs + user chip
+   ══════════════════════════════════════════════════════════════════════ */
+
+.top-nav {
+  display: flex; align-items: stretch;
+  border-left: 1px solid var(--b); border-right: 1px solid var(--b);
+  flex-shrink: 0;
+}
+
+.nav-tab {
+  padding: 0 18px; height: 100%;
+  background: transparent; border: none; border-right: 1px solid var(--b);
+  color: var(--text-secondary); font-size: 12px; font-weight: 600;
+  font-family: inherit; cursor: pointer; letter-spacing: .02em;
+  transition: color .12s, background .12s; white-space: nowrap;
+}
+.nav-tab:last-child { border-right: none; }
+.nav-tab:hover  { color: var(--text-primary); background: var(--s2); }
+.nav-tab.active { color: var(--text-primary); background: var(--s3); }
+
+/* User chip (right side of top-bar) */
+.top-user {
+  margin-left: auto; flex-shrink: 0;
+  padding-left: 16px; border-left: 1px solid var(--b);
+  position: relative; display: flex; align-items: center;
+}
+
+.user-chip {
+  display: flex; align-items: center; gap: 7px;
+  height: 100%; padding: 0 4px;
+  background: transparent; border: none; cursor: pointer; font-family: inherit;
+  color: var(--text-primary); font-size: 12px; font-weight: 500;
+  transition: opacity .12s;
+}
+.user-chip:hover { opacity: .8; }
+
+.user-chip-icon {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--s3); border: 1px solid var(--b);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+}
+
+.role-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 100px;
+  background: var(--s3); border: 1px solid var(--b); color: var(--text-secondary);
+}
+.role-badge.role-admin    { color: var(--accent-orange); border-color: rgba(255,140,66,.3); background: rgba(255,140,66,.08); }
+.role-badge.role-operator { color: var(--accent-blue);   border-color: rgba(78,125,255,.3); background: rgba(78,125,255,.08); }
+.role-badge.role-viewer   { color: var(--text-secondary); }
+
+/* Dropdown */
+.user-menu {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  min-width: 200px; background: var(--s2);
+  border: 1px solid var(--bm); border-radius: var(--r);
+  box-shadow: 0 12px 32px rgba(0,0,0,.8);
+  z-index: 500; overflow: hidden;
+}
+.user-menu-header { padding: 12px 16px 10px; border-bottom: 1px solid var(--b); }
+.user-menu-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.user-menu-role { font-size: 10px; color: var(--text-secondary); margin-top: 2px; text-transform: capitalize; }
+
+.user-menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 16px; background: transparent; border: none;
+  color: var(--text-secondary); font-size: 12px; font-weight: 500;
+  font-family: inherit; cursor: pointer; text-align: left;
+  transition: background .1s, color .1s;
+}
+.user-menu-item:hover        { background: var(--s3); color: var(--text-primary); }
+.user-menu-item.danger       { color: var(--accent-red); }
+.user-menu-item.danger:hover { background: rgba(255,69,96,.08); }
+.user-menu-sep { height: 1px; background: var(--b); margin: 4px 0; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   USERS PAGE
+   ══════════════════════════════════════════════════════════════════════ */
+
+.users-table-wrap {
+  background: var(--s1); border: 1px solid var(--b); border-radius: var(--r);
+  overflow: hidden;
+}
+.users-table { width: 100%; }
+.users-table th, .users-table td { padding: 11px 16px; }
+.users-table td:last-child { padding-right: 12px; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   MODAL SECTION TITLE
+   ══════════════════════════════════════════════════════════════════════ */
+
+.modal-section-title {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .page { padding: 14px; gap: 28px; }
   .top-kpis { display: none; }
+  .top-nav .nav-tab { padding: 0 12px; font-size: 11px; }
   .detail-drawer { width: 100vw; }
   .stat-strip { grid-template-columns: repeat(2,1fr); }
   .nodes-grid { grid-template-columns: 1fr; }
   .stat-tiles-grid { grid-template-columns: repeat(2,1fr); }
   .gw-grid { grid-template-columns: 1fr 1fr; }
+  .users-table th:nth-child(4), .users-table td:nth-child(4) { display: none; }
 }

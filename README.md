@@ -62,14 +62,13 @@ npx vite build
 ```
 
 #### B. Configuration
-The Hub is managed via [root.config.cjs](./root.config.cjs). You MUST set these environment variables in your command or PM2 config:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | Hub listening port | `3000` |
 | `DB_URL` | Internal PostgREST URL | `http://localhost:3001` |
-| `HUB_PASSWORD` | Access token for the dashboard | `test123` |
-| `HUB_TRUSTED_IPS` | Comma-separated list of IPs to skip password | `127.0.0.1` |
+| `JWT_SECRET` | Secret for signing JWTs — **set a strong random value!** | ephemeral (resets on restart) |
+| `INITIAL_ADMIN_PASSWORD` | Password for the auto-created admin account | `Admin1234!` |
 
 #### C. Gateway Registry
 To monitor multiple Fritz!Boxes, edit [config.json](./config.json):
@@ -89,6 +88,233 @@ To monitor multiple Fritz!Boxes, edit [config.json](./config.json):
 ```bash
 pm2 start root.config.cjs
 ```
+
+---
+
+---
+
+## 🔐 Auth Setup — Step-by-Step Tutorial
+
+> Everything below assumes you are **SSH'd into the Pi** (or server) that runs Cockpit Hub.
+> The tutorial covers a fresh install as well as upgrading an existing deployment.
+
+---
+
+### Step 1 — SSH into your Hub
+
+```bash
+ssh archimedes@YOUR_PI_IP
+# e.g.
+ssh archimedes@192.168.188.23
+```
+
+Navigate to the Cockpit directory:
+
+```bash
+cd ~/cockpit
+```
+
+---
+
+### Step 2 — Pull the latest code & install dependencies
+
+```bash
+git pull origin main
+npm install
+```
+
+> `npm install` picks up the new packages (`jose`, `bcryptjs`, `otplib`, `qrcode`).
+> The old `pg` package is no longer required — the hub talks to PostgreSQL exclusively through PostgREST.
+
+---
+
+### Step 3 — Create the `hub_users` table
+
+Run the auth migration against the Cockpit database.
+The Docker container is called `cockpit-db`:
+
+```bash
+cat setup_auth.sql | docker exec -i cockpit-db psql -U cockpit_user -d cockpit
+```
+
+Expected output:
+
+```
+CREATE TABLE
+GRANT
+GRANT
+NOTIFY
+```
+
+Verify the table was created:
+
+```bash
+docker exec -i cockpit-db psql -U cockpit_user -d cockpit -c "\d hub_users"
+```
+
+You should see columns: `id`, `username`, `password_hash`, `role`, `totp_secret`, `totp_enabled`, `created_at`.
+
+---
+
+### Step 4 — Generate a strong JWT secret
+
+Sessions are signed with a secret key. If it is not set, the hub generates an ephemeral one and **all sessions are lost on every restart**.
+
+```bash
+# Generate a 32-byte random secret and copy the output
+node -e "const {randomBytes}=require('crypto'); console.log(randomBytes(32).toString('hex'))"
+```
+
+Save the output — you'll use it in the next step.
+
+---
+
+### Step 5 — Set environment variables in PM2
+
+Open the PM2 ecosystem file:
+
+```bash
+nano root.config.cjs
+```
+
+Find the `hub` app entry and add `JWT_SECRET` to `env`:
+
+```js
+{
+  name: 'cockpit-hub',
+  script: 'server/index.js',
+  env: {
+    PORT:                    3000,
+    DB_URL:                  'http://localhost:3001',
+    JWT_SECRET:              'PASTE_YOUR_GENERATED_SECRET_HERE',
+    INITIAL_ADMIN_PASSWORD:  'ChooseAStrongPassword123!'   // only used on first boot
+  }
+}
+```
+
+Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`).
+
+> **Tip:** `INITIAL_ADMIN_PASSWORD` is only read once — when the `hub_users` table is empty.
+> You can remove it from the config after the first login.
+
+---
+
+### Step 6 — Build the frontend & restart the hub
+
+```bash
+npm run build
+pm2 restart cockpit-hub
+```
+
+Watch the startup log:
+
+```bash
+pm2 logs cockpit-hub --lines 30
+```
+
+On a fresh install you will see:
+
+```
+⚠️  Default admin created → username: admin  password: ChooseAStrongPassword123!
+⚠️  Change this password immediately via /users !
+✅  Auth DB ready
+🚀  cockpit hub v6.8.1 | 🌐 http://localhost:3000 | 🔐 JWT auth (PostgREST backend)
+```
+
+---
+
+### Step 7 — First login
+
+Open `http://YOUR_PI_IP:3000` in your browser.
+
+You will see the **Sign In** screen. Log in with:
+
+| Field    | Value                            |
+|----------|----------------------------------|
+| Username | `admin`                          |
+| Password | the value you set in Step 5      |
+
+> Passwords are **SHA-256 hashed in the browser** before being sent.
+> The server stores only a `bcrypt(sha256)` hash — your plaintext password is never transmitted.
+
+---
+
+### Step 8 — Change the default password immediately
+
+1. Click your username chip in the **top-right corner** of the dashboard.
+2. Select **Account & Security**.
+3. Fill in **Current Password**, **New Password**, and **Confirm New Password**.
+4. Click **Update Password**.
+
+---
+
+### Step 9 — Create additional users
+
+1. Click the **Users** tab in the top navigation bar (visible to admins only).
+2. Click **+ New User**.
+3. Fill in username, password, and choose a role:
+
+| Role | Can view fleet | Can run commands | Can manage users |
+|------|:-:|:-:|:-:|
+| `viewer` | ✅ | ❌ | ❌ |
+| `operator` | ✅ | ✅ | ❌ |
+| `admin` | ✅ | ✅ | ✅ |
+
+---
+
+### Step 10 — (Optional) Enable Two-Factor Authentication
+
+TOTP works with any standard authenticator app (Google Authenticator, Authy, 1Password, etc.).
+
+1. Click your username chip → **Account & Security**.
+2. Under **Two-Factor Authentication**, click **Enable 2FA**.
+3. Scan the QR code with your authenticator app.
+4. Enter the 6-digit code to confirm and activate.
+
+From the next login you will be asked for your TOTP code after entering your password.
+
+**Admin: reset a user's 2FA**
+If a user loses their authenticator device, go to **Users**, find the user, and click **Reset 2FA**. They can re-enroll on their next login.
+
+---
+
+### Step 11 — (Optional) Update the Manual Update command
+
+The `/api/admin/update` endpoint now requires a valid JWT instead of the old plain password.
+Use the dashboard button (**↑ Update Hub** in the Hub Services section) or run:
+
+```bash
+# From the Pi itself (still works as before via the local apiFetch flow)
+# Trigger via the UI — no raw curl call needed anymore.
+```
+
+---
+
+### Troubleshooting
+
+**`hub_users table missing` in logs**
+→ You skipped Step 3. Run the migration:
+```bash
+cat setup_auth.sql | docker exec -i cockpit-db psql -U cockpit_user -d cockpit
+```
+
+**`JWT_SECRET not set — sessions reset on restart`**
+→ You skipped Step 4/5. Add `JWT_SECRET` to your PM2 config and `pm2 restart cockpit-hub`.
+
+**Locked out (forgot password)**
+→ Reset it directly via Docker:
+```bash
+# 1. Generate a new SHA-256 hash of your chosen password in Node:
+node -e "const c=require('crypto'); console.log(c.createHash('sha256').update('MyNewPassword!').digest('hex'))"
+
+# 2. Paste the hex output into the next command as SHA256_HEX:
+docker exec -i cockpit-db psql -U cockpit_user -d cockpit -c \
+  "UPDATE hub_users SET password_hash = crypt('SHA256_HEX_HERE', gen_salt('bf',12)) WHERE username='admin';"
+```
+> **Note:** The above uses pgcrypto's `crypt()`. Alternatively, generate the bcrypt hash in Node and `UPDATE` with the raw hash string.
+
+**`Invalid or expired token` after restart**
+→ `JWT_SECRET` is not persisted — see Step 4/5.
 
 ---
 
@@ -157,8 +383,8 @@ Download only the necessary file to the machine you want to monitor:
 | Task | File | Detail |
 |------|------|--------|
 | **DB Password** | `docker-compose.yml` | Update `POSTGRES_PASSWORD` and `PGRST_DB_URI`. |
-| **Hub Password** | `server/index.js` (or ENV) | Set a strong `HUB_PASSWORD`. |
-| **Trusted IPs** | `server/index.js` (or ENV) | Add your main PC IP to `HUB_TRUSTED_IPS` for easy access. |
+| **JWT Secret** | `root.config.cjs` (ENV) | Set a strong random `JWT_SECRET` — see auth tutorial Step 4. |
+| **Auth Migration** | `setup_auth.sql` | Run once to create `hub_users` table — see auth tutorial Step 3. |
 | **Fritz!Box Auth** | `config.json` | Ensure every gateway has the correct `admin` password. |
 | **DB Persistence** | `docker-compose.yml` | Verify the `cockpit_db_data` volume is kept across restarts. |
 
@@ -209,12 +435,10 @@ With these settings applied, only `@jakobneri` can push directly or bypass the P
 
 ### 🛠️ Maintenance & Tips
 
--   **Manual Update**: Trigger a Hub update (git pull + build + restart) immediately.
+-   **Manual Update**: Use the **↑ Update Hub** button in the Hub Services section of the dashboard (requires `operator` or `admin` role). Or via curl with a valid JWT:
     ```bash
-    # From the Pi (Trusted IP)
-    curl -X POST http://localhost:3000/api/admin/update
-    # From outside (with password)
-    curl -X POST "http://hub_ip:3000/api/admin/update?token=YOUR_PASSWORD"
+    curl -X POST http://localhost:3000/api/admin/update \
+      -H "Authorization: Bearer YOUR_JWT_TOKEN"
     ```
 -   **Debug DB**: Check PostgREST and RPC visibility.
     ```bash
