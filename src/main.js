@@ -266,6 +266,8 @@ function applyRoleUI() {
   // Show Users nav only for admins
   const navUsers = document.getElementById('nav-users');
   if (navUsers) navUsers.style.display = user.role === 'admin' ? '' : 'none';
+  const mobileNavUsers = document.getElementById('mobile-nav-users');
+  if (mobileNavUsers) mobileNavUsers.style.display = user.role === 'admin' ? '' : 'none';
 
   // Show/hide services section for viewer
   const svcSection = document.getElementById('services-section');
@@ -308,6 +310,8 @@ window.navigateTo = (path) => {
     document.getElementById('users-page').style.display  = '';
     document.getElementById('nav-fleet').classList.remove('active');
     document.getElementById('nav-users').classList.add('active');
+    document.getElementById('mobile-nav-fleet')?.classList.remove('active');
+    document.getElementById('mobile-nav-users')?.classList.add('active');
     window.history.pushState({}, '', '/users');
     closeDrawer();
     loadUsersPage();
@@ -317,6 +321,8 @@ window.navigateTo = (path) => {
     document.getElementById('users-page').style.display  = 'none';
     document.getElementById('nav-fleet').classList.add('active');
     document.getElementById('nav-users')?.classList.remove('active');
+    document.getElementById('mobile-nav-fleet')?.classList.add('active');
+    document.getElementById('mobile-nav-users')?.classList.remove('active');
     window.history.pushState({}, '', '/');
   }
   closeUserMenu();
