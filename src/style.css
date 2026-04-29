@@ -688,15 +688,121 @@ h3 { font-size: 14px; font-weight: 600; }
   color: var(--text-secondary); text-transform: uppercase; margin-bottom: 14px;
 }
 
+/* ── Mobile Bottom Nav (hidden on desktop) ───────────────────────── */
+.mobile-bottom-nav { display: none; }
+
 /* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .page { padding: 14px; gap: 28px; }
+
+  /* ── Layout ───────────────────────────────────────────── */
+  .page { padding: 12px 12px 76px; gap: 20px; }
+
+  /* ── Top bar: strip to essentials ─────────────────────── */
+  .top-bar { padding: 0 14px; }
+  .brand-domain, .brand-sep { display: none; }
+  .brand { margin-right: 0; }
+  .top-nav { display: none; }
   .top-kpis { display: none; }
-  .top-nav .nav-tab { padding: 0 12px; font-size: 11px; }
+  .top-status { margin-left: auto; border-left: none; padding-left: 10px; gap: 6px; }
+  .version-tag { display: none; }
+  .top-user { border-left: none; padding-left: 10px; }
+  #user-chip-name,
+  #user-chip-role,
+  .user-chip [data-lucide="chevron-down"] { display: none; }
+
+  /* ── Detail drawer: full screen ───────────────────────── */
   .detail-drawer { width: 100vw; }
-  .stat-strip { grid-template-columns: repeat(2,1fr); }
+  .stat-strip { grid-template-columns: repeat(2, 1fr); }
+
+  /* ── Fleet grids ──────────────────────────────────────── */
   .nodes-grid { grid-template-columns: 1fr; }
-  .stat-tiles-grid { grid-template-columns: repeat(2,1fr); }
+  .stat-tiles-grid { grid-template-columns: repeat(2, 1fr); }
   .gw-grid { grid-template-columns: 1fr 1fr; }
-  .users-table th:nth-child(4), .users-table td:nth-child(4) { display: none; }
+
+  /* ── Users table → card list ──────────────────────────── */
+  .users-table-wrap {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .users-table          { display: block; }
+  .users-table thead    { display: none; }
+  .users-table tbody    { display: flex; flex-direction: column; gap: 8px; }
+  .users-table tbody tr {
+    display: grid;
+    grid-template-areas:
+      "name    role"
+      "twofa   twofa"
+      "actions actions";
+    grid-template-columns: 1fr auto;
+    gap: 6px 12px;
+    background: var(--s1);
+    border: 1px solid var(--b);
+    border-radius: var(--r);
+    padding: 14px 16px;
+  }
+  .users-table tbody td               { padding: 0; border: none; display: flex; align-items: center; }
+  .users-table tbody td:nth-child(1)  { grid-area: name; font-size: 14px; }
+  .users-table tbody td:nth-child(2)  { grid-area: role; justify-content: flex-end; }
+  .users-table tbody td:nth-child(3)  { grid-area: twofa; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .users-table tbody td:nth-child(3)::before {
+    content: "2FA";
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .users-table tbody td:nth-child(4) { display: none; }
+  .users-table tbody td:nth-child(5) {
+    grid-area: actions;
+    padding-top: 10px;
+    border-top: 1px solid var(--b) !important;
+    justify-content: flex-end;
+  }
+  .users-table tbody td:nth-child(5) > div { gap: 6px; }
+  .users-table tbody td:nth-child(5) button { flex: 1; min-width: 72px; justify-content: center; }
+
+  /* ── Mobile bottom navigation ─────────────────────────── */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: var(--s1);
+    border-top: 1px solid var(--b);
+    z-index: 150;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color .15s;
+    padding: 6px 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-nav-btn.active { color: var(--accent); }
+  .mobile-nav-btn svg {
+    width: 20px; height: 20px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
