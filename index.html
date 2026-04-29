@@ -12,27 +12,120 @@
 </head>
 <body>
 
-<div class="layout">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOGIN SCREEN — shown by default, hidden after successful auth
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="login-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-domain">nerifeige.de</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-app">cockpit</span>
+    </div>
+    <h2 class="auth-title">Sign In</h2>
+    <form id="login-form" onsubmit="return false;">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="login-username" autocomplete="username" placeholder="admin" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" />
+      </div>
+      <div id="login-error" class="auth-error" style="display:none;"></div>
+      <button type="submit" class="btn-primary auth-submit" id="login-btn" onclick="handleLogin()">
+        Sign In
+      </button>
+    </form>
+    <p class="auth-hint">Passwords are hashed client-side before transmission.</p>
+  </div>
+</div>
 
-  <!-- ── Top Bar ───────────────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TOTP SCREEN — shown after password when 2FA is enabled
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="totp-screen" class="auth-screen" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-domain">nerifeige.de</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-app">cockpit</span>
+    </div>
+    <h2 class="auth-title">Two-Factor Auth</h2>
+    <p class="auth-subtitle">Enter the 6-digit code from your authenticator app.</p>
+    <form id="totp-form" onsubmit="return false;">
+      <div class="form-group">
+        <input type="text" id="totp-code" inputmode="numeric" maxlength="6"
+               autocomplete="one-time-code" placeholder="000 000"
+               class="totp-input" />
+      </div>
+      <div id="totp-error" class="auth-error" style="display:none;"></div>
+      <button type="submit" class="btn-primary auth-submit" id="totp-btn" onclick="handleTotpVerify()">
+        Verify
+      </button>
+      <button type="button" class="btn-ghost auth-back" onclick="cancelTotp()">
+        ← Back to login
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MAIN APP — hidden until authenticated
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="layout" id="app" style="display:none;">
+
+  <!-- ── Top Bar ──────────────────────────────────────────────────────── -->
   <header class="top-bar">
     <div class="brand">
       <span class="brand-domain">nerifeige.de</span>
       <span class="brand-sep">·</span>
       <span class="brand-app">cockpit</span>
     </div>
+
+    <!-- Page navigation tabs -->
+    <nav class="top-nav" id="top-nav">
+      <button class="nav-tab active" id="nav-fleet" onclick="navigateTo('/')">Fleet</button>
+      <button class="nav-tab" id="nav-users" onclick="navigateTo('/users')" style="display:none;">Users</button>
+    </nav>
+
     <div class="top-kpis" id="top-kpis"></div>
+
     <div class="top-status">
       <div class="heartbeat" id="heartbeat-dot"></div>
       <span class="live-label">live</span>
       <span class="version-tag">v9.0.0</span>
     </div>
+
+    <!-- Logged-in user chip -->
+    <div class="top-user" id="top-user">
+      <button class="user-chip" onclick="toggleUserMenu()" id="user-chip-btn">
+        <span class="user-chip-icon">
+          <i data-lucide="user" style="width:13px;height:13px;"></i>
+        </span>
+        <span id="user-chip-name">—</span>
+        <span class="role-badge" id="user-chip-role">—</span>
+        <i data-lucide="chevron-down" style="width:11px;height:11px;opacity:.5;"></i>
+      </button>
+      <div class="user-menu" id="user-menu" style="display:none;">
+        <div class="user-menu-header">
+          <div class="user-menu-name" id="user-menu-name">—</div>
+          <div class="user-menu-role" id="user-menu-role">—</div>
+        </div>
+        <button class="user-menu-item" onclick="openAccountModal()">
+          <i data-lucide="settings" style="width:13px;height:13px;"></i> Account &amp; Security
+        </button>
+        <div class="user-menu-sep"></div>
+        <button class="user-menu-item danger" onclick="logout()">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i> Sign Out
+        </button>
+      </div>
+    </div>
   </header>
 
-  <!-- ── Main Page ─────────────────────────────────────────────── -->
-  <main class="page">
+  <!-- ── Fleet Page ────────────────────────────────────────────────────── -->
+  <main class="page" id="fleet-page">
 
-    <!-- FLEET SECTION -->
     <section class="page-section">
       <div class="section-hd">
         <span class="section-label">Fleet</span>
@@ -41,7 +134,6 @@
       <div class="nodes-grid" id="nodes-container"></div>
     </section>
 
-    <!-- FLEET STATS SECTION -->
     <section class="page-section">
       <div class="section-hd">
         <span class="section-label">Fleet Stats</span>
@@ -85,7 +177,6 @@
           <span class="stat-tile-sub" id="stat-nodes-sub">of fleet online</span>
         </div>
       </div>
-      <!-- Hidden canvases kept for JS chart-update compat -->
       <div style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;">
         <canvas id="hubComputeChart"></canvas>
         <canvas id="hubNetChart"></canvas>
@@ -93,11 +184,11 @@
       </div>
     </section>
 
-    <!-- SERVICES SECTION -->
-    <section class="page-section">
+    <!-- Services — only rendered for operator/admin -->
+    <section class="page-section" id="services-section">
       <div class="section-hd">
         <span class="section-label">Hub Services</span>
-        <button class="btn-ghost" onclick="triggerHubUpdate()">↑ Update Hub</button>
+        <button class="btn-ghost" id="hub-update-btn" onclick="triggerHubUpdate()">↑ Update Hub</button>
       </div>
       <div class="nodes-grid" id="pi-services-container">
         <p style="color:var(--text-secondary);padding:1rem;">Loading services…</p>
@@ -106,9 +197,36 @@
 
   </main>
 
-  <!-- ── Node Detail Drawer ─────────────────────────────────────── -->
-  <aside class="detail-drawer" id="detail-drawer">
+  <!-- ── Users Page ────────────────────────────────────────────────────── -->
+  <main class="page" id="users-page" style="display:none;">
+    <section class="page-section">
+      <div class="section-hd">
+        <span class="section-label">User Management</span>
+        <button class="btn-primary" onclick="openCreateUserModal()" style="padding:6px 14px;font-size:12px;">
+          + New User
+        </button>
+      </div>
+      <div class="users-table-wrap">
+        <table class="technical-table users-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>2FA</th>
+              <th>Created</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
+  <!-- ── Node Detail Drawer ─────────────────────────────────────────────── -->
+  <aside class="detail-drawer" id="detail-drawer">
     <div class="drawer-hd">
       <div class="drawer-node-info">
         <div class="drawer-hostname" id="drawer-hostname">—</div>
@@ -123,32 +241,15 @@
       </div>
     </div>
 
-    <!-- Stat strip -->
     <div class="stat-strip" id="detail-stat-strip">
-      <div class="stat-item">
-        <span class="stat-label">CPU</span>
-        <span class="stat-value"><span id="cpu-load">--</span><span class="stat-unit">%</span></span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Memory</span>
-        <span class="stat-value"><span id="ram-usage">--</span><span class="stat-unit">%</span></span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Temp</span>
-        <span class="stat-value" id="strip-temp">--</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">Uptime</span>
-        <span class="stat-value" id="strip-uptime" style="font-size:13px;padding-top:5px;">--</span>
-      </div>
+      <div class="stat-item"><span class="stat-label">CPU</span><span class="stat-value"><span id="cpu-load">--</span><span class="stat-unit">%</span></span></div>
+      <div class="stat-item"><span class="stat-label">Memory</span><span class="stat-value"><span id="ram-usage">--</span><span class="stat-unit">%</span></span></div>
+      <div class="stat-item"><span class="stat-label">Temp</span><span class="stat-value" id="strip-temp">--</span></div>
+      <div class="stat-item"><span class="stat-label">Uptime</span><span class="stat-value" id="strip-uptime" style="font-size:13px;padding-top:5px;">--</span></div>
     </div>
 
     <div class="drawer-body">
-
-      <!-- Charts section -->
       <section id="details-charts">
-
-        <!-- CPU -->
         <div id="cpu-metric-box" class="drawer-chart-card">
           <div class="drawer-chart-hd">
             <span class="chart-card-label">CPU Usage</span>
@@ -157,8 +258,6 @@
           <div class="chart-container" style="height:110px;"><canvas id="cpuChart"></canvas></div>
           <div class="chart-footer">System Load · 10m history</div>
         </div>
-
-        <!-- Memory -->
         <div id="ram-metric-box" class="drawer-chart-card">
           <div class="drawer-chart-hd">
             <span class="chart-card-label">Memory</span>
@@ -166,8 +265,6 @@
           </div>
           <div class="chart-container" style="height:110px;"><canvas id="ramChart"></canvas></div>
         </div>
-
-        <!-- Network -->
         <div id="net-metric-box" class="drawer-chart-card">
           <div class="drawer-chart-hd">
             <span class="chart-card-label">Network</span>
@@ -179,37 +276,21 @@
           <div class="chart-container" style="height:110px;"><canvas id="netChart"></canvas></div>
           <div class="chart-footer">Realtime · 10m history</div>
         </div>
-
-        <!-- Gateway info -->
         <div id="gateway-info" class="drawer-section-card" style="display:none;">
           <div class="drawer-section-title">Gateway Connection</div>
           <div class="gw-grid">
-            <div class="gw-item">
-              <span class="gw-label">DSL Sync</span>
-              <span class="gw-val" id="gw-dsl-sync">--</span>
-            </div>
-            <div class="gw-item">
-              <span class="gw-label">VPN Status</span>
-              <span id="gw-vpn-status" class="temp-badge cool">--</span>
-            </div>
-            <div class="gw-item">
-              <span class="gw-label">Ext. IP</span>
-              <span class="gw-val accent" id="gw-ext-ip">--</span>
-            </div>
+            <div class="gw-item"><span class="gw-label">DSL Sync</span><span class="gw-val" id="gw-dsl-sync">--</span></div>
+            <div class="gw-item"><span class="gw-label">VPN Status</span><span id="gw-vpn-status" class="temp-badge cool">--</span></div>
+            <div class="gw-item"><span class="gw-label">Ext. IP</span><span class="gw-val accent" id="gw-ext-ip">--</span></div>
           </div>
         </div>
-
-        <!-- Storage -->
         <section id="details-storage" class="drawer-section-card">
           <div class="drawer-section-title">Storage</div>
           <div class="storage-grid">
             <div class="storage-item">
               <div class="storage-header">
                 <div class="storage-icon root"></div>
-                <div class="storage-info">
-                  <span class="label">Root</span>
-                  <h3 id="root-path">/</h3>
-                </div>
+                <div class="storage-info"><span class="label">Root</span><h3 id="root-path">/</h3></div>
                 <span id="root-percent" class="storage-val">--%</span>
               </div>
               <div class="progress-bar"><div id="root-bar" class="progress-fill"></div></div>
@@ -218,10 +299,8 @@
           </div>
           <div id="drives-container" class="jobs-grid" style="margin-top:12px;border-top:1px solid var(--b);padding-top:12px;"></div>
         </section>
-
       </section>
 
-      <!-- Raw data section -->
       <section id="details-raw" style="display:none;">
         <div class="drawer-section-card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -245,14 +324,126 @@
           </div>
         </div>
       </section>
-
-    </div><!-- /drawer-body -->
+    </div>
   </aside>
 
-  <!-- Drawer backdrop -->
   <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 
-</div><!-- /layout -->
+</div><!-- /#app -->
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODALS
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Gateway Logs -->
+<div id="logs-modal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Logs</h2>
+      <span class="close-btn" onclick="closeLogs()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <pre id="modalLogsText">Loading…</pre>
+    </div>
+  </div>
+</div>
+
+<!-- Account & Security modal -->
+<div id="account-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:420px;">
+    <div class="modal-header">
+      <h2>Account &amp; Security</h2>
+      <span class="close-btn" onclick="closeAccountModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <!-- Change password -->
+      <div class="modal-section">
+        <div class="modal-section-title">Change Password</div>
+        <div class="form-group">
+          <label class="form-label">Current Password</label>
+          <input type="password" id="acc-current-pw" autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input type="password" id="acc-new-pw" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm New Password</label>
+          <input type="password" id="acc-confirm-pw" autocomplete="new-password" />
+        </div>
+        <div id="acc-pw-error" class="auth-error" style="display:none;"></div>
+        <button class="btn-primary" onclick="changePassword()" style="margin-top:4px;">Update Password</button>
+      </div>
+
+      <!-- TOTP -->
+      <div class="modal-section" style="margin-top:20px;padding-top:20px;border-top:1px solid var(--b);">
+        <div class="modal-section-title">Two-Factor Authentication</div>
+        <div id="totp-status-area"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOTP Setup modal -->
+<div id="totp-setup-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:380px;">
+    <div class="modal-header">
+      <h2>Set Up 2FA</h2>
+      <span class="close-btn" onclick="closeTotpSetup()">&times;</span>
+    </div>
+    <div class="modal-body" style="text-align:center;">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px;">
+        Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
+      </p>
+      <img id="totp-qr-img" src="" alt="QR Code" style="width:200px;height:200px;border-radius:8px;background:#fff;padding:8px;" />
+      <details style="margin-top:12px;text-align:left;">
+        <summary style="font-size:11px;color:var(--text-secondary);cursor:pointer;">Manual entry</summary>
+        <code id="totp-secret-text" style="font-size:11px;word-break:break-all;display:block;margin-top:6px;padding:8px;background:var(--s3);border-radius:4px;"></code>
+      </details>
+      <div class="form-group" style="margin-top:16px;text-align:left;">
+        <label class="form-label">Enter the 6-digit code to confirm</label>
+        <input type="text" id="totp-setup-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000" />
+      </div>
+      <div id="totp-setup-error" class="auth-error" style="display:none;"></div>
+      <button class="btn-primary" onclick="confirmTotpSetup()" style="width:100%;margin-top:8px;">Activate 2FA</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create/Edit User modal -->
+<div id="user-form-modal" class="modal" style="display:none;">
+  <div class="modal-content" style="max-width:380px;">
+    <div class="modal-header">
+      <h2 id="user-form-title">New User</h2>
+      <span class="close-btn" onclick="closeUserFormModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="user-form-id" value="" />
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="user-form-username" autocomplete="off" />
+      </div>
+      <div class="form-group" id="user-form-pw-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="user-form-password" autocomplete="new-password" />
+      </div>
+      <div class="form-group" id="user-form-pw-hint-group" style="display:none;">
+        <label class="form-label">New Password <span style="color:var(--text-muted)">(leave empty to keep current)</span></label>
+        <input type="password" id="user-form-password-edit" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select id="user-form-role">
+          <option value="viewer">Viewer — read-only</option>
+          <option value="operator">Operator — commands + view</option>
+          <option value="admin">Admin — full access</option>
+        </select>
+      </div>
+      <div id="user-form-error" class="auth-error" style="display:none;"></div>
+      <button class="btn-primary" onclick="submitUserForm()" style="width:100%;margin-top:8px;" id="user-form-submit">Create</button>
+    </div>
+  </div>
+</div>
 
 <!-- Templates -->
 <template id="jobs-template">
@@ -281,33 +472,6 @@
     </div>
   </section>
 </template>
-
-<!-- Auth modal -->
-<div id="auth-modal" class="modal" style="display:none;">
-  <div class="modal-content" style="max-width:360px;">
-    <div class="modal-header">
-      <h2>Authentication Required</h2>
-    </div>
-    <div class="modal-body">
-      <p style="margin-bottom:12px;color:var(--text-secondary);font-size:13px;line-height:1.6;">Enter the hub password to continue.</p>
-      <input type="password" id="hub-password-input" placeholder="Password" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')submitPassword()">
-      <button class="btn-primary" style="width:100%;padding:10px;" onclick="submitPassword()">Unlock</button>
-    </div>
-  </div>
-</div>
-
-<!-- Logs modal -->
-<div id="logs-modal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 id="modalTitle">Logs</h2>
-      <span class="close-btn" onclick="closeLogs()">&times;</span>
-    </div>
-    <div class="modal-body">
-      <pre id="modalLogsText">Loading…</pre>
-    </div>
-  </div>
-</div>
 
 <script type="module" src="/src/main.js"></script>
 <script>
