@@ -29,3 +29,17 @@ GRANT USAGE, SELECT ON SEQUENCE hub_users_id_seq TO cockpit_user;
 
 -- Reload PostgREST schema cache so it picks up the new table immediately.
 NOTIFY pgrst, 'reload schema';
+
+-- Refresh tokens for JWT rotation (15 min access token + 7 day refresh token)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES hub_users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,   -- SHA-256 of the raw token (never store raw)
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+GRANT ALL ON TABLE refresh_tokens TO cockpit_user;
+GRANT USAGE, SELECT ON SEQUENCE refresh_tokens_id_seq TO cockpit_user;
+
+NOTIFY pgrst, 'reload schema';

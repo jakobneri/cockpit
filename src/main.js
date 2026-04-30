@@ -10,14 +10,16 @@ const REFRESH_INTERVAL_STATS = 5000;
 let currentView      = 'fleet'; // 'fleet' | 'users'
 let detailViewMode   = 'chart';
 let selectedHostname = null;
-let statsTimer  = null;
-let fleetTimer  = null;
-let piTimer     = null;
+let statsTimer       = null;
+let fleetTimer       = null;
+let piTimer          = null;
+let tokenRefreshTimer = null;
 
 function clearAllTimers() {
-  if (fleetTimer) { clearInterval(fleetTimer); fleetTimer = null; }
-  if (statsTimer) { clearInterval(statsTimer); statsTimer = null; }
-  if (piTimer)    { clearInterval(piTimer);    piTimer    = null; }
+  if (fleetTimer)        { clearInterval(fleetTimer);        fleetTimer        = null; }
+  if (statsTimer)        { clearInterval(statsTimer);        statsTimer        = null; }
+  if (piTimer)           { clearInterval(piTimer);           piTimer           = null; }
+  if (tokenRefreshTimer) { clearInterval(tokenRefreshTimer); tokenRefreshTimer = null; }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -57,12 +59,45 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── apiFetch — adds JWT bearer token ─────────────────────────────────────────
+// ── Silent token refresh via HttpOnly refresh cookie ─────────────────────────
+let _refreshPromise = null;
+
+async function tryRefresh() {
+  // Deduplicate concurrent refresh attempts
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch('/api/auth/refresh', { method: 'POST' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      setToken(data.token);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
+}
+
+// ── apiFetch — adds JWT bearer token, retries once after silent refresh ───────
 async function apiFetch(url, options = {}) {
-  const token = getToken();
-  const headers = { ...options.headers };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(url, { ...options, headers });
+  const doFetch = (tok) => {
+    const headers = { ...options.headers };
+    if (tok) headers['Authorization'] = `Bearer ${tok}`;
+    return fetch(url, { ...options, headers });
+  };
+
+  let res = await doFetch(getToken());
+
+  if (res.status === 401) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      res = await doFetch(getToken());
+    }
+  }
+
   if (res.status === 401) {
     clearToken();
     clearAllTimers();
@@ -217,10 +252,12 @@ window.cancelTotp = () => {
 };
 
 // ── Logout ────────────────────────────────────────────────────────────────────
-window.logout = () => {
+window.logout = async () => {
   clearAllTimers();
   clearToken();
   closeUserMenu();
+  // Revoke refresh token server-side + clear the HttpOnly cookie
+  try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
   showLoginScreen();
 };
 
@@ -246,6 +283,17 @@ function initApp() {
 
   setInterval(sendActiveHeartbeat, 10000);
   sendActiveHeartbeat();
+
+  // Proactively refresh access token before it expires (check every 60 s)
+  tokenRefreshTimer = setInterval(async () => {
+    const payload = parseJwt(getToken());
+    if (!payload) return;
+    const msLeft = payload.exp * 1000 - Date.now();
+    if (msLeft < 3 * 60 * 1000) {
+      const ok = await tryRefresh();
+      if (!ok) { clearToken(); clearAllTimers(); showLoginScreen(); }
+    }
+  }, 60_000);
 }
 
 // ── Role-based UI ─────────────────────────────────────────────────────────────
@@ -1237,10 +1285,16 @@ async function sendActiveHeartbeat() {
 //  BOOT
 // ════════════════════════════════════════════════════════════════════════════
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (isAuthenticated()) {
     initApp();
   } else {
-    showLoginScreen();
+    // Access token missing/expired — try silent refresh via HttpOnly cookie
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      initApp();
+    } else {
+      showLoginScreen();
+    }
   }
 });
