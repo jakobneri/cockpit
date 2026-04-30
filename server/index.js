@@ -92,8 +92,41 @@ async function initDB() {
   }
 }
 
+// ── Cookie helper (no extra dep needed — res.cookie() is built into Express) ──
+function getCookie(req, name) {
+  const raw   = req.headers.cookie || '';
+  const match = raw.split(';').find(c => c.trim().startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.trim().slice(name.length + 1)) : null;
+}
+
+const REFRESH_COOKIE    = 'cockpit_rt';
+const REFRESH_TTL_MS    = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+async function issueRefreshToken(userId, res) {
+  const raw       = randomBytes(32).toString('hex');
+  const tokenHash = createHash('sha256').update(raw).digest('hex');
+  const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
+
+  // One active refresh token per user — revoke all previous ones
+  await pgrest(`/refresh_tokens?user_id=eq.${userId}`, {
+    method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+  });
+  await pgrest('/refresh_tokens', {
+    method: 'POST',
+    headers: { 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ user_id: userId, token_hash: tokenHash, expires_at: expiresAt.toISOString() })
+  });
+
+  res.cookie(REFRESH_COOKIE, raw, {
+    httpOnly: true,
+    sameSite: 'Lax',
+    expires:  expiresAt,
+    path:     '/'
+  });
+}
+
 // ── JWT helpers ───────────────────────────────────────────────────────────────
-async function signToken(payload, expiresIn = '8h') {
+async function signToken(payload, expiresIn = '15m') {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -192,6 +225,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    await issueRefreshToken(user.id, res);
     hubLog.success(`Login: ${user.username} (${user.role}) from ${req.ip}`);
     res.json({ token, username: user.username, role: user.role });
   } catch (err) {
@@ -219,12 +253,62 @@ app.post('/api/auth/totp/verify', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid TOTP code' });
 
     const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    await issueRefreshToken(user.id, res);
     hubLog.success(`TOTP login: ${user.username} from ${req.ip}`);
     res.json({ token, username: user.username, role: user.role });
   } catch (err) {
     hubLog.error(`TOTP verify error: ${err.message}`);
     res.status(500).json({ error: 'Internal error' });
   }
+});
+
+// POST /api/auth/refresh — silent token rotation via HttpOnly cookie
+app.post('/api/auth/refresh', async (req, res) => {
+  const raw = getCookie(req, REFRESH_COOKIE);
+  if (!raw) return res.status(401).json({ error: 'No refresh token' });
+
+  const tokenHash = createHash('sha256').update(raw).digest('hex');
+  try {
+    const r = await pgrest(
+      `/refresh_tokens?token_hash=eq.${tokenHash}&select=id,user_id,expires_at&limit=1`
+    );
+    const [rt] = await r.json();
+    if (!rt) return res.status(401).json({ error: 'Invalid refresh token' });
+
+    if (new Date(rt.expires_at) < new Date()) {
+      await pgrest(`/refresh_tokens?id=eq.${rt.id}`, { method: 'DELETE', headers: { 'Prefer': 'return=minimal' } });
+      res.clearCookie(REFRESH_COOKIE, { path: '/' });
+      return res.status(401).json({ error: 'Refresh token expired' });
+    }
+
+    const ur = await pgrest(`/hub_users?id=eq.${rt.user_id}&select=id,username,role&limit=1`);
+    const [user] = await ur.json();
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    // Rotate: delete old, issue new
+    await issueRefreshToken(user.id, res);
+    const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    hubLog.info(`Token refreshed: ${user.username}`);
+    res.json({ token, username: user.username, role: user.role });
+  } catch (err) {
+    hubLog.error(`Refresh error: ${err.message}`);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// POST /api/auth/logout — revoke refresh token + clear cookie
+app.post('/api/auth/logout', async (req, res) => {
+  const raw = getCookie(req, REFRESH_COOKIE);
+  if (raw) {
+    const tokenHash = createHash('sha256').update(raw).digest('hex');
+    try {
+      await pgrest(`/refresh_tokens?token_hash=eq.${tokenHash}`, {
+        method: 'DELETE', headers: { 'Prefer': 'return=minimal' }
+      });
+    } catch (_) {}
+  }
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
+  res.json({ success: true });
 });
 
 // ════════════════════════════════════════════════════════════════════════════
