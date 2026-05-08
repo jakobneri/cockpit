@@ -193,7 +193,58 @@ app.use((req, res, next) => {
 // PUBLIC — no JWT required
 // ════════════════════════════════════════════════════════════════════════════
 
-// POST /api/auth/login
+// POST /api/auth/login-method
+// Body: { username } — returns which auth method to show (totp or password)
+// Always responds successfully to prevent username enumeration.
+app.post('/api/auth/login-method', async (req, res) => {
+  const { username } = req.body || {};
+  if (!username) return res.status(400).json({ error: 'username required' });
+
+  try {
+    const r = await pgrest(
+      `/hub_users?username=eq.${encodeURIComponent(username.toLowerCase().trim())}&select=totp_enabled&limit=1`
+    );
+    const [user] = await r.json();
+    // If user doesn't exist, default to password to avoid enumeration
+    res.json({ method: user?.totp_enabled ? 'totp' : 'password' });
+  } catch (err) {
+    hubLog.error(`Login-method error: ${err.message}`);
+    res.json({ method: 'password' });
+  }
+});
+
+// POST /api/auth/login-totp — primary TOTP-only login (no password needed)
+// Body: { username, code }
+app.post('/api/auth/login-totp', async (req, res) => {
+  const { username, code } = req.body || {};
+  if (!username || !code) return res.status(400).json({ error: 'username and code required' });
+
+  try {
+    const r = await pgrest(
+      `/hub_users?username=eq.${encodeURIComponent(username.toLowerCase().trim())}&select=id,username,role,totp_secret,totp_enabled&limit=1`
+    );
+    const [user] = await r.json();
+
+    if (!user || !user.totp_enabled || !user.totp_secret) {
+      // Constant-time delay to prevent timing-based enumeration
+      await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 100));
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const valid = authenticator.check(String(code).trim(), user.totp_secret);
+    if (!valid) return res.status(401).json({ error: 'Invalid code' });
+
+    const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    await issueRefreshToken(user.id, res);
+    hubLog.success(`TOTP login: ${user.username} (${user.role}) from ${req.ip}`);
+    res.json({ token, username: user.username, role: user.role });
+  } catch (err) {
+    hubLog.error(`TOTP login error: ${err.message}`);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// POST /api/auth/login — password-based login (fallback)
 // Body: { username, passwordHash }  ← passwordHash = SHA-256(rawPassword), done client-side
 app.post('/api/auth/login', async (req, res) => {
   const { username, passwordHash } = req.body || {};
@@ -207,7 +258,6 @@ app.post('/api/auth/login', async (req, res) => {
     );
     const [user] = await r.json();
 
-    // Constant-time check to prevent username enumeration
     const FAKE = '$2a$12$invalidhashfortimingprotection00000000000';
     const hashToCheck = user ? user.password_hash : FAKE;
     const valid       = await bcrypt.compare(passwordHash, hashToCheck);
@@ -216,48 +266,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (user.totp_enabled) {
-      const tempToken = await signToken(
-        { sub: String(user.id), username: user.username, role: user.role, totp_pending: true },
-        '5m'
-      );
-      return res.json({ totpRequired: true, tempToken });
-    }
-
     const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
     await issueRefreshToken(user.id, res);
-    hubLog.success(`Login: ${user.username} (${user.role}) from ${req.ip}`);
+    hubLog.success(`Password login: ${user.username} (${user.role}) from ${req.ip}`);
     res.json({ token, username: user.username, role: user.role });
   } catch (err) {
     hubLog.error(`Login error: ${err.message}`);
-    res.status(500).json({ error: 'Internal error' });
-  }
-});
-
-// POST /api/auth/totp/verify
-app.post('/api/auth/totp/verify', async (req, res) => {
-  const { tempToken, code } = req.body || {};
-  if (!tempToken || !code) return res.status(400).json({ error: 'tempToken and code required' });
-
-  try {
-    const payload = await verifyToken(tempToken);
-    if (!payload.totp_pending) return res.status(400).json({ error: 'Invalid temp token' });
-
-    const r = await pgrest(
-      `/hub_users?id=eq.${payload.sub}&select=id,username,role,totp_secret&limit=1`
-    );
-    const [user] = await r.json();
-    if (!user) return res.status(401).json({ error: 'User not found' });
-
-    const valid = authenticator.check(String(code).trim(), user.totp_secret);
-    if (!valid) return res.status(401).json({ error: 'Invalid TOTP code' });
-
-    const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
-    await issueRefreshToken(user.id, res);
-    hubLog.success(`TOTP login: ${user.username} from ${req.ip}`);
-    res.json({ token, username: user.username, role: user.role });
-  } catch (err) {
-    hubLog.error(`TOTP verify error: ${err.message}`);
     res.status(500).json({ error: 'Internal error' });
   }
 });
@@ -665,7 +679,18 @@ app.get('/api/stats/:hostname', async (req, res) => {
     let historyData = [];
     if (foundTable) {
       try {
-        const hRes = await fetch(`${DB_URL}/${foundTable}?limit=200&order=recorded_at.desc`);
+        const range = req.query.range;
+        let timeFilter = '';
+        let limit = 200;
+        if (range) {
+          const rangeMs = { '1h': 3_600_000, '6h': 6 * 3_600_000, '24h': 86_400_000, '7d': 7 * 86_400_000, '30d': 30 * 86_400_000 };
+          const ms = rangeMs[range];
+          if (ms) {
+            timeFilter = `&recorded_at=gte.${new Date(Date.now() - ms).toISOString()}`;
+            limit = range === '30d' ? 720 : range === '7d' ? 500 : 300;
+          }
+        }
+        const hRes = await fetch(`${DB_URL}/${foundTable}?limit=${limit}&order=recorded_at.desc${timeFilter}`);
         if (hRes.ok) { const arr = await hRes.json(); if (Array.isArray(arr)) historyData = arr; }
       } catch (_) {}
     }
@@ -813,6 +838,47 @@ app.use((req, res, next) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
+// ── Data retention — purge metrics older than RETENTION_DAYS ──────────────────
+const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || '30', 10);
+
+async function runRetentionCleanup() {
+  try {
+    const tablesRes = await fetch(`${DB_URL}/fleet_tables`);
+    if (!tablesRes.ok) return;
+    const tables = await tablesRes.json();
+    const cutoff = new Date(Date.now() - RETENTION_DAYS * 86_400_000).toISOString();
+
+    let totalDeleted = 0;
+    for (const { table_name } of tables) {
+      try {
+        const countRes = await fetch(
+          `${DB_URL}/${table_name}?recorded_at=lt.${cutoff}&select=id`,
+          { method: 'HEAD' }
+        );
+        const range = countRes.headers.get('content-range');
+        const count = range ? parseInt(range.split('/')[1], 10) : 0;
+
+        if (count > 0) {
+          await fetch(`${DB_URL}/${table_name}?recorded_at=lt.${cutoff}`, {
+            method: 'DELETE',
+            headers: { 'Prefer': 'return=minimal' }
+          });
+          totalDeleted += count;
+        }
+      } catch (_) {}
+    }
+
+    if (totalDeleted > 0) {
+      hubLog.info(`Retention cleanup: deleted ${totalDeleted} rows older than ${RETENTION_DAYS}d`);
+    }
+  } catch (err) {
+    hubLog.error(`Retention cleanup failed: ${err.message}`);
+  }
+}
+
+// Run cleanup every 6 hours
+setInterval(runRetentionCleanup, 6 * 60 * 60 * 1000);
+
 // ── Auto-update ───────────────────────────────────────────────────────────────
 const runAutoUpdate = async (force = false) => {
   if (process.platform === 'win32') return false;
@@ -849,6 +915,7 @@ setInterval(() => runAutoUpdate(), 5 * 60 * 1000);
 app.listen(PORT, async () => {
   await initDB();
   try { await runAutoUpdate(); } catch (_) {}
+  try { await runRetentionCleanup(); } catch (_) {}
 
   let nodeCount = 0;
   try { const r = await fetch(`${DB_URL}/clients?select=hostname`); nodeCount = (await r.json()).length; } catch (_) {}

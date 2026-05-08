@@ -110,33 +110,39 @@ async function apiFetch(url, options = {}) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-//  AUTH SCREENS
+//  AUTH SCREENS — TOTP-first flow
 // ════════════════════════════════════════════════════════════════════════════
 
+let _loginUsername = '';
+
+function showScreen(id) {
+  for (const s of ['login-screen', 'totp-screen', 'password-screen', 'app']) {
+    const el = document.getElementById(s);
+    if (el) el.style.display = s === id ? (s === 'app' ? 'flex' : 'flex') : 'none';
+  }
+}
+
 function showLoginScreen() {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('totp-screen').style.display  = 'none';
-  document.getElementById('app').style.display          = 'none';
-  setTimeout(() => {
-    const u = document.getElementById('login-username');
-    if (u) u.focus();
-  }, 50);
+  _loginUsername = '';
+  showScreen('login-screen');
+  const u = document.getElementById('login-username');
+  if (u) { u.value = ''; requestAnimationFrame(() => u.focus()); }
 }
 
 function showTotpScreen() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('totp-screen').style.display  = 'flex';
-  document.getElementById('app').style.display          = 'none';
-  setTimeout(() => {
-    const c = document.getElementById('totp-code');
-    if (c) c.focus();
-  }, 50);
+  showScreen('totp-screen');
+  const c = document.getElementById('totp-code');
+  if (c) { c.value = ''; requestAnimationFrame(() => c.focus()); }
+}
+
+function showPasswordScreen() {
+  showScreen('password-screen');
+  const p = document.getElementById('login-password');
+  if (p) { p.value = ''; requestAnimationFrame(() => p.focus()); }
 }
 
 function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('totp-screen').style.display  = 'none';
-  document.getElementById('app').style.display          = 'flex';
+  showScreen('app');
 }
 
 function setAuthError(elId, msg) {
@@ -146,110 +152,142 @@ function setAuthError(elId, msg) {
   else     { el.textContent = '';  el.style.display = 'none'; }
 }
 
-function setLoginBusy(busy) {
-  const btn = document.getElementById('login-btn');
-  if (btn) { btn.disabled = busy; btn.textContent = busy ? 'Signing in…' : 'Sign In'; }
+function setBusy(btnId, busy, normalText, busyText) {
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled = busy; btn.textContent = busy ? busyText : normalText; }
 }
 
-function setTotpBusy(busy) {
-  const btn = document.getElementById('totp-btn');
-  if (btn) { btn.disabled = busy; btn.textContent = busy ? 'Verifying…' : 'Verify'; }
-}
-
-// ── Login handler ────────────────────────────────────────────────────────────
-window.handleLogin = async () => {
+// ── Step 1: Username → determine auth method ─────────────────────────────────
+async function handleUsernameSubmit() {
   const username = document.getElementById('login-username').value.trim();
-  const rawPw    = document.getElementById('login-password').value;
-
   setAuthError('login-error', '');
-  if (!username || !rawPw) return setAuthError('login-error', 'Please enter username and password.');
-  setLoginBusy(true);
+  if (!username) return setAuthError('login-error', 'Please enter your username.');
+
+  setBusy('login-btn', true, 'Continue', 'Checking…');
+  _loginUsername = username;
+
+  try {
+    const res  = await fetch('/api/auth/login-method', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username })
+    });
+    const data = await res.json();
+
+    if (data.method === 'totp') {
+      showTotpScreen();
+    } else {
+      showPasswordScreen();
+    }
+  } catch {
+    setAuthError('login-error', 'Network error — is the hub reachable?');
+  } finally {
+    setBusy('login-btn', false, 'Continue', 'Checking…');
+  }
+}
+
+// ── Step 2a: TOTP verification (primary) ─────────────────────────────────────
+async function handleTotpLogin() {
+  const code = document.getElementById('totp-code').value.replace(/\s/g, '');
+  setAuthError('totp-error', '');
+  if (!code || code.length < 6) return setAuthError('totp-error', 'Enter the 6-digit code.');
+  if (!_loginUsername) { showLoginScreen(); return; }
+
+  setBusy('totp-btn', true, 'Verify', 'Verifying…');
+
+  try {
+    const res  = await fetch('/api/auth/login-totp', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username: _loginUsername, code })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      document.getElementById('totp-code').value = '';
+      document.getElementById('totp-code')?.focus();
+      return setAuthError('totp-error', data.error || 'Invalid code.');
+    }
+
+    setToken(data.token);
+    _loginUsername = '';
+    initApp();
+  } catch {
+    setAuthError('totp-error', 'Network error.');
+  } finally {
+    setBusy('totp-btn', false, 'Verify', 'Verifying…');
+  }
+}
+
+// ── Step 2b: Password verification (fallback) ───────────────────────────────
+async function handlePasswordLogin() {
+  const rawPw = document.getElementById('login-password').value;
+  setAuthError('password-error', '');
+  if (!rawPw) return setAuthError('password-error', 'Please enter your password.');
+  if (!_loginUsername) { showLoginScreen(); return; }
+
+  setBusy('password-btn', true, 'Sign In', 'Signing in…');
 
   try {
     const passwordHash = await sha256(rawPw);
     const res  = await fetch('/api/auth/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, passwordHash })
+      body:    JSON.stringify({ username: _loginUsername, passwordHash })
     });
     const data = await res.json();
 
     if (!res.ok) {
-      return setAuthError('login-error', data.error || 'Login failed.');
+      return setAuthError('password-error', data.error || 'Login failed.');
     }
 
-    if (data.totpRequired) {
-      // Store the temp token for the TOTP step
-      localStorage.setItem(TOTP_TMP_KEY, data.tempToken);
-      document.getElementById('login-password').value = '';
-      showTotpScreen();
-      return;
-    }
-
-    // Full login success
     setToken(data.token);
     document.getElementById('login-password').value = '';
+    _loginUsername = '';
     initApp();
-  } catch (err) {
-    setAuthError('login-error', 'Network error — is the hub reachable?');
+  } catch {
+    setAuthError('password-error', 'Network error — is the hub reachable?');
   } finally {
-    setLoginBusy(false);
+    setBusy('password-btn', false, 'Sign In', 'Signing in…');
   }
-};
+}
 
-// Enter key on login form
+// ── Form event wiring ────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('login-password')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') window.handleLogin();
+  document.getElementById('login-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    handleUsernameSubmit();
   });
-  document.getElementById('login-username')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('login-password')?.focus();
+
+  document.getElementById('totp-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    handleTotpLogin();
+  });
+
+  document.getElementById('password-form')?.addEventListener('submit', e => {
+    e.preventDefault();
+    handlePasswordLogin();
   });
 
   // TOTP auto-submit on 6 digits
   document.getElementById('totp-code')?.addEventListener('input', e => {
-    if (e.target.value.replace(/\D/g, '').length === 6) window.handleTotpVerify();
+    const digits = e.target.value.replace(/\D/g, '');
+    if (digits.length === 6) handleTotpLogin();
+  });
+
+  // "Use password instead" on TOTP screen
+  document.getElementById('totp-pw-fallback')?.addEventListener('click', () => {
+    showPasswordScreen();
+  });
+
+  // Back buttons
+  document.getElementById('totp-back-btn')?.addEventListener('click', () => {
+    showLoginScreen();
+  });
+  document.getElementById('pw-back-btn')?.addEventListener('click', () => {
+    showLoginScreen();
   });
 });
-
-// ── TOTP verify handler ───────────────────────────────────────────────────────
-window.handleTotpVerify = async () => {
-  const code      = document.getElementById('totp-code').value.replace(/\s/g, '');
-  const tempToken = localStorage.getItem(TOTP_TMP_KEY);
-
-  setAuthError('totp-error', '');
-  if (!code || code.length < 6) return setAuthError('totp-error', 'Enter the 6-digit code.');
-  if (!tempToken) { showLoginScreen(); return; }
-  setTotpBusy(true);
-
-  try {
-    const res  = await fetch('/api/auth/totp/verify', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ tempToken, code })
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      return setAuthError('totp-error', data.error || 'Invalid code.');
-    }
-
-    localStorage.removeItem(TOTP_TMP_KEY);
-    document.getElementById('totp-code').value = '';
-    setToken(data.token);
-    initApp();
-  } catch {
-    setAuthError('totp-error', 'Network error.');
-  } finally {
-    setTotpBusy(false);
-  }
-};
-
-window.cancelTotp = () => {
-  localStorage.removeItem(TOTP_TMP_KEY);
-  document.getElementById('totp-code').value = '';
-  showLoginScreen();
-};
 
 // ── Logout ────────────────────────────────────────────────────────────────────
 window.logout = async () => {
@@ -756,10 +794,26 @@ function renderFleet(servers) {
 //  NODE STATS / DRAWER
 // ════════════════════════════════════════════════════════════════════════════
 
+let _historyRange = '';
+
+window.onHistoryRangeChange = () => {
+  const sel = document.getElementById('history-range');
+  _historyRange = sel ? sel.value : '';
+  // Reset charts so they reload with the new range
+  [cpuChart, ramChart, netChart].forEach(c => {
+    if (!c) return;
+    c.data.labels = [];
+    c.data.datasets.forEach(ds => ds.data = []);
+    c.update('none');
+  });
+  fetchNodeStats();
+};
+
 async function fetchNodeStats() {
   if (!selectedHostname) return;
   try {
-    const res  = await apiFetch(`/api/stats/${selectedHostname}`);
+    const rangeParam = _historyRange ? `?range=${_historyRange}` : '';
+    const res  = await apiFetch(`/api/stats/${selectedHostname}${rangeParam}`);
     const data = await res.json();
 
     const hb = document.getElementById('heartbeat-dot');
@@ -786,11 +840,16 @@ async function fetchNodeStats() {
       updateElement('gw-ext-ip', data.network?.ext_ip || 'Managed');
     }
 
-    if (data.history && cpuChart?.data.datasets[0].data.length === 0) {
+    const isLive = !_historyRange;
+    const shouldLoadHistory = data.history && (cpuChart?.data.datasets[0].data.length === 0 || !isLive);
+    if (shouldLoadHistory) {
       const hist = data.history.slice(-maxDataPoints);
       [cpuChart, ramChart, netChart].forEach(c => { if (!c) return; c.data.labels = []; c.data.datasets.forEach(ds => ds.data = []); });
+      const fmt = _historyRange === '7d' || _historyRange === '30d'
+        ? { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }
+        : { hour:'2-digit', minute:'2-digit', second:'2-digit' };
       hist.forEach(h => {
-        const t = h.time ? new Date(h.time).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '';
+        const t = h.time ? new Date(h.time).toLocaleTimeString([], fmt) : '';
         cpuChart?.data.labels.push(t); cpuChart?.data.datasets[0].data.push(h.cpu || 0);
         ramChart?.data.labels.push(t); ramChart?.data.datasets[0].data.push(h.ram || 0);
         if (netChart) { netChart.data.labels.push(t); netChart.data.datasets[0].data.push(h.rx || 0); netChart.data.datasets[1].data.push(h.tx || 0); }
@@ -917,6 +976,9 @@ function renderHistoryTable(history) {
 
 window.openDetails = (hostname, push = true) => {
   selectedHostname = hostname; currentView = 'details';
+  _historyRange = '';
+  const rangeSel = document.getElementById('history-range');
+  if (rangeSel) rangeSel.value = '';
   updateElement('drawer-hostname', hostname); updateElement('os-info', '—');
   openDrawer();
   if (push) window.history.pushState({ hostname }, '', `/${hostname}`);
