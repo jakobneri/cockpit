@@ -13,7 +13,7 @@
 <body>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     LOGIN SCREEN — shown by default, hidden after successful auth
+     LOGIN — Step 1: Username
      ══════════════════════════════════════════════════════════════════════════ -->
 <div id="login-screen" class="auth-screen">
   <div class="auth-card">
@@ -23,26 +23,21 @@
       <span class="brand-app">cockpit</span>
     </div>
     <h2 class="auth-title">Sign In</h2>
-    <form id="login-form" onsubmit="return false;">
+    <form id="login-form">
       <div class="form-group">
-        <label class="form-label">Username</label>
-        <input type="text" id="login-username" autocomplete="username" placeholder="admin" />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" />
+        <label class="form-label" for="login-username">Username</label>
+        <input type="text" id="login-username" autocomplete="username" placeholder="admin" tabindex="1" />
       </div>
       <div id="login-error" class="auth-error" style="display:none;"></div>
-      <button type="submit" class="btn-primary auth-submit" id="login-btn" onclick="handleLogin()">
-        Sign In
+      <button type="submit" class="btn-primary auth-submit" id="login-btn" tabindex="2">
+        Continue
       </button>
     </form>
-    <p class="auth-hint">Passwords are hashed client-side before transmission.</p>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     TOTP SCREEN — shown after password when 2FA is enabled
+     LOGIN — Step 2a: TOTP code (primary auth method)
      ══════════════════════════════════════════════════════════════════════════ -->
 <div id="totp-screen" class="auth-screen" style="display:none;">
   <div class="auth-card">
@@ -51,22 +46,55 @@
       <span class="brand-sep">·</span>
       <span class="brand-app">cockpit</span>
     </div>
-    <h2 class="auth-title">Two-Factor Auth</h2>
+    <h2 class="auth-title">Authenticator Code</h2>
     <p class="auth-subtitle">Enter the 6-digit code from your authenticator app.</p>
-    <form id="totp-form" onsubmit="return false;">
+    <form id="totp-form">
       <div class="form-group">
         <input type="text" id="totp-code" inputmode="numeric" maxlength="6"
                autocomplete="one-time-code" placeholder="000 000"
-               class="totp-input" />
+               class="totp-input" tabindex="1" />
       </div>
       <div id="totp-error" class="auth-error" style="display:none;"></div>
-      <button type="submit" class="btn-primary auth-submit" id="totp-btn" onclick="handleTotpVerify()">
+      <button type="submit" class="btn-primary auth-submit" id="totp-btn" tabindex="2">
         Verify
       </button>
-      <button type="button" class="btn-ghost auth-back" onclick="cancelTotp()">
-        ← Back to login
+      <button type="button" class="btn-ghost auth-back" id="totp-pw-fallback" tabindex="3">
+        Use password instead
+      </button>
+      <button type="button" class="btn-ghost auth-back" id="totp-back-btn" tabindex="4">
+        ← Back
       </button>
     </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOGIN — Step 2b: Password fallback
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div id="password-screen" class="auth-screen" style="display:none;">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-domain">nerifeige.de</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-app">cockpit</span>
+    </div>
+    <h2 class="auth-title">Password</h2>
+    <p class="auth-subtitle">Sign in with your password.</p>
+    <form id="password-form">
+      <div class="form-group">
+        <label class="form-label" for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password"
+               placeholder="••••••••" tabindex="1" />
+      </div>
+      <div id="password-error" class="auth-error" style="display:none;"></div>
+      <button type="submit" class="btn-primary auth-submit" id="password-btn" tabindex="2">
+        Sign In
+      </button>
+      <button type="button" class="btn-ghost auth-back" id="pw-back-btn" tabindex="3">
+        ← Back
+      </button>
+    </form>
+    <p class="auth-hint">Passwords are hashed client-side before transmission.</p>
   </div>
 </div>
 
@@ -233,6 +261,14 @@
         <div class="drawer-meta" id="os-info">—</div>
       </div>
       <div class="drawer-hd-actions">
+        <select id="history-range" class="range-select" onchange="onHistoryRangeChange()">
+          <option value="">Live (10m)</option>
+          <option value="1h">1 Hour</option>
+          <option value="6h">6 Hours</option>
+          <option value="24h">24 Hours</option>
+          <option value="7d">7 Days</option>
+          <option value="30d">30 Days</option>
+        </select>
         <div class="view-toggle">
           <button id="btn-chart-view" class="toggle-btn active" onclick="setDetailMode('chart')">Charts</button>
           <button id="btn-raw-view" class="toggle-btn" onclick="setDetailMode('raw')">Raw</button>

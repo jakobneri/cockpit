@@ -573,10 +573,18 @@ h3 { font-size: 14px; font-weight: 600; }
   background: rgba(255,69,96,.08); border: 1px solid rgba(255,69,96,.25);
   color: var(--accent-red); border-radius: var(--r-sm);
   padding: 8px 12px; font-size: 12px; margin-bottom: 10px; line-height: 1.5;
+  min-height: 0; box-sizing: border-box;
 }
 
 .auth-submit { width: 100%; padding: 10px; font-size: 13px; margin-top: 4px; }
-.auth-back   { width: 100%; padding: 8px; font-size: 12px; margin-top: 8px; text-align: center; }
+.auth-back   { width: 100%; padding: 8px; font-size: 12px; margin-top: 6px; text-align: center; }
+
+.range-select {
+  background: var(--s2); border: 1px solid var(--b); border-radius: var(--r-sm);
+  color: var(--text-primary); font-size: 11px; font-family: inherit; font-weight: 500;
+  padding: 4px 8px; cursor: pointer; outline: none;
+}
+.range-select:focus { border-color: var(--accent); }
 
 .form-group { margin-bottom: 12px; }
 .form-label {
