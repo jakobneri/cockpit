@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cockpit</string>
+    <string name="auto_launch">Auto-Start bei AUX</string>
+    <string name="service_active">Aktiv – wartet auf AUX-Kabel</string>
+    <string name="service_inactive">Deaktiviert</string>
+    <string name="aux_cable">AUX-Kabel</string>
+    <string name="aux_connected">Verbunden</string>
+    <string name="aux_disconnected">Nicht verbunden</string>
+    <string name="apps_launched">Gestartete Apps</string>
+    <string name="app_list">1. YouTube Music\n2. BlitzerPro\n3. Google Maps</string>
+    <string name="status_waiting">Wartet auf AUX-Kabel…</string>
+    <string name="status_connected">AUX verbunden – Apps gestartet</string>
+    <string name="notification_channel_name">Car Mode</string>
+    <string name="notification_channel_desc">Läuft im Hintergrund und erkennt AUX-Verbindungen</string>
+    <string name="notification_permission_hint">Benachrichtigungen erlauben für Status-Updates</string>
+</resources>
