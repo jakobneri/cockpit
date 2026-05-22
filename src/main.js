@@ -389,26 +389,35 @@ document.addEventListener('click', (e) => {
 //  PAGE NAVIGATION
 // ════════════════════════════════════════════════════════════════════════════
 
+function setPageActive(view) {
+  const pages = ['fleet', 'users', 'speed'];
+  pages.forEach(p => {
+    const page = document.getElementById(`${p}-page`);
+    if (page) page.style.display = p === view ? '' : 'none';
+    const nav = document.getElementById(`nav-${p}`);
+    if (nav) nav.classList.toggle('active', p === view);
+    const mobileNav = document.getElementById(`mobile-nav-${p}`);
+    if (mobileNav) mobileNav.classList.toggle('active', p === view);
+  });
+}
+
 window.navigateTo = (path) => {
   if (path === '/users') {
     currentView = 'users';
-    document.getElementById('fleet-page').style.display = 'none';
-    document.getElementById('users-page').style.display  = '';
-    document.getElementById('nav-fleet').classList.remove('active');
-    document.getElementById('nav-users').classList.add('active');
-    document.getElementById('mobile-nav-fleet')?.classList.remove('active');
-    document.getElementById('mobile-nav-users')?.classList.add('active');
+    setPageActive('users');
     window.history.pushState({}, '', '/users');
     closeDrawer();
     loadUsersPage();
+  } else if (path === '/speed') {
+    currentView = 'speed';
+    setPageActive('speed');
+    window.history.pushState({}, '', '/speed');
+    closeDrawer();
+    createSpeedChart();
+    fetchSpeedLogs();
   } else {
     currentView = 'fleet';
-    document.getElementById('fleet-page').style.display = '';
-    document.getElementById('users-page').style.display  = 'none';
-    document.getElementById('nav-fleet').classList.add('active');
-    document.getElementById('nav-users')?.classList.remove('active');
-    document.getElementById('mobile-nav-fleet')?.classList.add('active');
-    document.getElementById('mobile-nav-users')?.classList.remove('active');
+    setPageActive('fleet');
     window.history.pushState({}, '', '/');
   }
   closeUserMenu();
@@ -1311,6 +1320,89 @@ window.deleteUser = async (id, username) => {
 };
 
 // ════════════════════════════════════════════════════════════════════════════
+//  SPEED TEST LOGS
+// ════════════════════════════════════════════════════════════════════════════
+
+let speedChart = null;
+
+function createSpeedChart() {
+  if (speedChart) speedChart.destroy();
+  const canvas = document.getElementById('speedChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  speedChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'Download (Mbit/s)', data: [], borderColor: '#4d7cfe', backgroundColor: createGradient(ctx, '#4d7cfe', 0.15, 0), fill: true, tension: 0.4, borderWidth: 2 },
+        { label: 'Upload (Mbit/s)',   data: [], borderColor: '#ff8c00', backgroundColor: createGradient(ctx, '#ff8c00', 0.15, 0), fill: true, tension: 0.4, borderWidth: 2 }
+      ]
+    },
+    options: {
+      ...chartOptions,
+      scales: {
+        x: { display: true, ticks: { color: 'rgba(148,163,184,0.35)', font: { size: 9 }, maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { display: false } },
+        y: { min: 0, display: true, ticks: { display: true, color: 'rgba(148,163,184,0.35)', font: { size: 9 }, maxTicksLimit: 5, callback: v => v + ' Mb/s' }, grid: { color: 'rgba(255,255,255,0.03)' }, border: { display: false } }
+      },
+      plugins: {
+        ...chartOptions.plugins,
+        legend: { display: true, position: 'top', labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 }, usePointStyle: true, boxWidth: 6, boxHeight: 6 } },
+        tooltip: { ...chartOptions.plugins.tooltip, callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}` } }
+      },
+      elements: { line: { tension: 0.4, borderWidth: 2 }, point: { radius: 2, hoverRadius: 5 } }
+    }
+  });
+}
+
+async function fetchSpeedLogs() {
+  try {
+    const res = await apiFetch('/api/speedlogs');
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    let dlSum = 0, ulSum = 0, pingSum = 0;
+    data.forEach(r => {
+      dlSum   += parseFloat(r.download_mbps) || 0;
+      ulSum   += parseFloat(r.upload_mbps)   || 0;
+      pingSum += parseFloat(r.ping_ms)       || 0;
+    });
+    const n = data.length;
+    updateElement('speed-avg-dl',   (dlSum / n).toFixed(1));
+    updateElement('speed-avg-ul',   (ulSum / n).toFixed(1));
+    updateElement('speed-avg-ping', (pingSum / n).toFixed(1));
+
+    if (speedChart) {
+      const sorted = [...data].reverse();
+      speedChart.data.labels           = sorted.map(r => { const d = new Date(r.tested_at); return d.toLocaleDateString([], { month:'short', day:'numeric' }) + ' ' + d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); });
+      speedChart.data.datasets[0].data = sorted.map(r => parseFloat(r.download_mbps) || 0);
+      speedChart.data.datasets[1].data = sorted.map(r => parseFloat(r.upload_mbps)   || 0);
+      speedChart.update('none');
+    }
+
+    const tbody = document.getElementById('speed-table-body');
+    if (tbody) {
+      tbody.innerHTML = data.map(r => {
+        const d  = new Date(r.tested_at);
+        const ts = d.toLocaleDateString([], { month:'short', day:'numeric', year:'numeric' }) + ' ' + d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        return `<tr>
+          <td style="font-family:monospace;white-space:nowrap;">${ts}</td>
+          <td style="font-family:monospace;">${parseFloat(r.download_mbps).toFixed(2)}</td>
+          <td style="font-family:monospace;">${parseFloat(r.upload_mbps).toFixed(2)}</td>
+          <td style="font-family:monospace;">${parseFloat(r.ping_ms).toFixed(1)}</td>
+          <td style="font-family:monospace;">${parseFloat(r.jitter_ms).toFixed(1)}</td>
+          <td>${r.isp || '—'}</td>
+          <td style="font-family:monospace;font-size:12px;">${r.client_ip || '—'}</td>
+          <td>${r.location || '—'}</td>
+        </tr>`;
+      }).join('');
+    }
+  } catch (err) {
+    if (err.status !== 401) console.error('fetchSpeedLogs:', err);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 //  ROUTING
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -1318,6 +1410,8 @@ function handleRouting() {
   const path = window.location.pathname.replace(/^\/|\/$/g, '');
   if (path === 'users') {
     navigateTo('/users');
+  } else if (path === 'speed') {
+    navigateTo('/speed');
   } else if (path && path !== 'hub' && path !== 'info') {
     openDetails(path, false);
   }
@@ -1325,9 +1419,10 @@ function handleRouting() {
 
 window.onpopstate = () => {
   const path = window.location.pathname.replace(/^\/|\/$/g, '');
-  if (path === 'users') { navigateTo('/users'); }
-  else if (!path)       { navigateTo('/'); }
-  else                  { openDetails(path, false); }
+  if (path === 'users')      { navigateTo('/users'); }
+  else if (path === 'speed') { navigateTo('/speed'); }
+  else if (!path)            { navigateTo('/'); }
+  else                       { openDetails(path, false); }
 };
 
 // ════════════════════════════════════════════════════════════════════════════

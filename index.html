@@ -114,6 +114,7 @@
     <!-- Page navigation tabs -->
     <nav class="top-nav" id="top-nav">
       <button class="nav-tab active" id="nav-fleet" onclick="navigateTo('/')">Fleet</button>
+      <button class="nav-tab" id="nav-speed" onclick="navigateTo('/speed')">Speed</button>
       <button class="nav-tab" id="nav-users" onclick="navigateTo('/users')" style="display:none;">Users</button>
     </nav>
 
@@ -253,6 +254,70 @@
     </section>
   </main>
 
+  <!-- ── Speed Page ─────────────────────────────────────────────────────── -->
+  <main class="page" id="speed-page" style="display:none;">
+
+    <section class="page-section">
+      <div class="section-hd">
+        <span class="section-label">Speed Tests</span>
+        <span class="section-sub">Logged speed test results</span>
+      </div>
+      <div class="stat-tiles-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="stat-tile">
+          <span class="stat-tile-label">Avg Download</span>
+          <span class="stat-tile-val"><span id="speed-avg-dl">--</span><span class="stat-tile-unit">Mb/s</span></span>
+          <span class="stat-tile-sub">all tests</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile-label">Avg Upload</span>
+          <span class="stat-tile-val"><span id="speed-avg-ul">--</span><span class="stat-tile-unit">Mb/s</span></span>
+          <span class="stat-tile-sub">all tests</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-tile-label">Avg Ping</span>
+          <span class="stat-tile-val"><span id="speed-avg-ping">--</span><span class="stat-tile-unit">ms</span></span>
+          <span class="stat-tile-sub">all tests</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="section-hd">
+        <span class="section-label">Speed History</span>
+        <span class="section-sub">Download &amp; Upload over time</span>
+      </div>
+      <div class="drawer-chart-card" style="padding:18px 20px;">
+        <div class="chart-container" style="height:240px;"><canvas id="speedChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="page-section">
+      <div class="section-hd">
+        <span class="section-label">Last 50 Tests</span>
+      </div>
+      <div class="users-table-wrap">
+        <table class="technical-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Download</th>
+              <th>Upload</th>
+              <th>Ping</th>
+              <th>Jitter</th>
+              <th>ISP</th>
+              <th>IP</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody id="speed-table-body">
+            <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
   <!-- ── Node Detail Drawer ─────────────────────────────────────────────── -->
   <aside class="detail-drawer" id="detail-drawer">
     <div class="drawer-hd">
@@ -375,6 +440,12 @@
         <rect x="14" y="14" width="7" height="7" rx="1"/>
       </svg>
       Fleet
+    </button>
+    <button class="mobile-nav-btn" id="mobile-nav-speed" onclick="navigateTo('/speed')">
+      <svg viewBox="0 0 24 24">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      Speed
     </button>
     <button class="mobile-nav-btn" id="mobile-nav-users" onclick="navigateTo('/users')" style="display:none;">
       <svg viewBox="0 0 24 24">

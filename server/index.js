@@ -780,6 +780,18 @@ app.get('/api/export/:hostname', async (req, res) => {
 // Active heartbeat — viewer+
 app.post('/api/active', (req, res) => res.sendStatus(200));
 
+// Speed test logs — viewer+
+app.get('/api/speedlogs', async (req, res) => {
+  try {
+    const r = await fetch(`${DB_URL}/speedtest_results?order=tested_at.desc&limit=50`);
+    if (!r.ok) return res.status(r.status).json({ error: 'Failed to fetch speed logs' });
+    res.json(await r.json());
+  } catch (err) {
+    hubLog.error(`Speed logs fetch failed: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Services list — operator+
 app.get('/api/pi/services', requireOperator, async (req, res) => {
   if (process.platform === 'win32') {
