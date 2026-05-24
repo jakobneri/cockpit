@@ -32,8 +32,8 @@
                 "input": "public"
               },
               {
-                "glob": "favicon.png",
-                "input": "public",
+                "glob": "favicon.ico",
+                "input": ".",
                 "output": "/"
               }
             ],
