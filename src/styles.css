@@ -614,6 +614,7 @@ h3 { font-size: 14px; font-weight: 600; }
   color: var(--text-secondary); font-size: 12px; font-weight: 600;
   font-family: inherit; cursor: pointer; letter-spacing: .02em;
   transition: color .12s, background .12s; white-space: nowrap;
+  text-decoration: none; display: inline-flex; align-items: center;
 }
 .nav-tab:last-child { border-right: none; }
 .nav-tab:hover  { color: var(--text-primary); background: var(--s2); }

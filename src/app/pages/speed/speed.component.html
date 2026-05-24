@@ -53,8 +53,11 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngIf="logs.length === 0">
-            <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading…</td>
+          <tr *ngIf="loadError">
+            <td colspan="8" style="text-align:center;padding:2rem;color:var(--accent-red);">{{ loadError }}</td>
+          </tr>
+          <tr *ngIf="!loadError && logs.length === 0">
+            <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-secondary);">No speed test data yet.</td>
           </tr>
           <tr *ngFor="let r of logs">
             <td style="font-family:monospace;white-space:nowrap;">{{ fmtDate(r.tested_at) }}</td>

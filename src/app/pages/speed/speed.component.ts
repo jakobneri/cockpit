@@ -23,6 +23,7 @@ export class SpeedComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('speedCanvas') speedCanvas!: ElementRef<HTMLCanvasElement>;
 
   logs: SpeedLog[] = [];
+  loadError = '';
   avgDl = '--'; avgUl = '--'; avgPing = '--';
   private chart?: Chart;
 
@@ -75,7 +76,7 @@ export class SpeedComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         if (this.chart) this.updateChart();
       },
-      error: () => {}
+      error: (e) => { this.loadError = e?.error?.error || e?.message || 'Failed to load speed logs'; console.error('speedlogs:', e); }
     });
   }
 
