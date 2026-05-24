@@ -37,6 +37,9 @@
                 "output": "/"
               }
             ],
+            "polyfills": [
+              "zone.js"
+            ],
             "styles": [
               "src/styles.css"
             ],
