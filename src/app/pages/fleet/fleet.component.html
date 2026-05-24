@@ -1,0 +1,161 @@
+<main class="page">
+
+  <!-- Fleet Grid -->
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Fleet</span>
+      <span class="section-sub">
+        {{ nodes.length }} node{{ nodes.length !== 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <div class="nodes-grid">
+      <div *ngIf="nodes.length === 0" class="card" style="grid-column:1/-1;text-align:center;padding:3rem;">
+        <p style="color:var(--text-secondary)">Waiting for first reports… Ensure agents are running and pointing to this Hub IP.</p>
+      </div>
+
+      <ng-container *ngFor="let n of nodes">
+        <!-- Gateway Card -->
+        <div *ngIf="isGateway(n.data)" class="node-card" (click)="openDetails(n.hostname)">
+          <div class="nc-head">
+            <span class="nc-dot" [class.online]="isOnline(n.data)" [class.offline]="!isOnline(n.data)"></span>
+            <span class="nc-hostname">{{ n.hostname }}</span>
+            <span class="nc-tag">{{ n.data.model || 'Gateway' }}</span>
+          </div>
+          <div class="nc-vitals" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+            <div *ngIf="n.data.gateway?.dsl_sync" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--text-secondary);text-transform:uppercase;">DSL SYNC</span>
+              <span class="nc-status-badge" [class.ok]="n.data.gateway?.dsl_sync === 'Up'" [class.bad]="n.data.gateway?.dsl_sync !== 'Up'">{{ n.data.gateway?.dsl_sync }}</span>
+            </div>
+            <div *ngIf="n.data.gateway?.vpn_active !== undefined" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--text-secondary);text-transform:uppercase;">VPN</span>
+              <span class="nc-status-badge" [class.ok]="n.data.gateway?.vpn_active" [class.bad]="!n.data.gateway?.vpn_active">{{ n.data.gateway?.vpn_active ? 'Active' : 'Down' }}</span>
+            </div>
+            <div *ngIf="n.data.network?.ext_ip" style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:9px;font-weight:800;letter-spacing:.12em;color:var(--text-secondary);text-transform:uppercase;">EXT IP</span>
+              <span style="font-size:12px;font-family:monospace;color:var(--accent);">{{ n.data.network?.ext_ip }}</span>
+            </div>
+          </div>
+          <div class="nc-foot">
+            <span class="nc-uptime">{{ n.data.uptime ? formatUptime(n.data.uptime) : '' }}</span>
+          </div>
+        </div>
+
+        <!-- Regular Node Card -->
+        <div *ngIf="!isGateway(n.data)" class="node-card" (click)="openDetails(n.hostname)">
+          <div class="nc-head">
+            <span class="nc-dot" [class.online]="isOnline(n.data)" [class.offline]="!isOnline(n.data)"></span>
+            <span class="nc-hostname">{{ n.hostname }}</span>
+            <span class="nc-tag">{{ n.data.model || 'Node' }}</span>
+            <span *ngIf="n.data.uptime" class="nc-uptime">{{ formatUptime(n.data.uptime) }}</span>
+          </div>
+          <div class="nc-vitals">
+            <div class="nc-vital">
+              <span class="nc-vval">{{ n.data.cpu?.load ?? 0 }}<span class="nc-vunit">%</span></span>
+              <span class="nc-vlabel">CPU</span>
+              <div class="nc-vbar"><div class="nc-vbar-fill" [ngClass]="cpuClass(n.data)" [style.width.%]="n.data.cpu?.load ?? 0"></div></div>
+            </div>
+            <div class="nc-vdivider"></div>
+            <div class="nc-vital">
+              <span class="nc-vval">{{ n.data.memory?.percent ?? 0 }}<span class="nc-vunit">%</span></span>
+              <span class="nc-vlabel">RAM</span>
+              <div class="nc-vbar"><div class="nc-vbar-fill ram" [style.width.%]="n.data.memory?.percent ?? 0"></div></div>
+            </div>
+          </div>
+          <div class="nc-foot">
+            <span class="nc-net">
+              ↓ {{ ((n.data.network?.rx_sec ?? 0) / 1024).toFixed(1) }} &nbsp;
+              ↑ {{ ((n.data.network?.tx_sec ?? 0) / 1024).toFixed(1) }}
+              <small style="opacity:.45">KB/s</small>
+            </span>
+            <span *ngIf="n.data.cpu?.temp" class="nc-tpill" [ngClass]="getTempClass(n.data.cpu!.temp!)">{{ n.data.cpu?.temp }}°C</span>
+            <span *ngIf="!n.data.cpu?.temp" class="nc-tpill" [class.online]="isOnline(n.data)" [class.offline]="!isOnline(n.data)">{{ isOnline(n.data) ? 'ONLINE' : 'OFFLINE' }}</span>
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </section>
+
+  <!-- Fleet Stats -->
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Fleet Stats</span>
+      <span class="section-sub">Live aggregate</span>
+    </div>
+    <div class="stat-tiles-grid">
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg CPU</span>
+        <span class="stat-tile-val">{{ stats.avgCpu }}<span class="stat-tile-unit">%</span></span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill cpu" [style.width.%]="stats.cpuBar"></div></div>
+        <span class="stat-tile-sub">fleet average</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg RAM</span>
+        <span class="stat-tile-val">{{ stats.avgRam }}<span class="stat-tile-unit">%</span></span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill ram" [style.width.%]="stats.ramBar"></div></div>
+        <span class="stat-tile-sub">fleet average</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg RX</span>
+        <span class="stat-tile-val" style="font-size:1.8rem;">{{ stats.avgRx }}</span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill net" [style.width.%]="stats.rxBar"></div></div>
+        <span class="stat-tile-sub">{{ stats.rxUnit }}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg TX</span>
+        <span class="stat-tile-val" style="font-size:1.8rem;">{{ stats.avgTx }}</span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill tx" [style.width.%]="stats.txBar"></div></div>
+        <span class="stat-tile-sub">{{ stats.txUnit }}</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Peak Temp</span>
+        <span class="stat-tile-val" style="font-size:1.8rem;">{{ stats.peakTemp }}</span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill temp" [ngClass]="stats.tempClass" [style.width.%]="stats.tempBar"></div></div>
+        <span class="stat-tile-sub">hottest node</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Nodes</span>
+        <span class="stat-tile-val">{{ stats.nodesOnline }}</span>
+        <div class="stat-tile-bar"><div class="stat-tile-fill online" [style.width.%]="stats.nodesBar"></div></div>
+        <span class="stat-tile-sub">{{ stats.nodesSub }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hub Services (operator+) -->
+  <section *ngIf="isOperator" class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Hub Services</span>
+      <button class="btn-ghost" (click)="triggerUpdate()">↑ Update Hub</button>
+    </div>
+    <div class="nodes-grid">
+      <p *ngIf="services.length === 0" style="color:var(--text-secondary);padding:1rem;">Loading services…</p>
+      <div *ngFor="let s of services" class="node-card" style="cursor:default;">
+        <div class="nc-head">
+          <span class="nc-dot" [class.online]="s.status === 'running'" [class.offline]="s.status !== 'running'"></span>
+          <span class="nc-hostname">{{ s.name }}</span>
+          <span class="nc-tag" [style.color]="s.status === 'running' ? 'var(--accent-green)' : 'var(--accent-red)'">
+            {{ s.status === 'running' ? 'Running' : 'Stopped' }}
+          </span>
+        </div>
+        <p class="svc-desc">{{ s.description }}</p>
+        <div class="svc-actions">
+          <ng-container *ngIf="s.status === 'running'">
+            <button class="btn-ghost" style="flex:1;" (click)="serviceAction(s.name,'restart')">Restart</button>
+            <button class="btn-ghost danger" style="flex:1;" (click)="serviceAction(s.name,'stop')">Stop</button>
+          </ng-container>
+          <button *ngIf="s.status !== 'running'" class="btn-primary" style="flex:1;" (click)="serviceAction(s.name,'start')">Start</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Detail Drawer -->
+<app-detail-drawer
+  *ngIf="drawerOpen && selectedHostname"
+  [hostname]="selectedHostname"
+  (closed)="onDrawerClose()"
+/>
+<div *ngIf="drawerOpen" class="drawer-overlay visible" (click)="onDrawerClose()"></div>

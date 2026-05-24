@@ -1,0 +1,74 @@
+<main class="page">
+
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Speed Tests</span>
+      <span class="section-sub">Logged speed test results</span>
+    </div>
+    <div class="stat-tiles-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg Download</span>
+        <span class="stat-tile-val">{{ avgDl }}<span class="stat-tile-unit">Mb/s</span></span>
+        <span class="stat-tile-sub">all tests</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg Upload</span>
+        <span class="stat-tile-val">{{ avgUl }}<span class="stat-tile-unit">Mb/s</span></span>
+        <span class="stat-tile-sub">all tests</span>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-tile-label">Avg Ping</span>
+        <span class="stat-tile-val">{{ avgPing }}<span class="stat-tile-unit">ms</span></span>
+        <span class="stat-tile-sub">all tests</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Speed History</span>
+      <span class="section-sub">Download &amp; Upload over time</span>
+    </div>
+    <div class="drawer-chart-card" style="padding:18px 20px;">
+      <div class="chart-container" style="height:240px;"><canvas #speedCanvas></canvas></div>
+    </div>
+  </section>
+
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">Last 50 Tests</span>
+    </div>
+    <div class="users-table-wrap">
+      <table class="technical-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Download</th>
+            <th>Upload</th>
+            <th>Ping</th>
+            <th>Jitter</th>
+            <th>ISP</th>
+            <th>IP</th>
+            <th>Location</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="logs.length === 0">
+            <td colspan="8" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading…</td>
+          </tr>
+          <tr *ngFor="let r of logs">
+            <td style="font-family:monospace;white-space:nowrap;">{{ fmtDate(r.tested_at) }}</td>
+            <td style="font-family:monospace;">{{ (+r.download_mbps).toFixed(2) }}</td>
+            <td style="font-family:monospace;">{{ (+r.upload_mbps).toFixed(2) }}</td>
+            <td style="font-family:monospace;">{{ (+r.ping_ms).toFixed(1) }}</td>
+            <td style="font-family:monospace;">{{ (+r.jitter_ms).toFixed(1) }}</td>
+            <td>{{ r.isp || '—' }}</td>
+            <td style="font-family:monospace;font-size:12px;">{{ r.client_ip || '—' }}</td>
+            <td>{{ r.location || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>

@@ -1,0 +1,39 @@
+<div class="modal">
+  <div class="modal-content" style="max-width:380px;">
+    <div class="modal-header">
+      <h2>{{ title }}</h2>
+      <span class="close-btn" (click)="dismiss()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" [(ngModel)]="username" autocomplete="off" />
+      </div>
+
+      <div *ngIf="!isEdit" class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" [(ngModel)]="password" autocomplete="new-password" />
+      </div>
+
+      <div *ngIf="isEdit" class="form-group">
+        <label class="form-label">New Password <span style="color:var(--text-muted)">(leave empty to keep current)</span></label>
+        <input type="password" [(ngModel)]="passwordEdit" autocomplete="new-password" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select [(ngModel)]="role">
+          <option value="viewer">Viewer — read-only</option>
+          <option value="operator">Operator — commands + view</option>
+          <option value="admin">Admin — full access</option>
+        </select>
+      </div>
+
+      <div *ngIf="error" class="auth-error">{{ error }}</div>
+
+      <button class="btn-primary" style="width:100%;margin-top:8px;" (click)="submit()" [disabled]="loading">
+        {{ loading ? 'Saving…' : (isEdit ? 'Save' : 'Create') }}
+      </button>
+    </div>
+  </div>
+</div>
