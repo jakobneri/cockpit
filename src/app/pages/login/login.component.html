@@ -1,0 +1,65 @@
+<div class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="brand-domain">nerifeige.de</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-app">cockpit</span>
+    </div>
+
+    <!-- Step 1: Username -->
+    <ng-container *ngIf="step === 'username'">
+      <h2 class="auth-title">Sign In</h2>
+      <form (ngSubmit)="submitUsername()">
+        <div class="form-group">
+          <label class="form-label" for="login-username">Username</label>
+          <input type="text" id="login-username" [(ngModel)]="username" name="username"
+                 autocomplete="username" placeholder="admin" autofocus />
+        </div>
+        <div *ngIf="error" class="auth-error">{{ error }}</div>
+        <button type="submit" class="btn-primary auth-submit" [disabled]="loading">
+          {{ loading ? 'Checking…' : 'Continue' }}
+        </button>
+      </form>
+    </ng-container>
+
+    <!-- Step 2a: TOTP -->
+    <ng-container *ngIf="step === 'totp'">
+      <h2 class="auth-title">Authenticator Code</h2>
+      <p class="auth-subtitle">Enter the 6-digit code from your authenticator app.</p>
+      <form (ngSubmit)="submitTotp()">
+        <div class="form-group">
+          <input type="text" id="totp-code" [(ngModel)]="totpCode" name="totpCode"
+                 (ngModelChange)="onTotpInput()"
+                 inputmode="numeric" maxlength="6"
+                 autocomplete="one-time-code" placeholder="000 000"
+                 class="totp-input" autofocus />
+        </div>
+        <div *ngIf="error" class="auth-error">{{ error }}</div>
+        <button type="submit" class="btn-primary auth-submit" [disabled]="loading">
+          {{ loading ? 'Verifying…' : 'Verify' }}
+        </button>
+        <button type="button" class="btn-ghost auth-back" (click)="usePassword()">Use password instead</button>
+        <button type="button" class="btn-ghost auth-back" (click)="back()">← Back</button>
+      </form>
+    </ng-container>
+
+    <!-- Step 2b: Password -->
+    <ng-container *ngIf="step === 'password'">
+      <h2 class="auth-title">Password</h2>
+      <p class="auth-subtitle">Sign in with your password.</p>
+      <form (ngSubmit)="submitPassword()">
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" id="login-password" [(ngModel)]="password" name="password"
+                 autocomplete="current-password" placeholder="••••••••" autofocus />
+        </div>
+        <div *ngIf="error" class="auth-error">{{ error }}</div>
+        <button type="submit" class="btn-primary auth-submit" [disabled]="loading">
+          {{ loading ? 'Signing in…' : 'Sign In' }}
+        </button>
+        <button type="button" class="btn-ghost auth-back" (click)="back()">← Back</button>
+      </form>
+      <p class="auth-hint">Passwords are hashed client-side before transmission.</p>
+    </ng-container>
+  </div>
+</div>

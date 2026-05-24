@@ -1,0 +1,50 @@
+<main class="page">
+  <section class="page-section">
+    <div class="section-hd">
+      <span class="section-label">User Management</span>
+      <button class="btn-primary" style="padding:6px 14px;font-size:12px;" (click)="openCreate()">+ New User</button>
+    </div>
+
+    <div *ngIf="error" style="color:var(--accent-red);padding:1rem;">{{ error }}</div>
+
+    <div class="users-table-wrap">
+      <table class="technical-table users-table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>2FA</th>
+            <th>Created</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="5" style="text-align:center;padding:2rem;color:var(--text-secondary);">Loading…</td>
+          </tr>
+          <tr *ngFor="let u of users">
+            <td>
+              <span style="font-weight:600;">{{ u.username }}</span>
+              <span *ngIf="isSelf(u)" style="font-size:10px;color:var(--text-secondary);margin-left:6px;">(you)</span>
+            </td>
+            <td><span class="role-badge" [ngClass]="'role-' + u.role">{{ u.role }}</span></td>
+            <td>
+              <span *ngIf="u.totp_enabled" class="status-badge online">On</span>
+              <span *ngIf="!u.totp_enabled" style="color:var(--text-muted);font-size:12px;">Off</span>
+            </td>
+            <td style="color:var(--text-secondary);font-size:12px;font-family:monospace;">{{ u.created_at | date:'shortDate' }}</td>
+            <td style="text-align:right;">
+              <div style="display:flex;gap:6px;justify-content:flex-end;">
+                <button class="btn-ghost" style="padding:4px 10px;font-size:11px;" (click)="openEdit(u)">Edit</button>
+                <button *ngIf="u.totp_enabled" class="btn-ghost" style="padding:4px 10px;font-size:11px;" (click)="resetTotp(u)">Reset 2FA</button>
+                <button *ngIf="!isSelf(u)" class="btn-ghost danger" style="padding:4px 10px;font-size:11px;" (click)="deleteUser(u)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<app-user-form-modal *ngIf="showUserModal" [editUser]="editUser" (close)="closeModal()" />

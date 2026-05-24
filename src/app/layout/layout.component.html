@@ -1,0 +1,81 @@
+<div class="layout">
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-domain">nerifeige.de</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-app">cockpit</span>
+    </div>
+
+    <nav class="top-nav">
+      <a class="nav-tab" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Fleet</a>
+      <a class="nav-tab" routerLink="/speed" routerLinkActive="active">Speed</a>
+      <a *ngIf="isAdmin" class="nav-tab" routerLink="/users" routerLinkActive="active">Users</a>
+    </nav>
+
+    <div class="top-kpis" id="top-kpis"></div>
+
+    <div class="top-status">
+      <div class="heartbeat" [class.active]="heartbeat"></div>
+      <span class="live-label">live</span>
+      <span class="version-tag">v10.0.0</span>
+    </div>
+
+    <div class="top-user">
+      <button class="user-chip" id="user-chip-btn" (click)="menuOpen = !menuOpen">
+        <span class="user-chip-icon">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        <span id="user-chip-name">{{ user?.username }}</span>
+        <span class="role-badge" [class]="'role-badge role-' + user?.role">{{ user?.role }}</span>
+        <svg viewBox="0 0 24 24" width="11" height="11" style="opacity:.5" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      <div class="user-menu" id="user-menu" *ngIf="menuOpen">
+        <div class="user-menu-header">
+          <div class="user-menu-name">{{ user?.username }}</div>
+          <div class="user-menu-role">{{ user?.role }}</div>
+        </div>
+        <button class="user-menu-item" (click)="openAccount()">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Account &amp; Security
+        </button>
+        <div class="user-menu-sep"></div>
+        <button class="user-menu-item danger" (click)="logout()">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <router-outlet />
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-bottom-nav">
+    <a class="mobile-nav-btn" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Fleet
+    </a>
+    <a class="mobile-nav-btn" routerLink="/speed" routerLinkActive="active">
+      <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Speed
+    </a>
+    <a *ngIf="isAdmin" class="mobile-nav-btn" routerLink="/users" routerLinkActive="active">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Users
+    </a>
+  </nav>
+</div>
+
+<!-- Account Modal -->
+<app-account-modal *ngIf="showAccountModal" (close)="showAccountModal = false" />

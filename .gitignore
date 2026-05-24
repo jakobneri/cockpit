@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 # Runtime Data
 data/
 config.json
+.angular

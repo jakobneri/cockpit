@@ -1,0 +1,153 @@
+<aside class="detail-drawer open">
+  <!-- Header -->
+  <div class="drawer-hd">
+    <div class="drawer-node-info">
+      <div class="drawer-hostname">{{ hostname }}</div>
+      <div class="drawer-meta">{{ osInfo }}</div>
+    </div>
+    <div class="drawer-hd-actions">
+      <select class="range-select" [(ngModel)]="historyRange" (ngModelChange)="onRangeChange()">
+        <option value="">Live (10m)</option>
+        <option value="1h">1 Hour</option>
+        <option value="6h">6 Hours</option>
+        <option value="24h">24 Hours</option>
+        <option value="7d">7 Days</option>
+        <option value="30d">30 Days</option>
+      </select>
+      <div class="view-toggle">
+        <button class="toggle-btn" [class.active]="viewMode==='chart'" (click)="setViewMode('chart')">Charts</button>
+        <button class="toggle-btn" [class.active]="viewMode==='raw'" (click)="setViewMode('raw')">Raw</button>
+      </div>
+      <button class="drawer-close-btn" (click)="close()">✕</button>
+    </div>
+  </div>
+
+  <!-- Stat Strip -->
+  <div class="stat-strip">
+    <div class="stat-item"><span class="stat-label">CPU</span><span class="stat-value">{{ cpuLoad }}<span class="stat-unit">%</span></span></div>
+    <div class="stat-item"><span class="stat-label">Memory</span><span class="stat-value">{{ ramUsage }}<span class="stat-unit">%</span></span></div>
+    <div class="stat-item"><span class="stat-label">Temp</span><span class="stat-value">{{ stripTemp }}</span></div>
+    <div class="stat-item"><span class="stat-label">Uptime</span><span class="stat-value" style="font-size:13px;padding-top:5px;">{{ stripUptime }}</span></div>
+  </div>
+
+  <!-- Body -->
+  <div class="drawer-body">
+
+    <!-- Chart View -->
+    <ng-container *ngIf="viewMode === 'chart'">
+
+      <!-- CPU Chart (hidden for gateway) -->
+      <div *ngIf="!isGateway" class="drawer-chart-card">
+        <div class="drawer-chart-hd">
+          <span class="chart-card-label">CPU Usage</span>
+          <span *ngIf="cpuTempVal" class="temp-badge" [ngClass]="cpuTempClass">{{ cpuTempVal }}</span>
+        </div>
+        <div class="chart-container" style="height:110px;"><canvas #cpuCanvas></canvas></div>
+        <div class="chart-footer">System Load · 10m history</div>
+      </div>
+
+      <!-- RAM Chart -->
+      <div *ngIf="!isGateway" class="drawer-chart-card">
+        <div class="drawer-chart-hd">
+          <span class="chart-card-label">Memory</span>
+          <span style="font-size:11px;color:var(--text-secondary);font-family:monospace;">{{ ramDetail }}</span>
+        </div>
+        <div class="chart-container" style="height:110px;"><canvas #ramCanvas></canvas></div>
+      </div>
+
+      <!-- Network Chart -->
+      <div class="drawer-chart-card">
+        <div class="drawer-chart-hd">
+          <span class="chart-card-label">Network</span>
+          <div class="net-speeds">
+            <span class="net-val">↓ {{ netRx }} KB/s</span>
+            <span class="net-val up">↑ {{ netTx }} KB/s</span>
+          </div>
+        </div>
+        <div class="chart-container" style="height:110px;"><canvas #netCanvas></canvas></div>
+        <div class="chart-footer">Realtime · 10m history</div>
+      </div>
+
+      <!-- Gateway Info -->
+      <div *ngIf="isGateway && data?.gateway" class="drawer-section-card">
+        <div class="drawer-section-title">Gateway Connection</div>
+        <div class="gw-grid">
+          <div class="gw-item"><span class="gw-label">DSL Sync</span><span class="gw-val">{{ data?.gateway?.dsl_sync || '--' }}</span></div>
+          <div class="gw-item"><span class="gw-label">VPN Status</span><span class="temp-badge" [ngClass]="data?.gateway?.vpn_active ? 'cool' : 'hot'">{{ data?.gateway?.vpn_active ? 'CONNECTED' : 'DISCONNECTED' }}</span></div>
+          <div class="gw-item"><span class="gw-label">Ext. IP</span><span class="gw-val accent">{{ data?.network?.ext_ip || 'Managed' }}</span></div>
+        </div>
+      </div>
+
+      <!-- Storage -->
+      <div *ngIf="!isGateway" class="drawer-section-card">
+        <div class="drawer-section-title">Storage</div>
+        <div class="storage-grid">
+          <div class="storage-item">
+            <div class="storage-header">
+              <div class="storage-icon root"></div>
+              <div class="storage-info"><span class="label">Root</span><h3>/</h3></div>
+              <span class="storage-val">{{ rootPercent }}</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" [style.width]="rootBar + '%'" [class.danger]="rootBar >= 90" [class.warning]="rootBar >= 70 && rootBar < 90"></div></div>
+            <div class="storage-footer">{{ rootDetail }}</div>
+          </div>
+        </div>
+
+        <!-- Physical Drives -->
+        <div *ngIf="drives.length > 0" class="metrics-grid" style="margin-top:12px;border-top:1px solid var(--b);padding-top:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+          <div *ngFor="let d of drives"
+               [style.border]="'1px solid ' + (driveOk(d) ? 'rgba(18,208,122,0.2)' : 'rgba(255,45,85,0.35)')"
+               [style.background]="driveOk(d) ? 'rgba(18,208,122,0.05)' : 'rgba(255,45,85,0.08)'"
+               style="padding:12px;border-radius:5px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-weight:600;font-size:0.95rem;">{{ d.name.toUpperCase() }}</span>
+              <span class="status-badge" [class.online]="driveOk(d)" [class.offline]="!driveOk(d)">{{ d.status }}</span>
+            </div>
+            <div style="color:var(--text-secondary);font-size:0.82rem;display:flex;flex-direction:column;gap:3px;">
+              <div style="display:flex;justify-content:space-between;"><span>Model:</span><span style="color:var(--text-primary);">{{ d.model }}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>Size:</span><span style="color:var(--text-primary);">{{ formatBytes(d.size) }}</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>State:</span><span style="color:var(--text-primary);">{{ d.state }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <!-- Raw View -->
+    <ng-container *ngIf="viewMode === 'raw'">
+      <div class="drawer-section-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span class="drawer-section-title" style="margin-bottom:0;">Raw History — Last 200</span>
+          <div class="export-controls">
+            <select id="export-timeframe">
+              <option value="hour">Last Hour</option>
+              <option value="day">Last Day</option>
+              <option value="week">Last Week</option>
+              <option value="year">Last Year</option>
+              <option value="all" selected>All Time</option>
+            </select>
+            <button class="btn-ghost" (click)="exportData()">Export XML</button>
+          </div>
+        </div>
+        <div class="history-table-container">
+          <table class="technical-table history-table" style="min-width:600px;">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th *ngFor="let k of historyKeys">{{ k.toUpperCase() }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let h of historyRows">
+                <td style="font-family:monospace;white-space:nowrap;">{{ h['time'] ? (h['time'] | date:'HH:mm:ss') : '---' }}</td>
+                <td *ngFor="let k of historyKeys" style="font-family:monospace;font-size:0.82rem;">{{ h[k] }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+</aside>
